@@ -6,11 +6,14 @@ namespace App\Services;
 
 use App\Enums\SeasonStatus;
 use App\Enums\SeasonTeamPlayerStatus;
+use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
+use App\Models\User;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -66,6 +69,51 @@ class PlayerCardService
             // la vista cae a su fallback (solo el nombre del organizador).
             'organizerSignatureBase64' => null,
         ];
+    }
+
+    /**
+     * Inscripciones (season_team) cuyos carnets/fichas puede generar $user:
+     * la MISMA regla que SeasonTeamPlayerPolicy::printCard (managesSeasonTeam),
+     * pero en SQL para filtrar listados. Admin: todas; organizador: las de
+     * sus torneos; delegado: donde es el delegado EFECTIVO (el de temporada,
+     * o el general del club si la inscripcion no tiene uno), igual que
+     * SeasonTeam::effectiveDelegate(). Los Controllers igual autorizan cada
+     * id con la Policy.
+     */
+    public function printableSeasonTeams(User $user): Builder
+    {
+        $query = SeasonTeam::query();
+
+        if ($user->hasRole('admin')) {
+            return $query;
+        }
+
+        $isOrganizer = $user->hasRole('organizador') && $user->can('seasons.manage');
+        $isDelegate = $user->hasRole('delegado') && $user->can('teams.manage');
+
+        if (! $isOrganizer && ! $isDelegate) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $q) use ($user, $isOrganizer, $isDelegate) {
+            if ($isOrganizer) {
+                $q->orWhereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id));
+            }
+
+            if ($isDelegate) {
+                $q->orWhere(fn ($d) => $d->where('season_team.delegate_id', $user->id)
+                    ->orWhere(fn ($g) => $g->whereNull('season_team.delegate_id')
+                        ->whereHas('team', fn ($t) => $t->where('delegate_id', $user->id))));
+            }
+        });
+    }
+
+    /** Fichas del plantel (season_team_player) dentro de printableSeasonTeams(). */
+    public function printableEntries(User $user): Builder
+    {
+        $seasonTeamIds = $this->printableSeasonTeams($user)->select('season_team.id');
+
+        return SeasonTeamPlayer::query()->whereIn('season_team_player.season_team_id', $seasonTeamIds);
     }
 
     /**
