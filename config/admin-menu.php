@@ -29,6 +29,7 @@ return [
             'children' => [
                 ['label' => 'Torneos', 'route' => 'tournaments.index', 'permission' => 'tournaments.manage'],
                 ['label' => 'Temporadas', 'route' => 'seasons.index', 'permission' => 'seasons.manage'],
+                ['label' => 'Ediciones (Olimpiadas)', 'route' => 'games-editions.index', 'role' => 'admin'],
             ],
         ],
         [
