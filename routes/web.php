@@ -6,6 +6,7 @@ use App\Livewire\Admin\Users\Index as AdminUsersIndex;
 use App\Livewire\Categories\Index as CategoriesIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\GamesEditions\Index as GamesEditionsIndex;
+use App\Livewire\MatchEvents\Index as MatchEventsIndex;
 use App\Livewire\Matchdays\Index as MatchdaysIndex;
 use App\Livewire\Matches\Index as MatchesIndex;
 use App\Livewire\Periods\Index as PeriodsIndex;
@@ -64,6 +65,9 @@ Route::middleware([
 
     Route::get('/resultados', ResultsIndex::class)
         ->name('results.index');
+
+    Route::get('/incidencias', MatchEventsIndex::class)
+        ->name('match-events.index');
 
     Route::get('/categorias', CategoriesIndex::class)
         ->name('categories.index');
