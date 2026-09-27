@@ -6,6 +6,7 @@ namespace App\Policies;
 
 use App\Models\Team;
 use App\Models\User;
+use App\Services\TeamRegistrationService;
 
 class TeamPolicy
 {
@@ -22,7 +23,7 @@ class TeamPolicy
 
     public function view(User $user, Team $team): bool
     {
-        if ($user->hasAnyRole(['admin', 'organizador'])) {
+        if ($this->organizerManages($user, $team)) {
             return true;
         }
 
@@ -41,14 +42,15 @@ class TeamPolicy
     }
 
     /**
-     * El organizador edita cualquier equipo (Team es un catalogo global,
-     * no pertenece a un torneo). El delegado conserva la edicion de SU
-     * equipo (nombre, logo), pero nunca reasigna delegate_id: eso lo
-     * fuerza TeamRegistrationService::resolveDelegateId().
+     * El organizador edita solo los equipos a su cargo (inscritos en un
+     * torneo suyo o creados por el): TeamRegistrationService::scopeManagedBy().
+     * El delegado conserva la edicion de SU equipo (nombre, logo), pero
+     * nunca reasigna delegate_id: eso lo fuerza
+     * TeamRegistrationService::resolveDelegateId().
      */
     public function update(User $user, Team $team): bool
     {
-        if ($this->isOrganizer($user)) {
+        if ($this->organizerManages($user, $team)) {
             return true;
         }
 
@@ -57,14 +59,20 @@ class TeamPolicy
             && $team->delegate_id === $user->id;
     }
 
-    /** CAMBIO DE REGLA: quien no crea equipos tampoco los borra. */
+    /** Quien no crea equipos (delegado) tampoco los borra; el organizador, solo los suyos. */
     public function delete(User $user, Team $team): bool
     {
-        return $this->isOrganizer($user);
+        return $this->organizerManages($user, $team);
     }
 
     private function isOrganizer(User $user): bool
     {
         return $user->hasRole('organizador') && $user->can('teams.manage');
+    }
+
+    private function organizerManages(User $user, Team $team): bool
+    {
+        return $this->isOrganizer($user)
+            && app(TeamRegistrationService::class)->manages($user, $team);
     }
 }

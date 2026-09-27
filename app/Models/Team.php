@@ -18,6 +18,7 @@ class Team extends Model
         'logo_path',
         'delegate_id',
         'is_active',
+        'created_by',
     ];
 
     protected function casts(): array

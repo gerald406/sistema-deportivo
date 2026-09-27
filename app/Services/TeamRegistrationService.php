@@ -7,7 +7,9 @@ namespace App\Services;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -32,6 +34,9 @@ class TeamRegistrationService
         }
 
         $data['delegate_id'] = $this->resolveDelegateId($data, $actor);
+        // Deja al equipo "a cargo" de quien lo crea aunque aun no tenga
+        // inscripciones (ver scopeManagedBy()).
+        $data['created_by'] = $actor->id;
 
         return Team::create($data);
     }
@@ -81,8 +86,63 @@ class TeamRegistrationService
     /** Admin u organizador: crean equipos y eligen su delegado. */
     public function canAssignDelegate(User $actor): bool
     {
-        return $actor->hasRole('admin')
-            || ($actor->hasRole('organizador') && $actor->can('teams.manage'));
+        return $actor->hasRole('admin') || $this->isOrganizer($actor);
+    }
+
+    /**
+     * Equipos que $actor gestiona en /equipos.
+     *   - Admin: todos.
+     *   - Organizador: los "a su cargo". Team no se relaciona directo con
+     *     Tournament (un equipo puede estar inscrito en temporadas de varios
+     *     torneos a la vez), asi que se considera suyo el equipo que tiene
+     *     al menos una inscripcion (season_team) en una temporada de un
+     *     torneo suyo, o que el mismo creo (teams.created_by) y aun no
+     *     inscribe.
+     */
+    public function scopeManagedBy(Builder $query, User $actor): Builder
+    {
+        if ($actor->hasRole('admin')) {
+            return $query;
+        }
+
+        if ($this->isOrganizer($actor)) {
+            return $query->where(fn ($q) => $q
+                ->where('teams.created_by', $actor->id)
+                ->orWhereHas('seasonTeams.season.tournament', fn ($t) => $t->where('organizer_id', $actor->id)));
+        }
+
+        return $query;
+    }
+
+    public function manages(User $actor, Team $team): bool
+    {
+        return $this->scopeManagedBy(Team::query(), $actor)->whereKey($team->id)->exists();
+    }
+
+    /**
+     * Autocomplete de "Delegado responsable": busqueda server-side, nunca
+     * se cargan todos los delegados. Minimo 2 caracteres, maximo 10
+     * resultados.
+     */
+    public function searchDelegates(string $term): Collection
+    {
+        $term = trim($term);
+
+        if (mb_strlen($term) < 2) {
+            return collect();
+        }
+
+        return User::role('delegado')
+            ->where('is_active', true)
+            ->where(fn ($q) => $q->where('name', 'like', "%{$term}%")->orWhere('email', 'like', "%{$term}%"))
+            ->orderBy('name')
+            ->limit(10)
+            ->get(['id', 'name', 'email']);
+    }
+
+    private function isOrganizer(User $actor): bool
+    {
+        return $actor->hasRole('organizador') && $actor->can('teams.manage');
     }
 
     /**

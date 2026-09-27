@@ -124,7 +124,7 @@
                     <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
                         <div class="flex items-center justify-between">
                             <label class="block text-sm font-medium text-gray-700">Delegado responsable</label>
-                            @if (! $form['delegate_id'] && $this->isAdmin())
+                            @if (! $selectedDelegateId && $this->isAdmin())
                                 <button type="button" wire:click="toggleCreatingDelegate"
                                         class="text-xs font-semibold text-indigo-600 hover:text-indigo-500">
                                     {{ $creatingDelegate ? '← Volver al selector' : '+ Crear nueva cuenta' }}
@@ -164,13 +164,46 @@
                                 </button>
                             </div>
                         @else
-                            <select wire:model="form.delegate_id"
-                                    class="mt-2 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Sin asignar</option>
-                                @foreach ($this->delegates() as $delegate)
-                                    <option value="{{ $delegate->id }}">{{ $delegate->name }}</option>
-                                @endforeach
-                            </select>
+                            {{-- Autocomplete server-side: TeamRegistrationService::searchDelegates()
+                                 (rol delegado, activos, máx. 10). Nunca se cargan todos. --}}
+                            <div x-data="{ open: false }" @click.outside="open = false" class="relative mt-2">
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i>
+                                    <input type="text" wire:model.live.debounce.300ms="delegateSearch"
+                                           x-on:focus="open = true" x-on:input="open = true" x-on:keydown.escape="open = false"
+                                           placeholder="Buscar por nombre o correo (mín. 2 letras)" autocomplete="off"
+                                           @class([
+                                               'w-full rounded-lg py-2 pl-8 pr-8 text-sm focus:border-indigo-500 focus:ring-indigo-500',
+                                               'border-indigo-300 bg-indigo-50 font-medium text-indigo-900' => $selectedDelegateId,
+                                               'border-gray-300' => ! $selectedDelegateId,
+                                           ])>
+                                    @if ($selectedDelegateId || $delegateSearch !== '')
+                                        <button type="button" wire:click="clearDelegate" title="Quitar delegado"
+                                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    @endif
+                                </div>
+
+                                @if (! $selectedDelegateId && mb_strlen(trim($delegateSearch)) >= 2)
+                                    <div x-show="open" x-transition
+                                         class="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                                        @forelse ($this->delegateResults() as $option)
+                                            <button type="button" wire:key="delegate-opt-{{ $option->id }}"
+                                                    wire:click="selectDelegate({{ $option->id }})" x-on:click="open = false"
+                                                    class="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50">
+                                                {{ $option->name }} <span class="text-gray-400">· {{ $option->email }}</span>
+                                            </button>
+                                        @empty
+                                            <p class="px-3 py-2 text-sm text-gray-400">Sin resultados.</p>
+                                        @endforelse
+                                    </div>
+                                @endif
+                            </div>
+                            <p class="mt-1 text-xs text-gray-400">
+                                {{ $selectedDelegateId ? 'Delegado seleccionado.' : 'Sin asignar: escribe para buscar un delegado.' }}
+                            </p>
+                            @error('selectedDelegateId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             @error('form.delegate_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         @endif
                     </div>

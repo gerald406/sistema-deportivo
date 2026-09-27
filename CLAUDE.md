@@ -42,7 +42,9 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
    delegado NUNCA crea ni borra equipos; conserva la edición de nombre/logo de SU equipo sin
    poder reasignar `delegate_id` (`TeamPolicy`, `TeamRegistrationService`). El organizador tiene
    el permiso `teams.manage` para esto. Crear la *cuenta* de un delegado sigue siendo solo del
-   admin (regla 3 de arriba).
+   admin (regla 3 de arriba). En /equipos el organizador solo ve y gestiona los equipos **a su
+   cargo**: con al menos una inscripción en una temporada de un torneo suyo, o creados por él
+   (`teams.created_by`) — ver `TeamRegistrationService::scopeManagedBy()`.
 4. **Inscripciones (`SeasonTeam`)**: las crean, editan y retiran solo el ORGANIZADOR del torneo o
    el ADMIN, en Borrador o En curso (nadie en Cerrada). El delegado NUNCA crea ni edita
    `SeasonTeam` en ningún estado; solo las ve (`SeasonTeamPolicy`, `SeasonTeamService`).
@@ -114,9 +116,9 @@ antes que las que dependen de ellas (ya se hizo así con Sport/Discipline antes 
 
 ## Modelos y ubicación (dónde mirar antes de escribir código nuevo)
 
-- Migraciones: `database/migrations/` (26 archivos con comentarios en español + 3 migraciones
+- Migraciones: `database/migrations/` (26 archivos con comentarios en español + 4 migraciones
   de ajuste posteriores: `add_created_by_to_players_table`, `add_is_active_to_users_table`,
-  `restrict_roster_history_on_match_events_and_suspensions`)
+  `restrict_roster_history_on_match_events_and_suspensions`, `add_created_by_to_teams_table`)
 - `event_participants` es polimórfica **sin FK real** hacia `season_team`/`season_team_player`:
   antes de borrar una inscripción, revisar `eventParticipants()` en el Service.
 - Modelos: `app/Models/` (Sport, Discipline, SportPosition, EventType, Category, Venue,

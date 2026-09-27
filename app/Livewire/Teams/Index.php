@@ -42,9 +42,15 @@ class Index extends Component
 
     public array $form = [
         'name' => '',
-        'delegate_id' => '',
         'is_active' => true,
     ];
+
+    // --- Autocomplete de "Delegado responsable" (admin/organizador) ---
+    /** Texto del buscador; al elegir un delegado muestra su nombre. */
+    public string $delegateSearch = '';
+
+    /** Delegado elegido. Viene del navegador: el Service revalida que sea rol delegado. */
+    public ?int $selectedDelegateId = null;
 
     /** Logo nuevo pendiente de subir (Livewire\WithFileUploads). */
     public $newLogo = null;
@@ -83,9 +89,35 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function delegates(): Collection
+    /** Maximo 10 delegados que coinciden con lo escrito (nunca la lista completa). */
+    public function delegateResults(): Collection
     {
-        return User::role('delegado')->orderBy('name')->get(['id', 'name']);
+        if ($this->selectedDelegateId || ! $this->canAssignDelegate()) {
+            return collect();
+        }
+
+        return app(TeamRegistrationService::class)->searchDelegates($this->delegateSearch);
+    }
+
+    /** Si se vuelve a escribir, la seleccion anterior deja de valer. */
+    public function updatedDelegateSearch(): void
+    {
+        $this->selectedDelegateId = null;
+    }
+
+    public function selectDelegate(int $id): void
+    {
+        abort_unless($this->canAssignDelegate(), 403);
+
+        $delegate = User::role('delegado')->where('is_active', true)->findOrFail($id);
+        $this->selectedDelegateId = $delegate->id;
+        $this->delegateSearch = $delegate->name;
+    }
+
+    public function clearDelegate(): void
+    {
+        $this->selectedDelegateId = null;
+        $this->delegateSearch = '';
     }
 
     public function isAdmin(): bool
@@ -109,15 +141,16 @@ class Index extends Component
 
     public function edit(int $id): void
     {
-        $team = Team::findOrFail($id);
+        $team = $this->findManagedTeam($id);
         $this->authorize('update', $team);
 
         $this->editingId = $team->id;
         $this->form = [
             'name' => $team->name,
-            'delegate_id' => $team->delegate_id ?? '',
             'is_active' => $team->is_active,
         ];
+        $this->selectedDelegateId = $team->delegate_id;
+        $this->delegateSearch = $team->delegate?->name ?? '';
         $this->existingLogoUrl = $team->logo_path ? Storage::disk('public')->url($team->logo_path) : null;
         $this->showModal = true;
     }
@@ -126,10 +159,11 @@ class Index extends Component
     {
         $validated = $this->validate($this->rules());
         $data = $validated['form'];
+        $data['delegate_id'] = $this->selectedDelegateId ?? '';
         $actor = auth()->user();
 
         if ($this->editingId) {
-            $team = Team::findOrFail($this->editingId);
+            $team = $this->findManagedTeam($this->editingId);
             $this->authorize('update', $team);
 
             if ($this->newLogo) {
@@ -155,7 +189,7 @@ class Index extends Component
 
     public function delete(int $id, TeamRegistrationService $service): void
     {
-        $team = Team::findOrFail($id);
+        $team = $this->findManagedTeam($id);
         $this->authorize('delete', $team);
 
         $result = $service->delete($team);
@@ -201,7 +235,8 @@ class Index extends Component
             'password' => $data['newDelegatePassword'],
         ], auth()->user());
 
-        $this->form['delegate_id'] = $delegate->id;
+        $this->selectedDelegateId = $delegate->id;
+        $this->delegateSearch = $delegate->name;
         $this->toggleCreatingDelegate();
 
         $this->dispatch('toast', type: 'success', message: 'Cuenta de delegado creada y asignada al equipo.');
@@ -215,7 +250,9 @@ class Index extends Component
 
     public function render()
     {
-        $query = Team::query()
+        $service = app(TeamRegistrationService::class);
+
+        $query = $service->scopeManagedBy(Team::query(), auth()->user())
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
@@ -233,6 +270,19 @@ class Index extends Component
         return ['name', 'season_teams_count', 'is_active', 'created_at'];
     }
 
+    /**
+     * Ids que llegan del navegador se buscan acotados al alcance del
+     * usuario (scopeManagedBy): un organizador que mande el id de un equipo
+     * ajeno recibe 404 antes de llegar a la Policy.
+     */
+    private function findManagedTeam(int $id): Team
+    {
+        return app(TeamRegistrationService::class)
+            ->scopeManagedBy(Team::query(), auth()->user())
+            ->with('delegate:id,name')
+            ->findOrFail($id);
+    }
+
     private function deleteLogoIfExists(?string $path): void
     {
         if ($path && Storage::disk('public')->exists($path)) {
@@ -245,9 +295,10 @@ class Index extends Component
         $this->editingId = null;
         $this->form = [
             'name' => '',
-            'delegate_id' => '',
             'is_active' => true,
         ];
+        $this->delegateSearch = '';
+        $this->selectedDelegateId = null;
         $this->newLogo = null;
         $this->existingLogoUrl = null;
         $this->creatingDelegate = false;
@@ -267,7 +318,7 @@ class Index extends Component
                 'max:150',
                 Rule::unique('teams', 'name')->ignore($this->editingId),
             ],
-            'form.delegate_id' => ['nullable', 'exists:users,id'],
+            'selectedDelegateId' => ['nullable', 'integer', 'exists:users,id'],
             'form.is_active' => ['boolean'],
             'newLogo' => ['nullable', 'image', 'max:2048'],
         ];
