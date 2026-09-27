@@ -144,6 +144,15 @@ class Index extends Component
     {
         $data = $this->validate($this->rules())['form'];
 
+        // validate() comprueba 'integer' pero devuelve el valor crudo: los
+        // <select> de Livewire mandan strings ("247"). Se castea aqui, al
+        // recibir el dato, porque SuspensionService (strict_types) lo pasa
+        // a syncRosterStatus(int) y revienta con TypeError.
+        foreach (['season_id', 'match_id', 'season_team_player_id', 'matches_suspended'] as $field) {
+            $data[$field] = (int) $data[$field];
+        }
+        $data['is_served'] = (bool) $data['is_served'];
+
         if ($this->editingId) {
             $suspension = Suspension::findOrFail($this->editingId);
             $this->authorize('update', $suspension);
