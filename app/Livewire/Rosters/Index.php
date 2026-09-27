@@ -16,6 +16,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -42,6 +43,14 @@ class Index extends Component
     public bool $showModal = false;
 
     public ?int $editingId = null;
+
+    /**
+     * Modo carnets (?carnets=1): checkboxes de seleccion multiple y boton
+     * "Generar seleccionados". Solo cambia la vista; cada carnet lo
+     * autoriza PlayerCardController con SeasonTeamPlayerPolicy::printCard.
+     */
+    #[Url(as: 'carnets')]
+    public bool $cardMode = false;
 
     /** Buscador de jugadores dentro del modal (catalogo global). */
     public string $playerSearch = '';

@@ -1,16 +1,99 @@
-<div class="space-y-6">
+{{-- Modo carnets: la seleccion vive en Alpine (ids unicos: agregar un id ya
+     presente no lo duplica, aunque la misma fila existiera dos veces en el DOM,
+     p. ej. si se agrega una vista movil). Sobrevive a paginar/filtrar porque
+     Livewire conserva el estado Alpine al re-renderizar. El PDF se pide por POST
+     (ids en el body, no en la URL) y se descarga como blob, igual que la referencia. --}}
+<div class="space-y-6"
+     x-data="{
+         selected: [],
+         busy: false,
+         toggle(id, on) {
+             this.selected = this.selected.filter(x => x !== id);
+             if (on) this.selected.push(id);
+         },
+         pageIds() {
+             return [...$root.querySelectorAll('[data-card-id]')].map(el => Number(el.dataset.cardId));
+         },
+         allOnPage() {
+             const ids = this.pageIds();
+             return ids.length > 0 && ids.every(id => this.selected.includes(id));
+         },
+         togglePage(on) {
+             this.pageIds().forEach(id => this.toggle(id, on));
+         },
+         generate() {
+             const ids = [...new Set(this.selected)];
+             if (ids.length === 0 || this.busy) return;
+             confirmAction({
+                 title: `¿Generar ${ids.length} carnet(s)?`,
+                 text: 'Se descargará un PDF con los carnets seleccionados.',
+                 confirmText: 'Sí, generar',
+             }, async () => {
+                 this.busy = true;
+                 try {
+                     const body = new FormData();
+                     body.append('ids', ids.join(','));
+                     const res = await fetch(@js(route('cards.massive.post')), {
+                         method: 'POST',
+                         headers: { 'X-CSRF-TOKEN': @js(csrf_token()), 'Accept': 'application/pdf' },
+                         body,
+                     });
+                     if (! res.ok) {
+                         const msg = res.status === 403 ? 'No tienes permiso para alguno de los carnets seleccionados.'
+                             : res.status === 422 ? 'Selección inválida (máximo 150 carnets por PDF).'
+                             : 'No se pudieron generar los carnets.';
+                         Swal.fire({ icon: 'error', titleText: 'Error', text: msg });
+                         return;
+                     }
+                     const url = URL.createObjectURL(await res.blob());
+                     const a = Object.assign(document.createElement('a'), { href: url, download: 'fotochecks_masivos.pdf' });
+                     document.body.appendChild(a); a.click(); a.remove();
+                     URL.revokeObjectURL(url);
+                 } catch (e) {
+                     Swal.fire({ icon: 'error', titleText: 'Error', text: 'Ocurrió un problema al comunicarse con el servidor.' });
+                 } finally {
+                     this.busy = false;
+                 }
+             });
+         },
+     }">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Planteles</h1>
-            <p class="text-sm text-gray-500">Jugadores convocados por cada equipo inscrito en una temporada.</p>
+            <p class="text-sm text-gray-500">
+                {{ $cardMode ? 'Modo carnets: marca los jugadores y genera sus fotochecks en un solo PDF.' : 'Jugadores convocados por cada equipo inscrito en una temporada.' }}
+            </p>
         </div>
 
-        @can('create', \App\Models\SeasonTeamPlayer::class)
-            <button wire:click="create" type="button"
-                    class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                <i class="fa-solid fa-user-plus"></i> Agregar jugador
-            </button>
-        @endcan
+        <div class="flex flex-wrap items-center gap-2">
+            @if ($cardMode)
+                <button type="button" x-show="selected.length > 0" x-cloak x-on:click="generate()" x-bind:disabled="busy"
+                        class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-60">
+                    <i class="fa-solid" x-bind:class="busy ? 'fa-spinner fa-spin' : 'fa-id-card'"></i>
+                    Generar seleccionados (<span x-text="selected.length"></span>)
+                </button>
+                <button type="button" x-show="selected.length > 0" x-cloak x-on:click="selected = []"
+                        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">
+                    Limpiar
+                </button>
+                <button type="button" wire:click="$set('cardMode', false)"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <i class="fa-solid fa-xmark"></i> Salir de carnets
+                </button>
+            @else
+                <button type="button" wire:click="$set('cardMode', true)"
+                        class="inline-flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">
+                    <i class="fa-solid fa-id-card"></i> Carnets
+                </button>
+
+                @can('create', \App\Models\SeasonTeamPlayer::class)
+                    <button wire:click="create" type="button"
+                            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                        <i class="fa-solid fa-user-plus"></i> Agregar jugador
+                    </button>
+                @endcan
+            @endif
+        </div>
     </div>
 
     {{-- Filtros --}}
@@ -53,6 +136,13 @@
             <table class="w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50">
                     <tr>
+                        @if ($cardMode)
+                            <th class="w-10 px-4 py-3">
+                                <input type="checkbox" title="Seleccionar los de esta página"
+                                       x-bind:checked="allOnPage()" x-on:change="togglePage($event.target.checked)"
+                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            </th>
+                        @endif
                         <x-sortable-th field="shirt_number" label="N°" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="player_last_name" label="Jugador" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Equipo / Temporada</th>
@@ -64,7 +154,18 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($entries as $entry)
+                        @php($canPrint = auth()->user()->can('printCard', $entry))
                         <tr wire:key="roster-{{ $entry->id }}">
+                            @if ($cardMode)
+                                <td class="px-4 py-3">
+                                    @if ($canPrint)
+                                        <input type="checkbox" data-card-id="{{ $entry->id }}"
+                                               x-bind:checked="selected.includes({{ $entry->id }})"
+                                               x-on:change="toggle({{ $entry->id }}, $event.target.checked)"
+                                               class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    @endif
+                                </td>
+                            @endif
                             <td class="px-4 py-3 font-semibold text-gray-700">{{ $entry->shirt_number ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-3">
@@ -95,6 +196,12 @@
                             <td class="px-4 py-3 text-gray-500">{{ $entry->enrolled_at->format('d/m/Y') }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
+                                    @if ($canPrint)
+                                        <a href="{{ route('cards.single', $entry) }}" target="_blank" rel="noopener"
+                                           class="text-gray-400 hover:text-emerald-600" title="Carnet (PDF)">
+                                            <i class="fa-solid fa-id-card"></i>
+                                        </a>
+                                    @endif
                                     @can('update', $entry)
                                         <button wire:click="edit({{ $entry->id }})" class="text-gray-400 hover:text-indigo-600" title="Editar">
                                             <i class="fa-solid fa-pen"></i>
@@ -111,7 +218,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-10 text-center text-gray-400">No hay jugadores que coincidan con el filtro.</td>
+                            <td colspan="{{ $cardMode ? 8 : 7 }}" class="px-4 py-10 text-center text-gray-400">No hay jugadores que coincidan con el filtro.</td>
                         </tr>
                     @endforelse
                 </tbody>
