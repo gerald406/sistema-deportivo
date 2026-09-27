@@ -38,6 +38,20 @@ class SeasonTeamPlayerPolicy
     }
 
     /**
+     * Generar el carnet (fotocheck) o la ficha de inscripcion de ESTA
+     * inscripcion: admin siempre (Gate::before); el organizador si el torneo
+     * de la temporada es suyo; el delegado si es el delegado EFECTIVO del
+     * equipo en esa temporada (SeasonTeam::effectiveDelegate()).
+     * Es la unica regla para todos los PDFs por jugador: los Controllers
+     * llaman a authorize('printCard', ...) en vez de tener cada uno su
+     * propio authorizePlayer() privado como en el proyecto de referencia.
+     */
+    public function printCard(User $user, SeasonTeamPlayer $entry): bool
+    {
+        return self::managesSeasonTeam($user, $entry->seasonTeam);
+    }
+
+    /**
      * Publica y estatica: SeasonTeamPlayerService la reusa para validar
      * el equipo destino al AGREGAR un jugador (create() no lo conoce).
      */
