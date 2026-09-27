@@ -58,6 +58,7 @@ return [
                 ['label' => 'Jornadas', 'route' => 'matchdays.index', 'permission' => 'matches.manage'],
                 ['label' => 'Partidos', 'route' => 'matches.index', 'permission' => 'matches.manage'],
                 ['label' => 'Parciales', 'route' => 'periods.index', 'permission' => 'matches.manage'],
+                ['label' => 'Resultados', 'route' => 'results.index', 'permission' => 'matches.manage'],
                 // Sin permission: organizador/admin y delegados (sus equipos). Ver EventLineupPolicy.
                 ['label' => 'Relevos de postas', 'route' => 'relays.index'],
             ],

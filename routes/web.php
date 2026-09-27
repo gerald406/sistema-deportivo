@@ -11,6 +11,7 @@ use App\Livewire\Matches\Index as MatchesIndex;
 use App\Livewire\Periods\Index as PeriodsIndex;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Relays\Index as RelaysIndex;
+use App\Livewire\Results\Index as ResultsIndex;
 use App\Livewire\Rosters\Index as RostersIndex;
 use App\Livewire\SeasonTeams\Index as SeasonTeamsIndex;
 use App\Livewire\Seasons\Index as SeasonsIndex;
@@ -60,6 +61,9 @@ Route::middleware([
 
     Route::get('/parciales', PeriodsIndex::class)
         ->name('periods.index');
+
+    Route::get('/resultados', ResultsIndex::class)
+        ->name('results.index');
 
     Route::get('/categorias', CategoriesIndex::class)
         ->name('categories.index');
