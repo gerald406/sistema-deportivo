@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Player extends Model
@@ -19,6 +20,7 @@ class Player extends Model
         'birth_date',
         'photo_path',
         'is_active',
+        'created_by',
     ];
 
     protected function casts(): array
@@ -32,6 +34,17 @@ class Player extends Model
     public function seasonTeamPlayers(): HasMany
     {
         return $this->hasMany(SeasonTeamPlayer::class);
+    }
+
+    /**
+     * Quien registro el jugador en el catalogo global. Usado por
+     * PlayerPolicy mientras el jugador todavia no tiene ninguna
+     * inscripcion (season_team_player) que determine a que equipo
+     * pertenece.
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function fullName(): string
