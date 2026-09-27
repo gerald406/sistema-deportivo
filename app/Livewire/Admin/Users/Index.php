@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin\Users;
 
+use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\User;
 use App\Services\UserAccountService;
@@ -18,7 +19,7 @@ use Spatie\Permission\Models\Role;
 #[Title('Usuarios')]
 class Index extends Component
 {
-    use Sortable, WithPagination;
+    use LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -186,11 +187,16 @@ class Index extends Component
             ->when($this->statusFilter === 'inactive', fn($q) => $q->where('is_active', false))
             ->when($this->roleFilter !== 'all', fn($q) => $q->role($this->roleFilter))
             ->with('roles:id,name')
-            ->orderBy($this->sortField, $this->sortDirection);
+            ->orderBy($this->sortColumn(), $this->sortOrder());
 
         return view('livewire.admin.users.index', [
-            'users' => $query->paginate($this->perPage),
+            'users' => $query->paginate($this->perPageLimit()),
         ]);
+    }
+
+    protected function sortableFields(): array
+    {
+        return ['name', 'email', 'is_active', 'created_at'];
     }
 
     /**

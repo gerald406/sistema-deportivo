@@ -81,7 +81,7 @@
                                     </button>
                                     @if ($user->id !== auth()->id())
                                         <button type="button" class="text-gray-400 hover:text-red-600" title="Eliminar"
-                                                onclick="confirmDeleteUser({{ $user->id }}, '{{ $user->name }}')">
+                                                x-on:click="confirmDelete(@js($user->name), () => $wire.delete({{ $user->id }}))">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     @endif
@@ -162,14 +162,3 @@
         </div>
     </div>
 </div>
-
-@script
-<script>
-    function confirmDeleteUser(id, name) {
-        Swal.fire({
-            title: `¿Eliminar a "${name}"?`, text: 'Esta acción no se puede deshacer.', icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626',
-        }).then((result) => { if (result.isConfirmed) $wire.delete(id); });
-    }
-</script>
-@endscript

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Players;
 
+use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Player;
 use App\Services\PlayerRegistrationService;
@@ -19,7 +20,7 @@ use Livewire\WithPagination;
 #[Title('Jugadores')]
 class Index extends Component
 {
-    use Sortable, WithFileUploads, WithPagination;
+    use LimitsPerPage, Sortable, WithFileUploads, WithPagination;
 
     public string $search = '';
 
@@ -157,11 +158,16 @@ class Index extends Component
             })
             ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
-            ->orderBy($this->sortField, $this->sortDirection);
+            ->orderBy($this->sortColumn(), $this->sortOrder());
 
         return view('livewire.players.index', [
-            'players' => $query->paginate($this->perPage),
+            'players' => $query->paginate($this->perPageLimit()),
         ]);
+    }
+
+    protected function sortableFields(): array
+    {
+        return ['last_name', 'first_name', 'dni', 'birth_date', 'is_active'];
     }
 
     private function deletePhotoIfExists(?string $path): void

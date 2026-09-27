@@ -60,13 +60,41 @@
          y aqui se traduce a un toast de SweetAlert2, sin repetir este
          bloque en cada vista. --}}
     <script>
+        /**
+         * Confirmacion de borrado compartida por todos los CRUDs. Uso en
+         * Blade (dentro del componente Livewire, via Alpine):
+         *   x-on:click="confirmDelete(@js($model->name), () => $wire.delete({{ $model->id }}))"
+         *
+         * - Es global a proposito: una `function` declarada dentro de
+         *   @script NO queda en window (Livewire 3 la evalua con Alpine
+         *   como expresion), asi que un onclick="..." no la encuentra.
+         * - @js() escapa comillas/HTML para el atributo, y titleText (no
+         *   title) evita que SweetAlert interprete el nombre como HTML:
+         *   ambos cierran un XSS almacenado via nombres de equipo/jugador.
+         */
+        window.confirmDelete = (name, onConfirm) => {
+            Swal.fire({
+                titleText: `¿Eliminar "${name}"?`,
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#dc2626',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    onConfirm();
+                }
+            });
+        };
+
         document.addEventListener('livewire:init', () => {
             Livewire.on('toast', ({ type, message }) => {
                 Swal.fire({
                     toast: true,
                     position: 'top-end',
                     icon: type,
-                    title: message,
+                    titleText: message,
                     showConfirmButton: false,
                     timer: 3500,
                     timerProgressBar: true,

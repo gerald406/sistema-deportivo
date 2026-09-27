@@ -81,7 +81,7 @@
                                     @endcan
                                     @can('delete', $team)
                                         <button type="button" class="text-gray-400 hover:text-red-600" title="Eliminar"
-                                                onclick="confirmDelete({{ $team->id }}, '{{ $team->name }}')">
+                                                x-on:click="confirmDelete(@js($team->name), () => $wire.delete({{ $team->id }}))">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     @endcan
@@ -214,23 +214,3 @@
         </div>
     </div>
 </div>
-
-@script
-<script>
-    function confirmDelete(id, name) {
-        Swal.fire({
-            title: `¿Eliminar "${name}"?`,
-            text: 'Esta acción no se puede deshacer.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#dc2626',
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $wire.delete(id);
-            }
-        });
-    }
-</script>
-@endscript

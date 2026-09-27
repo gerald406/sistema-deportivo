@@ -47,11 +47,20 @@ que agrupa varios deportes. Cero duplicación por deporte: NO existen `FootballT
 ## El patrón de CRUD ya establecido — SIEMPRE úsalo para módulos nuevos
 
 Ver el skill `laravel-crud-livewire` (en `.claude/skills/`). Resumen: un componente
-`Livewire\Component` con `WithPagination` + trait `Sortable` (`app/Livewire/Concerns/Sortable.php`)
-para orden de columnas, filtros de búsqueda/estado con `wire:model.live.debounce`, modal
-crear/editar con Alpine (`x-data="{ show: @entangle('showModal') }"`), confirmación de borrado
-con SweetAlert2 (`@script` + `Swal.fire` + `$wire.delete(id)`), y un `Service` dedicado con los
-métodos `register/update/delete` (delete con chequeo de RESTRICT). Los CRUD ya construidos que
+`Livewire\Component` con `WithPagination` + traits `Sortable` y `LimitsPerPage`
+(`app/Livewire/Concerns/`) para orden de columnas y paginación, filtros de búsqueda/estado con
+`wire:model.live.debounce`, modal crear/editar con Alpine
+(`x-data="{ show: @entangle('showModal') }"`), confirmación de borrado con SweetAlert2 vía el
+helper global del layout, y un `Service` dedicado con los métodos `register/update/delete`
+(delete con chequeo de RESTRICT).
+
+Reglas del listado (seguridad — propiedades públicas son manipulables desde el navegador):
+- Implementar `sortableFields()` (lista blanca) y en `render()` usar
+  `orderBy($this->sortColumn(), $this->sortOrder())` y `paginate($this->perPageLimit())`,
+  **nunca** `$this->sortField` / `$this->perPage` directo.
+- Borrado: `x-on:click="confirmDelete(@js($model->name), () => $wire.delete({{ $model->id }}))"`.
+  **Nunca** `onclick="fn('{{ $model->name }}')"` (XSS almacenado) ni `function` dentro de
+  `@script` (Livewire 3 no la deja global). Los CRUD ya construidos que
 sirven de referencia exacta: `app/Livewire/Teams/Index.php`, `app/Livewire/Players/Index.php`,
 `app/Livewire/Admin/Sports/Index.php`, `app/Livewire/Admin/Users/Index.php`.
 

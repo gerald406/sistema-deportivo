@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Teams;
 
+use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Team;
 use App\Models\User;
@@ -22,7 +23,7 @@ use Livewire\WithPagination;
 #[Title('Equipos')]
 class Index extends Component
 {
-    use Sortable, WithFileUploads, WithPagination;
+    use LimitsPerPage, Sortable, WithFileUploads, WithPagination;
 
     public string $search = '';
 
@@ -212,11 +213,16 @@ class Index extends Component
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->withCount('seasonTeams')
             ->with('delegate:id,name')
-            ->orderBy($this->sortField, $this->sortDirection);
+            ->orderBy($this->sortColumn(), $this->sortOrder());
 
         return view('livewire.teams.index', [
-            'teams' => $query->paginate($this->perPage),
+            'teams' => $query->paginate($this->perPageLimit()),
         ]);
+    }
+
+    protected function sortableFields(): array
+    {
+        return ['name', 'season_teams_count', 'is_active', 'created_at'];
     }
 
     private function deleteLogoIfExists(?string $path): void

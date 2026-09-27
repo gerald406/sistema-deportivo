@@ -52,7 +52,7 @@
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
                                     <button type="button" class="text-gray-400 hover:text-red-600" title="Eliminar"
-                                            onclick="confirmDeleteSport({{ $sport->id }}, '{{ $sport->name }}')">
+                                            x-on:click="confirmDelete(@js($sport->name), () => $wire.deleteSport({{ $sport->id }}))">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                 </div>
@@ -183,7 +183,7 @@
                                     <i class="fa-solid fa-pen text-xs"></i>
                                 </button>
                                 <button type="button" class="text-gray-400 hover:text-red-600"
-                                        onclick="confirmDeleteDiscipline({{ $discipline->id }}, '{{ $discipline->name }}')">
+                                        x-on:click="confirmDelete(@js($discipline->name), () => $wire.deleteDiscipline({{ $discipline->id }}))">
                                     <i class="fa-solid fa-trash text-xs"></i>
                                 </button>
                             </div>
@@ -196,20 +196,3 @@
         </div>
     </div>
 </div>
-
-@script
-<script>
-    function confirmDeleteSport(id, name) {
-        Swal.fire({
-            title: `¿Eliminar "${name}"?`, text: 'Esta acción no se puede deshacer.', icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626',
-        }).then((result) => { if (result.isConfirmed) $wire.deleteSport(id); });
-    }
-    function confirmDeleteDiscipline(id, name) {
-        Swal.fire({
-            title: `¿Eliminar "${name}"?`, text: 'Esta acción no se puede deshacer.', icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626',
-        }).then((result) => { if (result.isConfirmed) $wire.deleteDiscipline(id); });
-    }
-</script>
-@endscript

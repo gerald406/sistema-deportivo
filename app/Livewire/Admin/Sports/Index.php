@@ -231,7 +231,7 @@ class Index extends Component
         $sports = Sport::query()
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->withCount('disciplines')
-            ->orderBy($this->sortField, $this->sortDirection)
+            ->orderBy($this->sortColumn(), $this->sortOrder())
             ->paginate(15);
 
         $disciplines = $this->managingSportId
@@ -242,6 +242,11 @@ class Index extends Component
             'sports' => $sports,
             'disciplines' => $disciplines,
         ]);
+    }
+
+    protected function sortableFields(): array
+    {
+        return ['name', 'disciplines_count', 'is_active'];
     }
 
     private function resetSportForm(): void
