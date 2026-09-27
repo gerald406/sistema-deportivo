@@ -51,6 +51,8 @@ class ResultService
         private GameMatchService $matches,
         private MatchPeriodService $periods,
         private SuspensionService $suspensions,
+        private StandingService $standings,
+        private MedalService $medals,
     ) {
     }
 
@@ -173,6 +175,15 @@ class ResultService
         // reapertura ya se borraron las pendientes (deleteUnservedForMatch).
         if (in_array($match->status, [MatchStatus::Played, MatchStatus::Walkover], true)) {
             $this->suspensions->generateForMatch($match);
+        }
+
+        // Tabla y medallero: recalculo SINCRONO dentro de la misma
+        // transaccion (al cerrar y al reabrir). Por que no Observer ni Job:
+        // ver el docblock de StandingService.
+        $this->standings->recalculateSeason($match->season);
+
+        if ($match->season->games_edition_id) {
+            $this->medals->recalculateEdition($match->season->gamesEdition);
         }
     }
 
