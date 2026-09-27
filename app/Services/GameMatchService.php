@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Models\Venue;
 use App\Support\SeasonAccess;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -157,6 +158,20 @@ class GameMatchService
     public function formatFor(Season $season, ?Discipline $discipline): SportFormatType
     {
         return $discipline?->format_type ?? $season->sport->format_type;
+    }
+
+    /**
+     * Partidos cuyo formato EFECTIVO es $format: el de la disciplina, o el
+     * del deporte si el partido no tiene disciplina (mismo criterio que
+     * formatFor, pero en SQL para listados).
+     */
+    public function queryByFormat(SportFormatType $format): Builder
+    {
+        return GameMatch::query()->where(fn ($q) => $q
+            ->whereHas('discipline', fn ($d) => $d->where('format_type', $format->value))
+            ->orWhere(fn ($q) => $q->where(fn ($q) => $q->whereNull('discipline_id')
+                ->orWhereHas('discipline', fn ($d) => $d->whereNull('format_type')))
+                ->whereHas('season.sport', fn ($s) => $s->where('format_type', $format->value))));
     }
 
     /** true si el deporte de la temporada exige disciplina (regla 3A). */

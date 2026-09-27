@@ -20,6 +20,7 @@ use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use App\Models\Venue;
 use App\Services\GameMatchService;
+use App\Support\ParticipantLabel;
 use App\Support\SeasonAccess;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Collection;
@@ -313,13 +314,7 @@ class Index extends Component
     /** Nombre legible de un participante ya cargado con su morph. */
     public function participantLabel(EventParticipant $p): string
     {
-        $model = $p->participant;
-
-        return match (true) {
-            $model instanceof SeasonTeam => $model->team?->name ?? '¿?',
-            $model instanceof SeasonTeamPlayer => $model->player ? "{$model->player->last_name}, {$model->player->first_name}" : '¿?',
-            default => '(participante eliminado)',
-        };
+        return ParticipantLabel::for($p);
     }
 
     public function render()
