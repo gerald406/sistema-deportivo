@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PlayerCardController;
 use App\Livewire\Admin\Roles\Index as AdminRolesIndex;
 use App\Livewire\Admin\Sports\Index as AdminSportsIndex;
 use App\Livewire\Admin\Users\Index as AdminUsersIndex;
@@ -53,6 +54,14 @@ Route::middleware([
 
     Route::get('/planteles', RostersIndex::class)
         ->name('rosters.index');
+
+    // Carnets (PDF). Autorizacion por carnet: SeasonTeamPlayerPolicy::printCard.
+    Route::get('/planteles/{seasonTeamPlayer}/carnet', [PlayerCardController::class, 'single'])
+        ->name('cards.single');
+    Route::get('/carnets/masivo', [PlayerCardController::class, 'massive'])
+        ->name('cards.massive');
+    Route::post('/carnets/masivo', [PlayerCardController::class, 'massivePost'])
+        ->name('cards.massive.post');
 
     Route::get('/jornadas', MatchdaysIndex::class)
         ->name('matchdays.index');
