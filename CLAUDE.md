@@ -79,7 +79,7 @@ sirven de referencia exacta: `app/Livewire/Teams/Index.php`, `app/Livewire/Playe
 | 3 | Equipos y Jugadores | ✅ Completa (CRUD, fotos, filtros, orden, alta rápida de delegado) |
 | — | Módulo Administración | ✅ Completa (Deportes/Disciplinas, Usuarios, Roles y Permisos) |
 | 4 | Torneos y Temporadas | ✅ Completa (Category, Venue, GamesEdition, Tournament, Season con fases de ScoringConfig en el modal). Season no tiene sede (se elige por partido); `scoring_configs.rules` aún sin editar |
-| 5 | Inscripciones | ⬜ Pendiente — `SeasonTeam` / `SeasonTeamPlayer` (roster por temporada) |
+| 5 | Inscripciones | ✅ Completa (SeasonTeam: el delegado inscribe sus equipos en Borrador, organizador/admin también En curso; SeasonTeamPlayer: edad por categoría, jugador único por temporada, camiseta única y un capitán por equipo) |
 | 6 | Jornadas y Partidos | ⬜ Pendiente — `Matchday`, `GameMatch` |
 | 7 | Resultados y Estadísticas | ⬜ Pendiente — `EventParticipant`, `MatchEvent`, `SeasonStanding` |
 | 8 | Reportes y Dashboard | ⬜ Pendiente — ampliar `app/Livewire/Dashboard.php` |

@@ -48,6 +48,7 @@ return [
                 ['label' => 'Jugadores', 'route' => 'players.index', 'permission' => 'players.manage'],
                 // Sin permission: los 3 roles ven inscripciones (SeasonTeamPolicy::viewAny).
                 ['label' => 'Inscripciones', 'route' => 'season-teams.index'],
+                ['label' => 'Planteles', 'route' => 'rosters.index'],
             ],
         ],
         [
