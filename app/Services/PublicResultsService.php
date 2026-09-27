@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\MatchStatus;
 use App\Enums\SeasonStatus;
+use App\Models\GameMatch;
+use App\Models\Player;
 use App\Models\Season;
+use App\Models\Team;
 use App\Models\Tournament;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -48,6 +52,22 @@ class PublicResultsService
             ->orderByRaw('status = ? DESC', [SeasonStatus::Active->value])
             ->orderByDesc('start_date')
             ->get(['id', 'tournament_id', 'sport_id', 'name', 'status']);
+    }
+
+    /**
+     * Cifras reales para el contador animado de la landing (la referencia
+     * mostraba numeros fijos inventados).
+     *
+     * @return array{tournaments: int, teams: int, players: int, matches: int}
+     */
+    public function landingStats(): array
+    {
+        return [
+            'tournaments' => Tournament::where('is_active', true)->count(),
+            'teams' => Team::where('is_active', true)->count(),
+            'players' => Player::where('is_active', true)->count(),
+            'matches' => GameMatch::whereIn('status', [MatchStatus::Played->value, MatchStatus::Walkover->value])->count(),
+        ];
     }
 
     /** Una temporada solo si es publica (los ids vienen del navegador). */

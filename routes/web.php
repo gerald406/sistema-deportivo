@@ -29,11 +29,12 @@ use App\Livewire\Suspensions\Index as SuspensionsIndex;
 use App\Livewire\Teams\Index as TeamsIndex;
 use App\Livewire\Tournaments\Index as TournamentsIndex;
 use App\Livewire\Venues\Index as VenuesIndex;
+use App\Services\PublicResultsService;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', function (PublicResultsService $public) {
+    return view('welcome', ['stats' => $public->landingStats()]);
+})->name('home');
 
 // Publica (sin login): destino del QR del carnet. URL firmada, sin datos sensibles.
 Route::get('/verificar-carnet/{seasonTeamPlayer}', [PlayerCardController::class, 'verify'])
