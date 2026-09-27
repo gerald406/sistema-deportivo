@@ -157,12 +157,11 @@ class Index extends Component
             $service->register($data, auth()->user());
         }
 
-        // Tras guardar se mantiene el partido elegido: lo habitual es cargar
-        // varias incidencias seguidas del mismo partido.
-        $matchId = $this->editingId ? null : $data['match_id'];
+        // Mismo cierre que el resto de CRUDs. Antes, al crear, el modal se
+        // quedaba abierto a proposito con el partido preseleccionado, y el
+        // usuario lo percibia como que "no se guardo / no se cierra".
+        $this->showModal = false;
         $this->resetForm();
-        $this->showModal = $matchId !== null;
-        $this->form['match_id'] = $matchId ?? '';
         $this->dispatch('toast', type: 'success', message: 'Incidencia guardada.');
     }
 
