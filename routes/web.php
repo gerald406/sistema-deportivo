@@ -12,6 +12,7 @@ use App\Livewire\Matches\Index as MatchesIndex;
 use App\Livewire\Periods\Index as PeriodsIndex;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Relays\Index as RelaysIndex;
+use App\Livewire\ReopenLogs\Index as ReopenLogsIndex;
 use App\Livewire\Results\Index as ResultsIndex;
 use App\Livewire\Rosters\Index as RostersIndex;
 use App\Livewire\SeasonTeams\Index as SeasonTeamsIndex;
@@ -72,6 +73,9 @@ Route::middleware([
 
     Route::get('/sanciones', SuspensionsIndex::class)
         ->name('suspensions.index');
+
+    Route::get('/reaperturas', ReopenLogsIndex::class)
+        ->name('reopen-logs.index');
 
     Route::get('/categorias', CategoriesIndex::class)
         ->name('categories.index');

@@ -61,6 +61,7 @@ return [
                 ['label' => 'Incidencias', 'route' => 'match-events.index', 'permission' => 'matches.manage'],
                 ['label' => 'Resultados', 'route' => 'results.index', 'permission' => 'matches.manage'],
                 ['label' => 'Sanciones', 'route' => 'suspensions.index', 'permission' => 'matches.manage'],
+                ['label' => 'Reaperturas', 'route' => 'reopen-logs.index', 'permission' => 'matches.manage'],
                 // Sin permission: organizador/admin y delegados (sus equipos). Ver EventLineupPolicy.
                 ['label' => 'Relevos de postas', 'route' => 'relays.index'],
             ],
