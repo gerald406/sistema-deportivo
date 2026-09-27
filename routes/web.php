@@ -8,6 +8,7 @@ use App\Livewire\Dashboard;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Teams\Index as TeamsIndex;
 use App\Livewire\Tournaments\Index as TournamentsIndex;
+use App\Livewire\Venues\Index as VenuesIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -33,6 +34,9 @@ Route::middleware([
 
     Route::get('/categorias', CategoriesIndex::class)
         ->name('categories.index');
+
+    Route::get('/sedes', VenuesIndex::class)
+        ->name('venues.index');
 
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/deportes', AdminSportsIndex::class)->name('admin.sports.index');

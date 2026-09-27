@@ -36,6 +36,7 @@ return [
             'icon' => 'fa-solid fa-layer-group',
             'children' => [
                 ['label' => 'Categorías', 'route' => 'categories.index', 'permission' => 'categories.manage'],
+                ['label' => 'Sedes', 'route' => 'venues.index', 'permission' => 'venues.manage'],
             ],
         ],
         [
