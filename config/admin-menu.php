@@ -74,6 +74,7 @@ return [
                 ['label' => 'Posiciones y medallero', 'route' => 'reports.index', 'permission' => 'reports.view'],
                 // PDFs por temporada: admin y organizador (SeasonPolicy::printReports).
                 ['label' => 'Padrón de jugadores', 'route' => 'reports.roster', 'role' => ['admin', 'organizador']],
+                ['label' => 'Reporte gerencial', 'route' => 'reports.managerial', 'role' => ['admin', 'organizador']],
             ],
         ],
         [
