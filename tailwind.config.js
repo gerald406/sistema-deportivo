@@ -15,6 +15,19 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                // Zona publica (landing y resultados): Unbounded para titulos, Sora para texto.
+                display: ['Unbounded', ...defaultTheme.fontFamily.sans],
+                body: ['Sora', ...defaultTheme.fontFamily.sans],
+            },
+            // Paleta de marca de la zona publica. El panel admin sigue con
+            // indigo/gray de Tailwind (no teniamos paleta de marca propia).
+            colors: {
+                brand: {
+                    primary: '#045694',
+                    secondary: '#077bcb',
+                    accent: '#FF8A2C',
+                    gold: '#FFB800',
+                },
             },
         },
     },
