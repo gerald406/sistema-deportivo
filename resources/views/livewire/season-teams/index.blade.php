@@ -163,7 +163,7 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Equipo</label>
-                        <select wire:model="form.team_id" @disabled($form['season_id'] === '')
+                        <select wire:model.live="form.team_id" @disabled($form['season_id'] === '')
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100">
                             <option value="">{{ $form['season_id'] === '' ? 'Primero elige la temporada' : 'Selecciona un equipo' }}</option>
                             @foreach ($this->teamOptions() as $team)
@@ -186,12 +186,20 @@
                     @error('form.category_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
+                @php($formTeam = $this->formTeam())
+                @if ($formTeam)
+                    <div class="rounded-lg bg-gray-50 p-3 text-sm">
+                        <p class="text-xs text-gray-500">Delegado general del equipo</p>
+                        <p class="font-medium text-gray-900">{{ $formTeam->delegate?->name ?? 'Sin delegado asignado' }}</p>
+                    </div>
+                @endif
+
                 @if ($this->canChooseDelegate())
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Delegado de temporada <span class="text-gray-400">(opcional)</span></label>
                         <select wire:model="form.delegate_id"
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Usar el delegado general del equipo</option>
+                            <option value="">Usar el delegado general del equipo{{ $formTeam?->delegate ? ' ('.$formTeam->delegate->name.')' : '' }}</option>
                             @foreach ($this->delegateOptions() as $delegate)
                                 <option value="{{ $delegate->id }}">{{ $delegate->name }}</option>
                             @endforeach

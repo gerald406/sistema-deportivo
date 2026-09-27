@@ -108,6 +108,21 @@ class Index extends Component
             ->get(['id', 'name', 'gender']);
     }
 
+    /**
+     * Equipo del formulario con su delegado general (teams.delegate_id)
+     * cargado. Sin esto el modal solo conocia el delegado DE TEMPORADA
+     * (season_team.delegate_id) y, cuando era null, no mostraba quien es
+     * el delegado que efectivamente aplica (SeasonTeam::effectiveDelegate()).
+     */
+    public function formTeam(): ?Team
+    {
+        $teamId = $this->editingId
+            ? SeasonTeam::whereKey($this->editingId)->value('team_id')
+            : (ctype_digit((string) $this->form['team_id']) ? (int) $this->form['team_id'] : null);
+
+        return $teamId ? Team::with('delegate:id,name')->find($teamId, ['id', 'name', 'delegate_id']) : null;
+    }
+
     public function delegateOptions(): Collection
     {
         return User::role('delegado')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
