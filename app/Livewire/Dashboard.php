@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
-use App\Models\Team;
-use App\Models\Tournament;
+use App\Enums\SportFormatType;
+use App\Models\EventParticipant;
+use App\Models\GameMatch;
+use App\Services\DashboardService;
+use App\Services\GameMatchService;
+use App\Support\ParticipantLabel;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -14,30 +18,29 @@ use Livewire\Component;
 #[Title('Dashboard')]
 class Dashboard extends Component
 {
-    public int $activeTournaments = 0;
+    public function label(EventParticipant $p): string
+    {
+        return ParticipantLabel::for($p);
+    }
 
-    public int $activeTeams = 0;
+    public function isHeadToHead(GameMatch $match): bool
+    {
+        return app(GameMatchService::class)->formatFor($match->season, $match->discipline) === SportFormatType::HeadToHead;
+    }
 
     /**
-     * Los contadores solo se calculan si el usuario tiene el permiso
-     * correspondiente: evita una consulta innecesaria (y una fuga de
-     * informacion vía timing) para roles que no gestionan ese recurso.
+     * Las metricas se calculan acotadas al ambito del usuario (ver
+     * DashboardService); las que su rol no ve vuelven null y no se
+     * muestran ni se consultan.
      */
-    public function mount(): void
+    public function render(DashboardService $service)
     {
         $user = auth()->user();
 
-        if ($user->can('tournaments.manage')) {
-            $this->activeTournaments = Tournament::where('is_active', true)->count();
-        }
-
-        if ($user->can('teams.manage')) {
-            $this->activeTeams = Team::where('is_active', true)->count();
-        }
-    }
-
-    public function render()
-    {
-        return view('livewire.dashboard');
+        return view('livewire.dashboard', [
+            'metrics' => $service->metrics($user),
+            'upcoming' => $service->upcomingMatches($user),
+            'latest' => $service->latestResults($user),
+        ]);
     }
 }

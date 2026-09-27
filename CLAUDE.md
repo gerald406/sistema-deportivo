@@ -82,7 +82,7 @@ sirven de referencia exacta: `app/Livewire/Teams/Index.php`, `app/Livewire/Playe
 | 5 | Inscripciones | ✅ Completa (SeasonTeam: el delegado inscribe sus equipos en Borrador, organizador/admin también En curso; SeasonTeamPlayer: edad por categoría, jugador único por temporada, camiseta única y un capitán por equipo) |
 | 6 | Jornadas y Partidos | ✅ Completa (Matchday, GameMatch con participantes en el modal según formato efectivo = `discipline.format_type ?? sport.format_type`, EventLineup solo en postas, MatchPeriod solo en enfrentamientos). Disciplina/deporte la valida el trigger; el Service traduce su SQLSTATE 45000 |
 | 7 | Resultados y Estadísticas | ✅ Completa (Resultados con reapertura auditada, Incidencias, Sanciones automáticas por roja/doble amarilla, tabla y medallero recalculados de forma síncrona en `ResultService::afterResultChanged()` — ver docblock de `StandingService`, vista de solo lectura de reaperturas) |
-| 8 | Reportes y Dashboard | ⬜ Pendiente — ampliar `app/Livewire/Dashboard.php` |
+| 8 | Reportes y Dashboard | ✅ Completa (Dashboard con métricas acotadas por rol vía `DashboardService`; `/reportes` con tabla de posiciones y medallero de solo lectura) |
 | 9 | Optimización y Seguridad | ⬜ Pendiente |
 | 10 | Pruebas y Producción | ⬜ Pendiente |
 
