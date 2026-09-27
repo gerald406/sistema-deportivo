@@ -17,7 +17,7 @@
 
     Variables: $tournament, $season, $organizer, $scoring, $generatedAt,
     $lastMatchday, $lastResults, $nextMatchday, $nextGames, $showStandings,
-    $standings, $scoreUnit, $showScorers, $topScorers, $suspensions,
+    $standings, $standingColumns, $showScorers, $topScorers, $showSuspensions, $suspensions, $showYellows,
     $yellowCardRisks.
 --}}
 <!DOCTYPE html>
@@ -287,7 +287,7 @@
                         <td class="team-visit">{{ $game['winner'] ?? 'Sin puestos' }}</td>
                     @endif
                     <td>@if($game['status'] === \App\Enums\MatchStatus::Walkover) <span class="walkover-badge">WALKOVER</span> @else Jugado @endif</td>
-                    <td>{{ $game['venue'] ?? 'Sin definir' }}</td>
+                    <td>{{ $game['venue']?->name ?? 'Sin definir' }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -313,22 +313,15 @@
         <div class="section-title mt-10">Tabla de Posiciones Acumulada</div>
 
         @if(count($standings) > 0)
-            @php($sets = $scoreUnit === 'sets')
+            {{-- Columnas desde los datos (SeasonOverviewService::standingColumns), las mismas que la web pública. --}}
             <table class="data-table standings-table">
                 <thead>
                     <tr>
                         <th style="width: 35px;">Pos</th>
                         <th style="text-align: left;">Equipo</th>
-                        <th style="width: 35px;">PJ</th>
-                        <th style="width: 35px;">PG</th>
-                        @unless($sets)
-                            <th style="width: 35px;">PE</th>
-                        @endunless
-                        <th style="width: 35px;">PP</th>
-                        <th style="width: 35px;">W.O.</th>
-                        <th style="width: 35px;">{{ $sets ? 'SG' : 'GF' }}</th>
-                        <th style="width: 35px;">{{ $sets ? 'SP' : 'GC' }}</th>
-                        <th style="width: 40px;">{{ $sets ? 'DS' : 'DG' }}</th>
+                        @foreach($standingColumns as $col)
+                            <th style="width: 35px;" title="{{ $col['title'] }}">{{ $col['label'] }}</th>
+                        @endforeach
                         <th style="width: 45px;">PTS</th>
                     </tr>
                 </thead>
@@ -339,16 +332,9 @@
                             <span class="pos-indicator {{ $loop->iteration <= 3 ? 'pos-'.$loop->iteration : 'pos-default' }}">{{ $loop->iteration }}</span>
                         </td>
                         <td class="team-name">{{ $row->seasonTeam->team->name }}</td>
-                        <td>{{ $row->matches_played }}</td>
-                        <td>{{ $row->wins }}</td>
-                        @unless($sets)
-                            <td>{{ $row->draws }}</td>
-                        @endunless
-                        <td>{{ $row->losses }}</td>
-                        <td>{{ $row->walkovers_against }}</td>
-                        <td>{{ $row->extra_stats['scored'] ?? 0 }}</td>
-                        <td>{{ $row->extra_stats['conceded'] ?? 0 }}</td>
-                        <td>{{ $row->extra_stats['diff'] ?? 0 }}</td>
+                        @foreach($standingColumns as $col)
+                            <td>{{ data_get($row, $col['key'], 0) }}</td>
+                        @endforeach
                         <td class="pts-cell">{{ $row->points }}</td>
                     </tr>
                     @endforeach
@@ -401,7 +387,7 @@
                         <td class="team-visit" style="font-weight: normal;">{{ $game['participantsCount'] }} participantes</td>
                     @endif
                     <td>{{ $game['scheduledAt'] ? $game['scheduledAt']->format('d/m/Y H:i') : 'Por definir' }}</td>
-                    <td>{{ $game['venue'] ?? 'Sin definir' }}</td>
+                    <td>{{ $game['venue']?->name ?? 'Sin definir' }}</td>
                     <td>{{ $game['status']->label() }}</td>
                 </tr>
                 @endforeach
@@ -457,8 +443,9 @@
 
 
     {{-- ============================================ --}}
-    {{-- SECCIÓN 5: SANCIONES PENDIENTES --}}
+    {{-- SECCIÓN 5: SANCIONES PENDIENTES (si el deporte genera sanciones o la temporada ya tiene) --}}
     {{-- ============================================ --}}
+    @if($showSuspensions)
     <div class="section-title">Jugadores Suspendidos (Sanciones Activas)</div>
 
     @if($suspensions->count() > 0)
@@ -491,11 +478,13 @@
     @else
         <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay jugadores suspendidos actualmente.</div>
     @endif
+    @endif
 
 
     {{-- ============================================ --}}
-    {{-- SECCIÓN 6: JUGADORES CON 2+ AMARILLAS --}}
+    {{-- SECCIÓN 6: JUGADORES CON 2+ AMARILLAS (si el deporte registra amarillas) --}}
     {{-- ============================================ --}}
+    @if($showYellows)
     <div class="section-title mt-10">
         Jugadores con Acumulación de Tarjetas Amarillas (2+)
         <span class="section-subtitle">&mdash; En observación</span>
@@ -529,6 +518,7 @@
         </table>
     @else
         <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay jugadores con acumulación de tarjetas amarillas.</div>
+    @endif
     @endif
 
 
