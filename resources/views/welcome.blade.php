@@ -85,7 +85,7 @@
                     </a>
                 @else
                     <a href="{{ route('login') }}" class="hidden px-5 py-2 font-semibold text-white transition-colors hover:text-brand-gold md:block">Ingresar</a>
-                    <a href="{{ url('/resultados-publicos') }}" class="rounded-full bg-white px-6 py-2 font-bold text-brand-primary shadow-md transition-all hover:bg-slate-100">Resultados</a>
+                    <a href="{{ route('public.results') }}" class="rounded-full bg-white px-6 py-2 font-bold text-brand-primary shadow-md transition-all hover:bg-slate-100">Resultados</a>
                 @endauth
             </div>
         </div>
@@ -118,7 +118,7 @@
                 @else
                     {{-- Sin "Comenzar gratis"/"Crear cuenta": las cuentas las crea solo el
                          admin (regla 3 de CLAUDE.md) y el registro publico esta desactivado. --}}
-                    <a href="{{ url('/resultados-publicos') }}" class="flex items-center gap-3 rounded-full bg-brand-accent px-8 py-4 text-lg font-bold text-white shadow-[0_8px_20px_rgba(255,138,44,0.4)] transition-all hover:-translate-y-1 hover:bg-[#e07722]">
+                    <a href="{{ route('public.results') }}" class="flex items-center gap-3 rounded-full bg-brand-accent px-8 py-4 text-lg font-bold text-white shadow-[0_8px_20px_rgba(255,138,44,0.4)] transition-all hover:-translate-y-1 hover:bg-[#e07722]">
                         <i class="fa-solid fa-table-list"></i> Ver resultados
                     </a>
                     <a href="{{ route('login') }}" class="flex items-center gap-3 rounded-full border border-white/30 bg-white/10 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm transition-all hover:-translate-y-1 hover:bg-white hover:text-brand-primary">
@@ -304,7 +304,7 @@
                 </div>
 
                 <div class="relative z-10 border-t border-slate-100 pt-8 text-center">
-                    <a href="{{ url('/resultados-publicos') }}" class="group inline-flex items-center gap-3 rounded-full bg-slate-900 px-8 py-4 font-bold text-white shadow-lg shadow-slate-900/30 transition-all hover:bg-black">
+                    <a href="{{ route('public.results') }}" class="group inline-flex items-center gap-3 rounded-full bg-slate-900 px-8 py-4 font-bold text-white shadow-lg shadow-slate-900/30 transition-all hover:bg-black">
                         <i class="fa-solid fa-table-list"></i> Visitar la Zona Pública
                         <i class="fa-solid fa-arrow-right transition-transform group-hover:translate-x-1"></i>
                     </a>
@@ -449,7 +449,7 @@
                         <i class="fa-solid fa-gauge-high"></i> Ir al Dashboard
                     </a>
                 @else
-                    <a href="{{ url('/resultados-publicos') }}" class="flex items-center justify-center gap-3 rounded-full bg-brand-primary px-10 py-5 text-lg font-bold text-white shadow-lg shadow-brand-primary/30 transition-all hover:-translate-y-1 hover:bg-[#034475]">
+                    <a href="{{ route('public.results') }}" class="flex items-center justify-center gap-3 rounded-full bg-brand-primary px-10 py-5 text-lg font-bold text-white shadow-lg shadow-brand-primary/30 transition-all hover:-translate-y-1 hover:bg-[#034475]">
                         <i class="fa-solid fa-table-list"></i> Ver resultados
                     </a>
                     <a href="{{ route('login') }}" class="flex items-center justify-center gap-3 rounded-full border border-slate-300 bg-white px-10 py-5 text-lg font-bold text-slate-700 transition-all hover:-translate-y-1 hover:border-brand-primary hover:text-brand-primary">
@@ -469,7 +469,7 @@
                 </div>
                 <p class="text-sm text-blue-100">&copy; {{ date('Y') }} Sistema de Gestión Deportiva Multideporte.</p>
             </div>
-            <a href="{{ url('/resultados-publicos') }}" class="text-sm font-semibold text-white transition-colors hover:text-brand-gold">
+            <a href="{{ route('public.results') }}" class="text-sm font-semibold text-white transition-colors hover:text-brand-gold">
                 <i class="fa-solid fa-table-list mr-1"></i> Resultados públicos
             </a>
         </div>
