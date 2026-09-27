@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class SeasonTeamPlayer extends Model
 {
@@ -67,5 +68,15 @@ class SeasonTeamPlayer extends Model
     public function lineups(): HasMany
     {
         return $this->hasMany(EventLineup::class);
+    }
+
+    /**
+     * Participaciones individuales (atletismo, ajedrez). Igual que en
+     * SeasonTeam: event_participants no tiene FK real hacia esta tabla,
+     * revisar esta relacion antes de borrar una inscripcion.
+     */
+    public function eventParticipants(): MorphMany
+    {
+        return $this->morphMany(EventParticipant::class, 'participant');
     }
 }

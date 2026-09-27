@@ -135,7 +135,7 @@ class Index extends Component
         $sport = Sport::findOrFail($id);
 
         if (! $service->deleteSport($sport)) {
-            $this->dispatch('toast', type: 'error', message: 'No se puede eliminar: el deporte tiene disciplinas registradas.');
+            $this->dispatch('toast', type: 'error', message: 'No se puede eliminar: el deporte tiene disciplinas o temporadas registradas.');
 
             return;
         }

@@ -37,14 +37,14 @@ class TeamRegistrationService
 
     /**
      * Sin soft deletes, un equipo con historial (inscripciones en
-     * season_team, que usa RESTRICT) no se puede borrar fisicamente.
-     * Se detecta antes de intentarlo para devolver una respuesta clara
-     * al Livewire component en vez de dejar que MySQL truene con un
-     * error 1451 crudo.
+     * season_team o medallas en games_edition_medals, ambas RESTRICT)
+     * no se puede borrar fisicamente. Se detecta antes de intentarlo
+     * para devolver una respuesta clara al Livewire component en vez de
+     * dejar que MySQL truene con un error 1451 crudo.
      */
     public function delete(Team $team): bool
     {
-        if ($team->seasonTeams()->exists()) {
+        if ($team->seasonTeams()->exists() || $team->medals()->exists()) {
             return false;
         }
 

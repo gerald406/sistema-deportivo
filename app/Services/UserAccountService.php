@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Team;
-use App\Models\Tournament;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -68,10 +67,13 @@ class UserAccountService
     /**
      * Salvaguardas antes de borrar (sin soft deletes):
      *   - no dejar el sistema sin ningun admin.
-     *   - no borrar un usuario que es organizer_id de algun Tournament
-     *     o delegate_id de algun Team (historial real, no una FK RESTRICT
-     *     generica: se revisa explicitamente porque users no tiene una
-     *     unica relacion inversa obvia).
+     *   - FKs RESTRICT: organizer_id de Tournament, user_id de
+     *     MatchReopenLog (auditoria).
+     *   - delegate_id de Team / SeasonTeam: en la BD son SET NULL, pero
+     *     se bloquea igual para no dejar equipos sin delegado en silencio;
+     *     primero hay que reasignarlos.
+     *   - players.created_by (SET NULL) si se permite: solo afecta la
+     *     autorizacion de edicion, no el historial.
      */
     public function delete(User $user, User $actor): bool|string
     {
@@ -81,15 +83,23 @@ class UserAccountService
             return 'No se puede eliminar: es el único administrador del sistema.';
         }
 
-        if (Tournament::where('organizer_id', $user->id)->exists()) {
+        if ($user->tournaments()->exists()) {
             return 'No se puede eliminar: el usuario organiza torneos existentes.';
         }
 
-        if (Team::where('delegate_id', $user->id)->exists()) {
+        if ($user->delegatedTeams()->exists() || $user->delegatedSeasonTeams()->exists()) {
             return 'No se puede eliminar: el usuario es delegado de uno o más equipos.';
         }
 
-        $user->delete();
+        if ($user->matchReopenLogs()->exists()) {
+            return 'No se puede eliminar: el usuario tiene reaperturas de partidos registradas. Desactívalo en su lugar.';
+        }
+
+        try {
+            $user->delete();
+        } catch (QueryException) {
+            return 'No se puede eliminar: el usuario tiene historial asociado. Desactívalo en su lugar.';
+        }
 
         return true;
     }

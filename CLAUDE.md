@@ -76,8 +76,11 @@ antes que las que dependen de ellas (ya se hizo así con Sport/Discipline antes 
 
 ## Modelos y ubicación (dónde mirar antes de escribir código nuevo)
 
-- Migraciones: `database/migrations/` (26 archivos con comentarios en español + 2 migraciones
-  de ajuste posteriores: `add_created_by_to_players_table`, `add_is_active_to_users_table`)
+- Migraciones: `database/migrations/` (26 archivos con comentarios en español + 3 migraciones
+  de ajuste posteriores: `add_created_by_to_players_table`, `add_is_active_to_users_table`,
+  `restrict_roster_history_on_match_events_and_suspensions`)
+- `event_participants` es polimórfica **sin FK real** hacia `season_team`/`season_team_player`:
+  antes de borrar una inscripción, revisar `eventParticipants()` en el Service.
 - Modelos: `app/Models/` (Sport, Discipline, SportPosition, EventType, Category, Venue,
   Tournament, GamesEdition, Season, ScoringConfig, Team, Player, Matchday, GameMatch,
   EventParticipant, EventLineup, MatchPeriod, MatchEvent, Suspension, MatchReopenLog,

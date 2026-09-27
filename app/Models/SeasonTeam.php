@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class SeasonTeam extends Model
 {
@@ -78,5 +79,15 @@ class SeasonTeam extends Model
     public function standing(): HasMany
     {
         return $this->hasMany(SeasonStanding::class);
+    }
+
+    /**
+     * Participaciones en partidos/pruebas como equipo. event_participants
+     * es polimorfica y NO tiene FK real hacia season_team: cualquier
+     * Service que borre una inscripcion debe revisar esta relacion antes.
+     */
+    public function eventParticipants(): MorphMany
+    {
+        return $this->morphMany(EventParticipant::class, 'participant');
     }
 }

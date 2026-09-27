@@ -152,7 +152,7 @@ class Index extends Component
         $this->authorize('delete', $team);
 
         if (! $service->delete($team)) {
-            $this->dispatch('toast', type: 'error', message: 'No se puede eliminar: el equipo tiene inscripciones registradas. Desactívalo en su lugar.');
+            $this->dispatch('toast', type: 'error', message: 'No se puede eliminar: el equipo tiene inscripciones o medallas registradas. Desactívalo en su lugar.');
 
             return;
         }

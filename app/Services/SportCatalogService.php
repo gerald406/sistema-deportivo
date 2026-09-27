@@ -33,13 +33,14 @@ class SportCatalogService
     }
 
     /**
-     * disciplines usa RESTRICT sobre sport_id (sin soft deletes): un
-     * deporte con disciplinas ya creadas no se puede borrar. Se detecta
-     * antes de intentarlo en vez de dejar que MySQL truene con un 1451.
+     * disciplines y seasons usan RESTRICT sobre sport_id (sin soft
+     * deletes): un deporte con disciplinas o temporadas no se puede
+     * borrar. Se detecta antes de intentarlo en vez de dejar que MySQL
+     * truene con un 1451. (sport_positions y event_types son CASCADE.)
      */
     public function deleteSport(Sport $sport): bool
     {
-        if ($sport->disciplines()->exists()) {
+        if ($sport->disciplines()->exists() || $sport->seasons()->exists()) {
             return false;
         }
 
@@ -67,8 +68,9 @@ class SportCatalogService
     }
 
     /**
-     * matches usa RESTRICT sobre discipline_id: una disciplina ya usada
-     * en algun partido no se puede borrar.
+     * matches.discipline_id es SET NULL en la BD: borrar una disciplina
+     * dejaria resultados sin prueba asociada. Por eso se bloquea aqui si
+     * ya se uso en algun partido.
      */
     public function deleteDiscipline(Discipline $discipline): bool
     {
