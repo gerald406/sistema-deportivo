@@ -143,10 +143,14 @@ class PlayerCardService
     }
 
     /**
-     * Datos de la pagina publica de verificacion (a la que apunta el QR).
-     * Solo lo necesario para cotejar el carnet: nombre, foto, equipo,
-     * temporada, dorsal y estado. Nada de documento completo, fecha de
-     * nacimiento ni edad (la referencia los mostraba).
+     * Datos de la pagina publica de verificacion (a la que apunta el QR),
+     * con los campos del diseno de la referencia (pichanga/player-verify):
+     * posicion y dorsal DE LA TEMPORADA, estado, documento y fecha de
+     * nacimiento + edad (el arbitro coteja la categoria por edad).
+     *
+     * El documento va ENMASCARADO (ultimos 3 digitos): la referencia lo
+     * mostraba completo y en Carnets se pidio no exponerlo en la vista
+     * publica. La URL esta firmada (solo la abre quien tiene el carnet).
      *
      * Vigente = ficha Habilitada, inscripcion activa, jugador activo y
      * temporada no cerrada.
@@ -155,7 +159,7 @@ class PlayerCardService
      */
     public function verificationData(SeasonTeamPlayer $entry): array
     {
-        $entry->loadMissing(self::RELATIONS);
+        $entry->loadMissing([...self::RELATIONS, 'position:id,name']);
 
         $seasonTeam = $entry->seasonTeam;
         $season = $seasonTeam->season;
@@ -184,6 +188,9 @@ class PlayerCardService
             'valid' => $valid,
             'statusLabel' => $statusLabel,
             'maskedDocument' => $dni === '' ? '—' : str_repeat('•', max(0, mb_strlen($dni) - 3)) . mb_substr($dni, -3),
+            'position' => $entry->position?->name,
+            'birthDate' => $player->birth_date,
+            'age' => $player->birth_date?->age,
             'cardNumber' => $this->cardNumber($entry),
             'photoUrl' => $player->photo_path ? $public->url($player->photo_path) : null,
             'teamLogoUrl' => $seasonTeam->team->logo_path ? $public->url($seasonTeam->team->logo_path) : null,
