@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\PlayerCardController;
+use App\Http\Controllers\RosterReportController;
 use App\Livewire\Admin\Roles\Index as AdminRolesIndex;
 use App\Livewire\Admin\Sports\Index as AdminSportsIndex;
 use App\Livewire\Admin\Users\Index as AdminUsersIndex;
@@ -15,6 +16,7 @@ use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Relays\Index as RelaysIndex;
 use App\Livewire\ReopenLogs\Index as ReopenLogsIndex;
 use App\Livewire\Reports\Index as ReportsIndex;
+use App\Livewire\Reports\RosterReport;
 use App\Livewire\Results\Index as ResultsIndex;
 use App\Livewire\Rosters\Index as RostersIndex;
 use App\Livewire\SeasonTeams\Index as SeasonTeamsIndex;
@@ -94,6 +96,12 @@ Route::middleware([
 
     Route::get('/reportes', ReportsIndex::class)
         ->name('reports.index');
+
+    // Padron de Jugadores: filtros (solo admin/organizador, ver boot()) y PDF (SeasonPolicy::printReports).
+    Route::get('/reportes/padron', RosterReport::class)
+        ->name('reports.roster');
+    Route::get('/reportes/padron/pdf', [RosterReportController::class, 'pdf'])
+        ->name('reports.roster.pdf');
 
     Route::get('/categorias', CategoriesIndex::class)
         ->name('categories.index');

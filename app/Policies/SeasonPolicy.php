@@ -55,6 +55,17 @@ class SeasonPolicy
     }
 
     /**
+     * Reportes PDF de la temporada (Padron de Jugadores, Reporte Gerencial):
+     * el admin (Gate::before) y el organizador del torneo. El delegado no:
+     * el padron trae documentos y fechas de nacimiento de todos los equipos.
+     */
+    public function printReports(User $user, Season $season): bool
+    {
+        return $user->hasRole('organizador')
+            && $season->tournament->organizer_id === $user->id;
+    }
+
+    /**
      * Accion especifica del negocio (no un CRUD generico): reabrir un
      * partido cerrado de la temporada. Se deja aqui porque la decision
      * de "quien puede reabrir" es a nivel de temporada/torneo, no de

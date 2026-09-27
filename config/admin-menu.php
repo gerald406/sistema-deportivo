@@ -70,8 +70,11 @@ return [
         [
             'label' => 'Reportes',
             'icon' => 'fa-solid fa-chart-line',
-            'route' => 'reports.index',
-            'permission' => 'reports.view',
+            'children' => [
+                ['label' => 'Posiciones y medallero', 'route' => 'reports.index', 'permission' => 'reports.view'],
+                // PDFs por temporada: admin y organizador (SeasonPolicy::printReports).
+                ['label' => 'Padrón de jugadores', 'route' => 'reports.roster', 'role' => ['admin', 'organizador']],
+            ],
         ],
         [
             'label' => 'Administración',
