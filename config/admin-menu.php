@@ -32,6 +32,13 @@ return [
             ],
         ],
         [
+            'label' => 'Catálogos',
+            'icon' => 'fa-solid fa-layer-group',
+            'children' => [
+                ['label' => 'Categorías', 'route' => 'categories.index', 'permission' => 'categories.manage'],
+            ],
+        ],
+        [
             'label' => 'Equipos',
             'icon' => 'fa-solid fa-people-group',
             'children' => [

@@ -3,6 +3,7 @@
 use App\Livewire\Admin\Roles\Index as AdminRolesIndex;
 use App\Livewire\Admin\Sports\Index as AdminSportsIndex;
 use App\Livewire\Admin\Users\Index as AdminUsersIndex;
+use App\Livewire\Categories\Index as CategoriesIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Teams\Index as TeamsIndex;
@@ -29,6 +30,9 @@ Route::middleware([
 
     Route::get('/torneos', TournamentsIndex::class)
         ->name('tournaments.index');
+
+    Route::get('/categorias', CategoriesIndex::class)
+        ->name('categories.index');
 
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/deportes', AdminSportsIndex::class)->name('admin.sports.index');
