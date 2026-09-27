@@ -162,7 +162,10 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registro publico deshabilitado: regla de negocio "solo el admin
+        // crea cuentas" (ver CLAUDE.md). Las cuentas se crean desde
+        // Administracion > Usuarios o el alta rapida de delegado.
+        // Features::registration(),
         Features::resetPasswords(),
         // Features::emailVerification(),
         Features::updateProfileInformation(),

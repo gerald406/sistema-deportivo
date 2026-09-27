@@ -136,7 +136,7 @@ class Index extends Component
 
         if ($this->editingId) {
             $user = User::findOrFail($this->editingId);
-            $service->update($user, $data, $this->selectedRoles);
+            $service->update($user, $data, $this->selectedRoles, auth()->user());
         } else {
             if (empty($data['password'])) {
                 $this->addError('form.password', 'La contraseña es obligatoria para una cuenta nueva.');
@@ -144,7 +144,7 @@ class Index extends Component
                 return;
             }
 
-            $service->register($data, $this->selectedRoles);
+            $service->register($data, $this->selectedRoles, auth()->user());
         }
 
         $this->showModal = false;
@@ -156,7 +156,7 @@ class Index extends Component
     {
         $user = User::findOrFail($id);
 
-        $result = $service->delete($user);
+        $result = $service->delete($user, auth()->user());
 
         if ($result !== true) {
             $this->dispatch('toast', type: 'error', message: $result);
