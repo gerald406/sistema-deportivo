@@ -36,6 +36,11 @@ Route::get('/', function (PublicResultsService $public) {
     return view('welcome', ['stats' => $public->landingStats()]);
 })->name('home');
 
+// Publica (sin login): posiciones, resultados, programacion y estadisticas de las
+// temporadas visibles (PublicResultsService). /resultados ya es el modulo interno.
+Route::view('/resultados-publicos', 'public.results')
+    ->name('public.results');
+
 // Publica (sin login): destino del QR del carnet. URL firmada, sin datos sensibles.
 Route::get('/verificar-carnet/{seasonTeamPlayer}', [PlayerCardController::class, 'verify'])
     ->middleware(['signed', 'throttle:60,1'])
