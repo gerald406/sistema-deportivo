@@ -59,19 +59,20 @@
          Toast::make(...)->send() -> $this->dispatch('toast', type, message)
          y aqui se traduce a un toast de SweetAlert2, sin repetir este
          bloque en cada vista. --}}
+    {{-- confirmDelete(): confirmacion de borrado compartida por todos los
+         CRUDs. Uso en Blade (dentro del componente Livewire, via Alpine):
+           x-on:click="confirmDelete(@js($model->name), () => $wire.delete({{ $model->id }}))"
+
+         - Es global a proposito: una `function` declarada dentro de
+           @script NO queda en window (Livewire 3 la evalua con Alpine
+           como expresion), asi que un onclick="..." no la encuentra.
+         - @js() escapa comillas/HTML para el atributo, y titleText (no
+           title) evita que SweetAlert interprete el nombre como HTML:
+           ambos cierran un XSS almacenado via nombres de equipo/jugador.
+         - Este texto va en comentario Blade y NO en comentario JS: Blade
+           compila las directivas aunque esten dentro de un comentario
+           JS, y un ejemplo con variables inexistentes tumba el layout. --}}
     <script>
-        /**
-         * Confirmacion de borrado compartida por todos los CRUDs. Uso en
-         * Blade (dentro del componente Livewire, via Alpine):
-         *   x-on:click="confirmDelete(@js($model->name), () => $wire.delete({{ $model->id }}))"
-         *
-         * - Es global a proposito: una `function` declarada dentro de
-         *   @script NO queda en window (Livewire 3 la evalua con Alpine
-         *   como expresion), asi que un onclick="..." no la encuentra.
-         * - @js() escapa comillas/HTML para el atributo, y titleText (no
-         *   title) evita que SweetAlert interprete el nombre como HTML:
-         *   ambos cierran un XSS almacenado via nombres de equipo/jugador.
-         */
         window.confirmDelete = (name, onConfirm) => {
             Swal.fire({
                 titleText: `¿Eliminar "${name}"?`,
