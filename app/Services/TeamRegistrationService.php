@@ -90,14 +90,11 @@ class TeamRegistrationService
     }
 
     /**
-     * Equipos que $actor gestiona en /equipos.
+     * Equipos que $actor ve en /equipos (union si tiene varios roles).
      *   - Admin: todos.
-     *   - Organizador: los "a su cargo". Team no se relaciona directo con
-     *     Tournament (un equipo puede estar inscrito en temporadas de varios
-     *     torneos a la vez), asi que se considera suyo el equipo que tiene
-     *     al menos una inscripcion (season_team) en una temporada de un
-     *     torneo suyo, o que el mismo creo (teams.created_by) y aun no
-     *     inscribe.
+     *   - Organizador: los "a su cargo" (ver whereOrganizerScope()).
+     *   - Delegado: solo los suyos (ver whereDelegateScope()).
+     *   - Cualquier otro: ninguno.
      */
     public function scopeManagedBy(Builder $query, User $actor): Builder
     {
@@ -105,18 +102,61 @@ class TeamRegistrationService
             return $query;
         }
 
-        if ($this->isOrganizer($actor)) {
-            return $query->where(fn ($q) => $q
-                ->where('teams.created_by', $actor->id)
-                ->orWhereHas('seasonTeams.season.tournament', fn ($t) => $t->where('organizer_id', $actor->id)));
+        $isOrganizer = $this->isOrganizer($actor);
+        $isDelegate = $actor->hasRole('delegado');
+
+        if (! $isOrganizer && ! $isDelegate) {
+            return $query->whereRaw('1 = 0');
         }
 
-        return $query;
+        return $query->where(function ($q) use ($actor, $isOrganizer, $isDelegate) {
+            if ($isOrganizer) {
+                $q->orWhere(fn ($o) => $this->whereOrganizerScope($o, $actor));
+            }
+
+            if ($isDelegate) {
+                $q->orWhere(fn ($d) => $this->whereDelegateScope($d, $actor));
+            }
+        });
     }
 
+    /**
+     * El equipo esta a cargo del organizador (lo usa TeamPolicy para
+     * update/delete: ser delegado de un equipo NO da permisos de
+     * organizador sobre el, aunque el usuario tenga ambos roles).
+     */
     public function manages(User $actor, Team $team): bool
     {
-        return $this->scopeManagedBy(Team::query(), $actor)->whereKey($team->id)->exists();
+        return $this->isOrganizer($actor)
+            && $this->whereOrganizerScope(Team::query(), $actor)->whereKey($team->id)->exists();
+    }
+
+    /**
+     * Team no se relaciona directo con Tournament (un equipo puede estar
+     * inscrito en temporadas de varios torneos a la vez): es del organizador
+     * si tiene al menos una inscripcion (season_team) en una temporada de
+     * un torneo suyo, o si el mismo lo creo (teams.created_by) y aun no lo
+     * inscribe.
+     */
+    private function whereOrganizerScope(Builder $query, User $actor): Builder
+    {
+        return $query->where(fn ($q) => $q
+            ->where('teams.created_by', $actor->id)
+            ->orWhereHas('seasonTeams.season.tournament', fn ($t) => $t->where('organizer_id', $actor->id)));
+    }
+
+    /**
+     * Delegado general del equipo (teams.delegate_id) o delegado DE
+     * TEMPORADA en alguna inscripcion (season_team.delegate_id, que tiene
+     * precedencia segun SeasonTeam::effectiveDelegate()). En el segundo caso
+     * ve el equipo, pero editarlo sigue siendo solo del delegado general
+     * (TeamPolicy::update).
+     */
+    private function whereDelegateScope(Builder $query, User $actor): Builder
+    {
+        return $query->where(fn ($q) => $q
+            ->where('teams.delegate_id', $actor->id)
+            ->orWhereHas('seasonTeams', fn ($st) => $st->where('delegate_id', $actor->id)));
     }
 
     /**

@@ -27,7 +27,11 @@ class TeamPolicy
             return true;
         }
 
-        return $team->delegate_id === $user->id;
+        // Delegado general o delegado de temporada en alguna inscripcion
+        // (mismo criterio que el listado: TeamRegistrationService::scopeManagedBy).
+        return $user->hasRole('delegado')
+            && ($team->delegate_id === $user->id
+                || $team->seasonTeams()->where('delegate_id', $user->id)->exists());
     }
 
     /**
@@ -72,7 +76,6 @@ class TeamPolicy
 
     private function organizerManages(User $user, Team $team): bool
     {
-        return $this->isOrganizer($user)
-            && app(TeamRegistrationService::class)->manages($user, $team);
+        return app(TeamRegistrationService::class)->manages($user, $team);
     }
 }
