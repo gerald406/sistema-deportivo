@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\SeasonStatus;
+use App\Enums\SeasonTeamPlayerStatus;
 use App\Models\SeasonTeamPlayer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Throwable;
 
@@ -89,6 +92,54 @@ class PlayerCardService
     public function verificationUrl(SeasonTeamPlayer $entry): string
     {
         return URL::signedRoute('cards.verify', ['seasonTeamPlayer' => $entry->id]);
+    }
+
+    /**
+     * Datos de la pagina publica de verificacion (a la que apunta el QR).
+     * Solo lo necesario para cotejar el carnet: nombre, foto, equipo,
+     * temporada, dorsal y estado. Nada de documento completo, fecha de
+     * nacimiento ni edad (la referencia los mostraba).
+     *
+     * Vigente = ficha Habilitada, inscripcion activa, jugador activo y
+     * temporada no cerrada.
+     *
+     * @return array<string, mixed>
+     */
+    public function verificationData(SeasonTeamPlayer $entry): array
+    {
+        $entry->loadMissing(self::RELATIONS);
+
+        $seasonTeam = $entry->seasonTeam;
+        $season = $seasonTeam->season;
+        $player = $entry->player;
+
+        $valid = $entry->status === SeasonTeamPlayerStatus::Active
+            && $seasonTeam->is_active
+            && $player->is_active
+            && $season->status !== SeasonStatus::Closed;
+
+        $statusLabel = match (true) {
+            $season->status === SeasonStatus::Closed => 'Temporada cerrada',
+            ! $seasonTeam->is_active || ! $player->is_active => 'Inscripción inactiva',
+            default => $entry->status->label(),
+        };
+
+        $dni = (string) $player->dni;
+        $public = Storage::disk('public');
+
+        return [
+            'entry' => $entry,
+            'player' => $player,
+            'team' => $seasonTeam->team,
+            'season' => $season,
+            'tournament' => $season->tournament,
+            'valid' => $valid,
+            'statusLabel' => $statusLabel,
+            'maskedDocument' => $dni === '' ? '—' : str_repeat('•', max(0, mb_strlen($dni) - 3)) . mb_substr($dni, -3),
+            'cardNumber' => $this->cardNumber($entry),
+            'photoUrl' => $player->photo_path ? $public->url($player->photo_path) : null,
+            'teamLogoUrl' => $seasonTeam->team->logo_path ? $public->url($seasonTeam->team->logo_path) : null,
+        ];
     }
 
     /** QR en SVG como data URI base64 ('' si falla: la vista muestra "QR no disp."). */

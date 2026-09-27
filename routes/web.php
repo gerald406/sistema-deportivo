@@ -29,6 +29,11 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Publica (sin login): destino del QR del carnet. URL firmada, sin datos sensibles.
+Route::get('/verificar-carnet/{seasonTeamPlayer}', [PlayerCardController::class, 'verify'])
+    ->middleware(['signed', 'throttle:60,1'])
+    ->name('cards.verify');
+
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),

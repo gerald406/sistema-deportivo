@@ -10,6 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -34,6 +35,15 @@ class PlayerCardController extends Controller
         return Pdf::loadView('reports.pdf.jugador-carnet', $this->cards->prepareCardData($seasonTeamPlayer))
             ->setPaper('a4', 'portrait')
             ->stream("fotocheck_{$seasonTeamPlayer->player->dni}.pdf");
+    }
+
+    /**
+     * Pagina PUBLICA (sin login) a la que apunta el QR. La ruta exige firma
+     * (middleware 'signed'): sin ella no se puede recorrer ids.
+     */
+    public function verify(SeasonTeamPlayer $seasonTeamPlayer): View
+    {
+        return view('public.card-verify', $this->cards->verificationData($seasonTeamPlayer));
     }
 
     /** GET ?ids=1,2,3 */
