@@ -412,9 +412,10 @@
                  if (typeof L === 'undefined') return;
                  if (this.map) { this.map.remove(); this.map = null; }
                  this.map = L.map(this.$refs.map).setView([this.venue.lat, this.venue.lng], 15);
-                 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                     attribution: '&copy; <a href=&quot;https://www.openstreetmap.org/copyright&quot;>OSM</a>',
-                     subdomains: 'abcd',
+                 {{-- Teselas estandar de OpenStreetMap: las de CARTO (basemaps.cartocdn.com) que usaba
+                      la referencia ahora exigen API key y devuelven una marca de agua. --}}
+                 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                     attribution: '&copy; <a href=&quot;https://www.openstreetmap.org/copyright&quot;>OpenStreetMap</a> contributors',
                      maxZoom: 19,
                  }).addTo(this.map);
                  {{-- Dentro de un modal Leaflet calcula mal el tamano (mapa gris/descentrado). --}}
