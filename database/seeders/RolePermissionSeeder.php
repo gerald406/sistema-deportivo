@@ -42,6 +42,11 @@ class RolePermissionSeeder extends Seeder
             'teams.manage',
             'venues.manage',
             'matches.manage',
+            // matches.reopen: sin el, SeasonPolicy::reopenMatches nunca deja
+            // al organizador reabrir resultados de SU torneo (solo al admin).
+            // Agregado en el fix de reaperturas; en la BD actual se aplico
+            // con givePermissionTo().
+            'matches.reopen',
             'reports.view',
         ]);
 

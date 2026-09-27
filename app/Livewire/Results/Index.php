@@ -19,6 +19,7 @@ use App\Support\SeasonAccess;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -33,6 +34,8 @@ class Index extends Component
     public string $seasonFilter = '';
 
     /** all | pending | played | walkover | canceled */
+    /** En la URL (?estado=played) para que la bitacora enlace directo a los partidos reabribles. */
+    #[Url(as: 'estado')]
     public string $matchStatusFilter = 'pending';
 
     public int $perPage = 15;
@@ -159,14 +162,23 @@ class Index extends Component
         $this->showReopenModal = true;
     }
 
-    public function confirmReopen(ResultService $service): void
+    /**
+     * Reabre el resultado (ResultService::reopen() revalida el permiso y
+     * deja el registro en MatchReopenLog) y abre de inmediato el modal de
+     * resultado para volver a cargar el marcador. La bitacora /reaperturas
+     * es solo lectura: la accion vive aqui.
+     */
+    public function reopen(ResultService $service): void
     {
-        $service->reopen(GameMatch::findOrFail($this->reopeningId), $this->reopenReason, auth()->user());
+        $match = GameMatch::findOrFail($this->reopeningId);
+        $service->reopen($match, $this->reopenReason, auth()->user());
 
         $this->showReopenModal = false;
         $this->reopeningId = null;
         $this->reopenReason = '';
-        $this->dispatch('toast', type: 'success', message: 'Partido reabierto. La reapertura quedó registrada.');
+        $this->dispatch('toast', type: 'success', message: 'Resultado reabierto y registrado en la bitácora. Ya puedes corregir el marcador.');
+
+        $this->openResult($match->id);
     }
 
     public function closeModal(): void

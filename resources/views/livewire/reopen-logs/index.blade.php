@@ -1,7 +1,14 @@
 <div class="space-y-6">
-    <div>
-        <h1 class="text-2xl font-semibold text-gray-900">Reaperturas de partidos</h1>
-        <p class="text-sm text-gray-500">Auditoría de solo lectura: quién reabrió cada resultado, cuándo, por qué y qué había antes.</p>
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Bitácora de reaperturas</h1>
+            <p class="text-sm text-gray-500">Auditoría de solo lectura: quién reabrió cada resultado, cuándo, por qué y qué había antes.</p>
+        </div>
+
+        <a href="{{ route('results.index', ['estado' => 'played']) }}"
+           class="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100">
+            <i class="fa-solid fa-rotate-left"></i> Reabrir un resultado (ir a Resultados)
+        </a>
     </div>
 
     {{-- Filtros --}}

@@ -89,6 +89,24 @@
             });
         };
 
+        // Igual que confirmDelete pero para acciones que no son borrar
+        // (p. ej. reabrir un resultado). Textos siempre via titleText/text.
+        window.confirmAction = ({ title, text, confirmText }, onConfirm) => {
+            Swal.fire({
+                titleText: title,
+                text: text,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: confirmText,
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#d97706',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    onConfirm();
+                }
+            });
+        };
+
         document.addEventListener('livewire:init', () => {
             Livewire.on('toast', ({ type, message }) => {
                 Swal.fire({

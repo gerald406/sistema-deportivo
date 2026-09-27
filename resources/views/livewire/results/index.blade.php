@@ -2,6 +2,11 @@
     <div>
         <h1 class="text-2xl font-semibold text-gray-900">Resultados</h1>
         <p class="text-sm text-gray-500">Marcadores, walkovers y marcas de cada partido o prueba. Cerrar un resultado actualiza la tabla y el medallero.</p>
+        <p class="mt-1 text-xs text-gray-400">
+            <i class="fa-solid fa-rotate-left"></i>
+            Para corregir un resultado ya cerrado, filtra por estado "Jugado" o "Walkover" y usa <strong>Reabrir resultado</strong>.
+            El historial queda en la <a href="{{ route('reopen-logs.index') }}" class="text-indigo-600 hover:underline">bitácora de reaperturas</a>.
+        </p>
     </div>
 
     {{-- Filtros --}}
@@ -97,8 +102,9 @@
                                         </button>
                                     @endif
                                     @if ($this->canReopen($match))
-                                        <button wire:click="openReopen({{ $match->id }})" class="text-gray-400 hover:text-amber-600" title="Reabrir partido">
-                                            <i class="fa-solid fa-rotate-left"></i>
+                                        <button wire:click="openReopen({{ $match->id }})" type="button"
+                                                class="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100">
+                                            <i class="fa-solid fa-rotate-left"></i> Reabrir resultado
                                         </button>
                                     @endif
                                 </div>
@@ -207,13 +213,18 @@
         <div x-show="show" x-transition.opacity @click="$wire.closeModal()" class="fixed inset-0 bg-gray-900/50"></div>
 
         <div x-show="show" x-transition class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 class="text-lg font-semibold text-gray-900">Reabrir partido</h2>
+            <h2 class="text-lg font-semibold text-gray-900">Reabrir resultado</h2>
             <p class="mt-1 text-sm text-gray-500">
                 El partido vuelve a "Programado", se borran marcas y puestos, y las sanciones no cumplidas que originó.
-                Queda registrado quién lo reabrió y por qué.
+                Queda registrado quién lo reabrió y por qué. Después podrás cargar el marcador de nuevo.
             </p>
 
-            <form wire:submit="confirmReopen" class="mt-4 space-y-3">
+            <form x-on:submit.prevent="confirmAction({
+                      title: '¿Reabrir este resultado?',
+                      text: 'Se borrará el marcador actual y se recalcularán la tabla y el medallero.',
+                      confirmText: 'Sí, reabrir',
+                  }, () => $wire.reopen())"
+                  class="mt-4 space-y-3">
                 <textarea wire:model="reopenReason" rows="3" placeholder="Motivo (ej: se cargó mal el marcador)"
                           class="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                 @error('reason') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
