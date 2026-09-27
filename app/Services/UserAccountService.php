@@ -79,6 +79,12 @@ class UserAccountService
     {
         $this->ensureAdmin($actor);
 
+        // El boton ya se oculta en el Blade, pero delete() es invocable
+        // directamente desde el navegador.
+        if ($user->is($actor)) {
+            return 'No puedes eliminar tu propia cuenta.';
+        }
+
         if ($user->hasRole('admin') && User::role('admin')->count() <= 1) {
             return 'No se puede eliminar: es el único administrador del sistema.';
         }

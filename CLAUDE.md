@@ -60,7 +60,13 @@ Reglas del listado (seguridad — propiedades públicas son manipulables desde e
   **nunca** `$this->sortField` / `$this->perPage` directo.
 - Borrado: `x-on:click="confirmDelete(@js($model->name), () => $wire.delete({{ $model->id }}))"`.
   **Nunca** `onclick="fn('{{ $model->name }}')"` (XSS almacenado) ni `function` dentro de
-  `@script` (Livewire 3 no la deja global). Los CRUD ya construidos que
+  `@script` (Livewire 3 no la deja global).
+- Autorización en **cada** acción, no solo en `mount()` (el middleware de la ruta no se
+  reaplica en `/livewire/update`): con Policy, `$this->authorize()` en cada método (Teams,
+  Players); si el módulo es solo por rol, `abort_unless(...)` en `boot()` (Sports, Users).
+- `Service::delete()` devuelve `bool|string`: `true` o el mensaje exacto para el toast.
+- Ids que llegan del navegador (p. ej. `editingId`) se buscan acotados a su padre
+  (`Discipline::where('sport_id', ...)->findOrFail($id)`), nunca con `find($id)` suelto. Los CRUD ya construidos que
 sirven de referencia exacta: `app/Livewire/Teams/Index.php`, `app/Livewire/Players/Index.php`,
 `app/Livewire/Admin/Sports/Index.php`, `app/Livewire/Admin/Users/Index.php`.
 

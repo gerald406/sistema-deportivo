@@ -7,6 +7,7 @@ namespace App\Livewire\Players;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Player;
+use App\Policies\PlayerPolicy;
 use App\Services\PlayerRegistrationService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -131,8 +132,10 @@ class Index extends Component
         $player = Player::findOrFail($id);
         $this->authorize('delete', $player);
 
-        if (! $service->delete($player)) {
-            $this->dispatch('toast', type: 'error', message: 'No se puede eliminar: el jugador tiene inscripciones registradas. Desactívalo en su lugar.');
+        $result = $service->delete($player);
+
+        if ($result !== true) {
+            $this->dispatch('toast', type: 'error', message: $result);
 
             return;
         }
@@ -148,6 +151,8 @@ class Index extends Component
 
     public function render()
     {
+        $user = auth()->user();
+
         $query = Player::query()
             ->when($this->search !== '', function ($q) {
                 $q->where(function ($q) {
@@ -158,6 +163,12 @@ class Index extends Component
             })
             ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
+            // Precarga la pertenencia para los @can('update'/'delete') de
+            // cada fila (PlayerPolicy la lee de este atributo): 0 consultas
+            // extra por fila en vez de 2. Admin no lo necesita (Gate::before).
+            ->when(! $user->hasRole('admin') && $user->hasRole('delegado'), fn ($q) => $q->withExists([
+                'seasonTeamPlayers as '.PlayerPolicy::managedAttribute($user) => PlayerPolicy::managedRosterConstraint($user),
+            ]))
             ->orderBy($this->sortColumn(), $this->sortOrder());
 
         return view('livewire.players.index', [

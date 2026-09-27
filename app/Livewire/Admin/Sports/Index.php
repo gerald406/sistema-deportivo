@@ -7,6 +7,7 @@ namespace App\Livewire\Admin\Sports;
 use App\Enums\BetterDirection;
 use App\Enums\SportFormatType;
 use App\Enums\UnitOfMeasure;
+use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Discipline;
 use App\Models\Sport;
@@ -21,9 +22,14 @@ use Livewire\WithPagination;
 #[Title('Deportes y disciplinas')]
 class Index extends Component
 {
-    use Sortable, WithPagination;
+    use LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
+
+    /** all | active | inactive */
+    public string $statusFilter = 'all';
+
+    public int $perPage = 15;
 
     public string $sortField = 'name';
 
@@ -56,12 +62,29 @@ class Index extends Component
         'is_active' => true,
     ];
 
-    public function mount(): void
+    /**
+     * boot() corre en CADA request (la carga inicial y cada llamada
+     * /livewire/update), a diferencia de mount(), que solo corre en la
+     * primera. El middleware role:admin de la ruta tampoco se reaplica
+     * en esas llamadas, asi que sin esto saveSport(), deleteSport(),
+     * etc. quedarian sin chequeo de rol.
+     */
+    public function boot(): void
     {
-        abort_unless(auth()->user()->hasRole('admin'), 403);
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
     }
 
     public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPerPage(): void
     {
         $this->resetPage();
     }
@@ -132,10 +155,10 @@ class Index extends Component
 
     public function deleteSport(int $id, SportCatalogService $service): void
     {
-        $sport = Sport::findOrFail($id);
+        $result = $service->deleteSport(Sport::findOrFail($id));
 
-        if (! $service->deleteSport($sport)) {
-            $this->dispatch('toast', type: 'error', message: 'No se puede eliminar: el deporte tiene disciplinas o temporadas registradas.');
+        if ($result !== true) {
+            $this->dispatch('toast', type: 'error', message: $result);
 
             return;
         }
@@ -153,7 +176,7 @@ class Index extends Component
 
     public function manageDisciplines(int $sportId): void
     {
-        $this->managingSportId = $sportId;
+        $this->managingSportId = Sport::findOrFail($sportId)->id;
         $this->resetDisciplineForm();
         $this->showDisciplinesModal = true;
     }
@@ -165,7 +188,7 @@ class Index extends Component
 
     public function editDiscipline(int $id): void
     {
-        $discipline = Discipline::findOrFail($id);
+        $discipline = $this->findManagedDiscipline($id);
         $this->editingDisciplineId = $discipline->id;
         $this->disciplineForm = [
             'name' => $discipline->name,
@@ -197,7 +220,7 @@ class Index extends Component
         $data['format_type'] = $data['format_type'] !== '' ? $data['format_type'] : null;
 
         if ($this->editingDisciplineId) {
-            $service->updateDiscipline(Discipline::findOrFail($this->editingDisciplineId), $data);
+            $service->updateDiscipline($this->findManagedDiscipline($this->editingDisciplineId), $data);
         } else {
             $service->registerDiscipline($sport, $data);
         }
@@ -208,10 +231,10 @@ class Index extends Component
 
     public function deleteDiscipline(int $id, SportCatalogService $service): void
     {
-        $discipline = Discipline::findOrFail($id);
+        $result = $service->deleteDiscipline($this->findManagedDiscipline($id));
 
-        if (! $service->deleteDiscipline($discipline)) {
-            $this->dispatch('toast', type: 'error', message: 'No se puede eliminar: la disciplina tiene partidos registrados.');
+        if ($result !== true) {
+            $this->dispatch('toast', type: 'error', message: $result);
 
             return;
         }
@@ -230,9 +253,11 @@ class Index extends Component
     {
         $sports = Sport::query()
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
+            ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
+            ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->withCount('disciplines')
             ->orderBy($this->sortColumn(), $this->sortOrder())
-            ->paginate(15);
+            ->paginate($this->perPageLimit());
 
         $disciplines = $this->managingSportId
             ? Discipline::where('sport_id', $this->managingSportId)->orderBy('name')->get()
@@ -247,6 +272,17 @@ class Index extends Component
     protected function sortableFields(): array
     {
         return ['name', 'disciplines_count', 'is_active'];
+    }
+
+    /**
+     * editingDisciplineId / el id recibido son manipulables desde el
+     * navegador: se exige que la disciplina pertenezca al deporte cuyo
+     * modal esta abierto, para no editar/borrar una de otro deporte
+     * saltandose la validacion unique(sport_id, name).
+     */
+    private function findManagedDiscipline(int $id): Discipline
+    {
+        return Discipline::where('sport_id', $this->managingSportId)->findOrFail($id);
     }
 
     private function resetSportForm(): void

@@ -152,8 +152,10 @@ class Index extends Component
         $team = Team::findOrFail($id);
         $this->authorize('delete', $team);
 
-        if (! $service->delete($team)) {
-            $this->dispatch('toast', type: 'error', message: 'No se puede eliminar: el equipo tiene inscripciones o medallas registradas. Desactívalo en su lugar.');
+        $result = $service->delete($team);
+
+        if ($result !== true) {
+            $this->dispatch('toast', type: 'error', message: $result);
 
             return;
         }

@@ -37,17 +37,23 @@ class SportCatalogService
      * deletes): un deporte con disciplinas o temporadas no se puede
      * borrar. Se detecta antes de intentarlo en vez de dejar que MySQL
      * truene con un 1451. (sport_positions y event_types son CASCADE.)
+     *
+     * Devuelve true o el mensaje exacto de por que no se pudo borrar.
      */
-    public function deleteSport(Sport $sport): bool
+    public function deleteSport(Sport $sport): bool|string
     {
-        if ($sport->disciplines()->exists() || $sport->seasons()->exists()) {
-            return false;
+        if ($sport->disciplines()->exists()) {
+            return 'No se puede eliminar: el deporte tiene disciplinas registradas.';
+        }
+
+        if ($sport->seasons()->exists()) {
+            return 'No se puede eliminar: el deporte tiene temporadas registradas. Desactívalo en su lugar.';
         }
 
         try {
             $sport->delete();
         } catch (QueryException) {
-            return false;
+            return 'No se puede eliminar: el deporte tiene historial asociado. Desactívalo en su lugar.';
         }
 
         return true;
@@ -71,17 +77,19 @@ class SportCatalogService
      * matches.discipline_id es SET NULL en la BD: borrar una disciplina
      * dejaria resultados sin prueba asociada. Por eso se bloquea aqui si
      * ya se uso en algun partido.
+     *
+     * Devuelve true o el mensaje exacto de por que no se pudo borrar.
      */
-    public function deleteDiscipline(Discipline $discipline): bool
+    public function deleteDiscipline(Discipline $discipline): bool|string
     {
         if ($discipline->matches()->exists()) {
-            return false;
+            return 'No se puede eliminar: la disciplina tiene partidos registrados. Desactívala en su lugar.';
         }
 
         try {
             $discipline->delete();
         } catch (QueryException) {
-            return false;
+            return 'No se puede eliminar: la disciplina tiene historial asociado. Desactívala en su lugar.';
         }
 
         return true;

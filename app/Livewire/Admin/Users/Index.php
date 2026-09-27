@@ -50,9 +50,14 @@ class Index extends Component
     /** @var array<int, string> */
     public array $selectedRoles = [];
 
-    public function mount(): void
+    /**
+     * boot() corre en CADA request (no solo en la carga inicial como
+     * mount()): el middleware role:admin de la ruta no se reaplica en las
+     * llamadas /livewire/update. UserAccountService lo revalida igual.
+     */
+    public function boot(): void
     {
-        abort_unless(auth()->user()->hasRole('admin'), 403);
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
     }
 
     public function updatingSearch(): void
@@ -103,13 +108,10 @@ class Index extends Component
 
     public function save(UserAccountService $service): void
     {
-        $validated = $this->validate($this->rules())['form'];
-
-        if (empty($this->selectedRoles)) {
-            $this->addError('selectedRoles', 'Selecciona al menos un rol.');
-
-            return;
-        }
+        $validated = $this->validate($this->rules(), [
+            'selectedRoles.required' => 'Selecciona al menos un rol.',
+            'selectedRoles.*.in' => 'Uno de los roles seleccionados no existe.',
+        ])['form'];
 
         // Salvaguarda de UX: evita que un admin se quite su propio rol o
         // se desactive a si mismo por error y quede fuera del sistema
@@ -185,7 +187,12 @@ class Index extends Component
             })
             ->when($this->statusFilter === 'active', fn($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn($q) => $q->where('is_active', false))
-            ->when($this->roleFilter !== 'all', fn($q) => $q->role($this->roleFilter))
+            // role() de Spatie lanza RoleDoesNotExist con un nombre invalido:
+            // solo se aplica si el valor es un rol real.
+            ->when(
+                $this->availableRoles()->contains($this->roleFilter),
+                fn($q) => $q->role($this->roleFilter)
+            )
             ->with('roles:id,name')
             ->orderBy($this->sortColumn(), $this->sortOrder());
 
@@ -242,6 +249,8 @@ class Index extends Component
             ],
             'form.password' => ['nullable', 'string', 'min:8'],
             'form.is_active' => ['boolean'],
+            'selectedRoles' => ['required', 'array'],
+            'selectedRoles.*' => ['string', Rule::in($this->availableRoles()->all())],
         ];
     }
 }

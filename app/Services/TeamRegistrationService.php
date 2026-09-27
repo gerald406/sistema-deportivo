@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Toda la logica de negocio de Team vive aqui, no en el componente
@@ -41,17 +42,28 @@ class TeamRegistrationService
      * no se puede borrar fisicamente. Se detecta antes de intentarlo
      * para devolver una respuesta clara al Livewire component en vez de
      * dejar que MySQL truene con un error 1451 crudo.
+     *
+     * Devuelve true o el mensaje exacto de por que no se pudo borrar.
      */
-    public function delete(Team $team): bool
+    public function delete(Team $team): bool|string
     {
-        if ($team->seasonTeams()->exists() || $team->medals()->exists()) {
-            return false;
+        if ($team->seasonTeams()->exists()) {
+            return 'No se puede eliminar: el equipo tiene inscripciones en temporadas. Desactívalo en su lugar.';
+        }
+
+        if ($team->medals()->exists()) {
+            return 'No se puede eliminar: el equipo tiene medallas registradas. Desactívalo en su lugar.';
         }
 
         try {
             $team->delete();
         } catch (QueryException) {
-            return false;
+            return 'No se puede eliminar: el equipo tiene historial asociado. Desactívalo en su lugar.';
+        }
+
+        // Sin esto el logo queda huerfano en storage/app/public/teams.
+        if ($team->logo_path) {
+            Storage::disk('public')->delete($team->logo_path);
         }
 
         return true;

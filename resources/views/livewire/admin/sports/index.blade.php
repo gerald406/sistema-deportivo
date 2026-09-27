@@ -10,12 +10,27 @@
         </button>
     </div>
 
-    <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5">
-        <div class="relative max-w-sm">
+    <div class="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 sm:flex-row sm:items-center">
+        <div class="relative flex-1">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" wire:model.live.debounce.400ms="search" placeholder="Buscar deporte..."
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
+
+        <select wire:model.live="statusFilter"
+                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <option value="all">Todos los estados</option>
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+        </select>
+
+        <select wire:model.live="perPage"
+                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <option value="10">10 por página</option>
+            <option value="15">15 por página</option>
+            <option value="25">25 por página</option>
+            <option value="50">50 por página</option>
+        </select>
     </div>
 
     <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
@@ -97,7 +112,10 @@
                 </label>
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" wire:click="closeSportModal" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">Cancelar</button>
-                    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">Guardar</button>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                        <span wire:loading.remove wire:target="saveSport">Guardar</span>
+                        <span wire:loading wire:target="saveSport"><i class="fa-solid fa-spinner fa-spin"></i> Guardando...</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -162,7 +180,10 @@
                         @if ($editingDisciplineId)
                             <button type="button" wire:click="createDiscipline" class="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100">Cancelar edición</button>
                         @endif
-                        <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">Guardar</button>
+                        <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">
+                            <span wire:loading.remove wire:target="saveDiscipline">Guardar</span>
+                            <span wire:loading wire:target="saveDiscipline"><i class="fa-solid fa-spinner fa-spin"></i> Guardando...</span>
+                        </button>
                     </div>
                 </form>
 
