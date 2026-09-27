@@ -49,6 +49,8 @@ return [
                 // Sin permission: los 3 roles ven inscripciones (SeasonTeamPolicy::viewAny).
                 ['label' => 'Inscripciones', 'route' => 'season-teams.index'],
                 ['label' => 'Planteles', 'route' => 'rosters.index'],
+                // Los 3 roles: cada uno solo ve las fichas que puede imprimir (printCard).
+                ['label' => 'Fichas de inscripción', 'route' => 'registrations.index', 'role' => ['admin', 'organizador', 'delegado']],
             ],
         ],
         [

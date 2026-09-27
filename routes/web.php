@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ManagerialReportController;
 use App\Http\Controllers\PlayerCardController;
+use App\Http\Controllers\PlayerRegistrationController;
 use App\Http\Controllers\RosterReportController;
 use App\Livewire\Admin\Roles\Index as AdminRolesIndex;
 use App\Livewire\Admin\Sports\Index as AdminSportsIndex;
@@ -13,6 +14,7 @@ use App\Livewire\MatchEvents\Index as MatchEventsIndex;
 use App\Livewire\Matchdays\Index as MatchdaysIndex;
 use App\Livewire\Matches\Index as MatchesIndex;
 use App\Livewire\Periods\Index as PeriodsIndex;
+use App\Livewire\PlayerRegistrationSelector;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Relays\Index as RelaysIndex;
 use App\Livewire\ReopenLogs\Index as ReopenLogsIndex;
@@ -71,6 +73,16 @@ Route::middleware([
         ->name('cards.massive');
     Route::post('/carnets/masivo', [PlayerCardController::class, 'massivePost'])
         ->name('cards.massive.post');
+
+    // Fichas de inscripcion (PDF). Misma autorizacion que los carnets: printCard.
+    Route::get('/fichas-inscripcion', PlayerRegistrationSelector::class)
+        ->name('registrations.index');
+    Route::get('/planteles/{seasonTeamPlayer}/ficha', [PlayerRegistrationController::class, 'single'])
+        ->name('registrations.single');
+    Route::get('/inscripciones/{seasonTeam}/fichas', [PlayerRegistrationController::class, 'byTeam'])
+        ->name('registrations.team');
+    Route::post('/fichas-inscripcion/masivo', [PlayerRegistrationController::class, 'massivePost'])
+        ->name('registrations.massive.post');
 
     Route::get('/jornadas', MatchdaysIndex::class)
         ->name('matchdays.index');
