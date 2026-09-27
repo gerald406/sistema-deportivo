@@ -163,13 +163,44 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Equipo</label>
-                        <select wire:model.live="form.team_id" @disabled($form['season_id'] === '')
-                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100">
-                            <option value="">{{ $form['season_id'] === '' ? 'Primero elige la temporada' : 'Selecciona un equipo' }}</option>
-                            @foreach ($this->teamOptions() as $team)
-                                <option value="{{ $team->id }}">{{ $team->name }}</option>
-                            @endforeach
-                        </select>
+                        {{-- Autocomplete server-side: SeasonTeamService::searchTeams() (activos y
+                             no inscritos en la temporada elegida, máx. 10). --}}
+                        <div x-data="{ open: false }" @click.outside="open = false" class="relative mt-1">
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i>
+                                <input type="text" wire:model.live.debounce.300ms="teamSearch" @disabled($form['season_id'] === '')
+                                       x-on:focus="open = true" x-on:input="open = true" x-on:keydown.escape="open = false"
+                                       placeholder="{{ $form['season_id'] === '' ? 'Primero elige la temporada' : 'Buscar equipo por nombre (mín. 2 letras)' }}"
+                                       autocomplete="off"
+                                       @class([
+                                           'w-full rounded-lg py-2 pl-8 pr-8 text-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100',
+                                           'border-indigo-300 bg-indigo-50 font-medium text-indigo-900' => $form['team_id'] !== '',
+                                           'border-gray-300' => $form['team_id'] === '',
+                                       ])>
+                                @if ($form['team_id'] !== '' || $teamSearch !== '')
+                                    <button type="button" wire:click="clearTeam" title="Cambiar equipo"
+                                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                @endif
+                            </div>
+
+                            @if ($form['team_id'] === '' && mb_strlen(trim($teamSearch)) >= 2)
+                                <div x-show="open" x-transition
+                                     class="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                                    @forelse ($this->teamResults() as $option)
+                                        <button type="button" wire:key="team-opt-{{ $option->id }}"
+                                                wire:click="selectTeam({{ $option->id }})" x-on:click="open = false"
+                                                class="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50">
+                                            {{ $option->name }}
+                                            <span class="text-gray-400">· {{ $option->delegate?->name ?? 'sin delegado' }}</span>
+                                        </button>
+                                    @empty
+                                        <p class="px-3 py-2 text-sm text-gray-400">Sin equipos disponibles (activos y no inscritos en esta temporada).</p>
+                                    @endforelse
+                                </div>
+                            @endif
+                        </div>
                         @error('form.team_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 @endif

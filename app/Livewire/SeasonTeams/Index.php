@@ -52,6 +52,9 @@ class Index extends Component
         'is_active' => true,
     ];
 
+    /** Texto del buscador de equipo; al elegir uno muestra su nombre. */
+    public string $teamSearch = '';
+
     public function mount(): void
     {
         $this->authorize('viewAny', SeasonTeam::class);
@@ -85,6 +88,12 @@ class Index extends Component
     /** Al cambiar de temporada en el modal se reinicia el equipo elegido. */
     public function updatedFormSeasonId(): void
     {
+        $this->clearTeam();
+    }
+
+    /** Si se vuelve a escribir, el equipo elegido deja de valer. */
+    public function updatedTeamSearch(): void
+    {
         $this->form['team_id'] = '';
     }
 
@@ -93,11 +102,39 @@ class Index extends Component
         return app(SeasonTeamService::class)->seasonsFor(auth()->user());
     }
 
-    public function teamOptions(): Collection
+    /** Max. 10 equipos elegibles para la temporada elegida que coinciden con lo escrito. */
+    public function teamResults(): Collection
     {
-        $season = ctype_digit((string) $this->form['season_id']) ? Season::with('tournament')->find($this->form['season_id']) : null;
+        $season = $this->formSeason();
 
-        return $season ? app(SeasonTeamService::class)->teamsFor(auth()->user(), $season) : collect();
+        if (! $season || $this->form['team_id'] !== '') {
+            return collect();
+        }
+
+        return app(SeasonTeamService::class)->searchTeams(auth()->user(), $season, $this->teamSearch);
+    }
+
+    public function selectTeam(int $id): void
+    {
+        $season = $this->formSeason();
+        abort_unless($season !== null, 422);
+
+        $team = app(SeasonTeamService::class)->findEligibleTeam(auth()->user(), $season, $id);
+        $this->form['team_id'] = $team->id;
+        $this->teamSearch = $team->name;
+    }
+
+    public function clearTeam(): void
+    {
+        $this->form['team_id'] = '';
+        $this->teamSearch = '';
+    }
+
+    private function formSeason(): ?Season
+    {
+        return ctype_digit((string) $this->form['season_id'])
+            ? Season::with('tournament')->find($this->form['season_id'])
+            : null;
     }
 
     public function categoryOptions(): Collection
@@ -137,7 +174,7 @@ class Index extends Component
             return $user->can('update', SeasonTeam::findOrFail($this->editingId));
         }
 
-        $season = ctype_digit((string) $this->form['season_id']) ? Season::with('tournament')->find($this->form['season_id']) : null;
+        $season = $this->formSeason();
 
         return $season ? app(SeasonTeamService::class)->isManager($user, $season) : $user->hasRole('admin');
     }
@@ -255,6 +292,7 @@ class Index extends Component
             'delegate_id' => '',
             'is_active' => true,
         ];
+        $this->teamSearch = '';
         $this->resetErrorBag();
     }
 

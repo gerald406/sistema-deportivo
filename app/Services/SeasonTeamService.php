@@ -11,6 +11,7 @@ use App\Models\SeasonTeam;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -142,20 +143,43 @@ class SeasonTeamService
     }
 
     /**
-     * Equipos que $actor puede inscribir en $season (activos y aun no
-     * inscritos). Vacio si no es admin ni organizador de ese torneo.
+     * Autocomplete de equipo al inscribir: los elegibles salen del catalogo
+     * GLOBAL de equipos (crece con el sistema, no con la temporada), por
+     * eso se buscan server-side (min. 2 letras, max. 10) en vez de listarse
+     * todos. Vacio si $actor no es admin ni organizador de ese torneo.
      */
-    public function teamsFor(User $actor, Season $season): Collection
+    public function searchTeams(User $actor, Season $season, string $term): Collection
     {
-        if (! $this->isManager($actor, $season)) {
+        $term = trim($term);
+
+        if (mb_strlen($term) < 2 || ! $this->isManager($actor, $season)) {
             return collect();
         }
 
+        return $this->eligibleTeams($season)
+            ->where('name', 'like', "%{$term}%")
+            ->with('delegate:id,name')
+            ->orderBy('name')
+            ->limit(10)
+            ->get(['id', 'name', 'delegate_id']);
+    }
+
+    /** Un equipo concreto elegible para $season (el id viene del navegador). */
+    public function findEligibleTeam(User $actor, Season $season, int $teamId): Team
+    {
+        if (! $this->isManager($actor, $season)) {
+            throw new AuthorizationException('Solo el organizador del torneo o el administrador pueden inscribir equipos.');
+        }
+
+        return $this->eligibleTeams($season)->findOrFail($teamId);
+    }
+
+    /** Activos y aun no inscritos en esa temporada (no se duplica la inscripcion). */
+    private function eligibleTeams(Season $season): Builder
+    {
         return Team::query()
             ->where('is_active', true)
-            ->whereDoesntHave('seasonTeams', fn ($q) => $q->where('season_id', $season->id))
-            ->orderBy('name')
-            ->get(['id', 'name']);
+            ->whereDoesntHave('seasonTeams', fn ($q) => $q->where('season_id', $season->id));
     }
 
     /** Admin u organizador del torneo de la temporada. */
