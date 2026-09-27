@@ -6,6 +6,7 @@ use App\Livewire\Admin\Users\Index as AdminUsersIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Teams\Index as TeamsIndex;
+use App\Livewire\Tournaments\Index as TournamentsIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -25,6 +26,9 @@ Route::middleware([
 
     Route::get('/jugadores', PlayersIndex::class)
         ->name('players.index');
+
+    Route::get('/torneos', TournamentsIndex::class)
+        ->name('tournaments.index');
 
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/deportes', AdminSportsIndex::class)->name('admin.sports.index');
