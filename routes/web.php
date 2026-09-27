@@ -6,6 +6,7 @@ use App\Livewire\Admin\Users\Index as AdminUsersIndex;
 use App\Livewire\Categories\Index as CategoriesIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\GamesEditions\Index as GamesEditionsIndex;
+use App\Livewire\Matchdays\Index as MatchdaysIndex;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Rosters\Index as RostersIndex;
 use App\Livewire\SeasonTeams\Index as SeasonTeamsIndex;
@@ -44,6 +45,9 @@ Route::middleware([
 
     Route::get('/planteles', RostersIndex::class)
         ->name('rosters.index');
+
+    Route::get('/jornadas', MatchdaysIndex::class)
+        ->name('matchdays.index');
 
     Route::get('/categorias', CategoriesIndex::class)
         ->name('categories.index');
