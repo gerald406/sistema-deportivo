@@ -167,7 +167,7 @@ class Index extends Component
         if ($this->editingId) {
             $seasonTeam = SeasonTeam::findOrFail($this->editingId);
             $this->authorize('update', $seasonTeam);
-            $service->update($seasonTeam, $data);
+            $service->update($seasonTeam, $data, auth()->user());
         } else {
             $this->authorize('create', SeasonTeam::class);
             $service->register($data, auth()->user());

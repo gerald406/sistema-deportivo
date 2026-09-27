@@ -6,8 +6,10 @@ namespace App\Services;
 
 use App\Models\Team;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Toda la logica de negocio de Team vive aqui, no en el componente
@@ -22,6 +24,13 @@ class TeamRegistrationService
      */
     public function register(array $data, User $actor): Team
     {
+        // "Flujo de permisos" punto 3 de CLAUDE.md: el delegado NUNCA crea
+        // equipos. Se revalida aqui (no solo en TeamPolicy ni ocultando el
+        // boton) porque save() es invocable desde la consola del navegador.
+        if (! $this->canAssignDelegate($actor)) {
+            throw new AuthorizationException('Solo el organizador o el administrador pueden crear equipos.');
+        }
+
         $data['delegate_id'] = $this->resolveDelegateId($data, $actor);
 
         return Team::create($data);
@@ -69,18 +78,37 @@ class TeamRegistrationService
         return true;
     }
 
+    /** Admin u organizador: crean equipos y eligen su delegado. */
+    public function canAssignDelegate(User $actor): bool
+    {
+        return $actor->hasRole('admin')
+            || ($actor->hasRole('organizador') && $actor->can('teams.manage'));
+    }
+
     /**
      * Un delegado jamas puede asignar (ni reasignar) el delegate_id de
-     * un equipo a otro usuario via el formulario: siempre queda como el
-     * mismo. Solo admin puede elegir un delegado distinto o dejarlo sin
-     * asignar.
+     * un equipo via el formulario: siempre queda el que ya tenia. Solo
+     * admin u organizador eligen delegado (o lo dejan sin asignar), y
+     * solo entre usuarios con rol delegado.
      */
     private function resolveDelegateId(array $data, User $actor, ?Team $team = null): ?int
     {
-        if ($actor->hasRole('admin')) {
-            return $data['delegate_id'] !== '' ? (int) $data['delegate_id'] : null;
+        if (! $this->canAssignDelegate($actor)) {
+            return $team?->delegate_id;
         }
 
-        return $team?->delegate_id ?? $actor->id;
+        if (in_array($data['delegate_id'] ?? null, ['', null], true)) {
+            return null;
+        }
+
+        $delegateId = (int) $data['delegate_id'];
+
+        if (! User::role('delegado')->whereKey($delegateId)->exists()) {
+            throw ValidationException::withMessages([
+                'form.delegate_id' => 'El delegado debe ser un usuario con rol delegado.',
+            ]);
+        }
+
+        return $delegateId;
     }
 }

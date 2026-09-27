@@ -28,6 +28,29 @@ que agrupa varios deportes. Cero duplicación por deporte: NO existen `FootballT
    `season_team_player`, que es Fase 5). Por eso `players.created_by` existe: reconoce
    propiedad de un jugador recién creado antes de tener roster.
 
+### Flujo de permisos (confirmado por el negocio; el admin conserva bypass total vía `Gate::before`)
+
+Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando botones en Blade.
+
+1. **Torneos (`Tournament`)**: solo el ADMIN los crea (y los borra) y asigna su organizador
+   (`organizer_id`). El organizador asignado edita los datos de SU torneo, pero no cambia
+   `organizer_id` (`TournamentPolicy`, `TournamentService`).
+2. **Temporadas (`Season`)**: las crea el ORGANIZADOR, pero solo dentro de un torneo que le fue
+   asignado (`tournament.organizer_id === auth()->id()`) (`SeasonPolicy`,
+   `SeasonService::ensureCanUseTournament()`).
+3. **Equipos (`Team`) y su delegado (`delegate_id`)**: los crea el ORGANIZADOR o el ADMIN. El
+   delegado NUNCA crea ni borra equipos; conserva la edición de nombre/logo de SU equipo sin
+   poder reasignar `delegate_id` (`TeamPolicy`, `TeamRegistrationService`). El organizador tiene
+   el permiso `teams.manage` para esto. Crear la *cuenta* de un delegado sigue siendo solo del
+   admin (regla 3 de arriba).
+4. **Inscripciones (`SeasonTeam`)**: las crean, editan y retiran solo el ORGANIZADOR del torneo o
+   el ADMIN, en Borrador o En curso (nadie en Cerrada). El delegado NUNCA crea ni edita
+   `SeasonTeam` en ningún estado; solo las ve (`SeasonTeamPolicy`, `SeasonTeamService`).
+   *Reemplaza la regla obsoleta de Fase 5 "el delegado inscribe sus equipos en Borrador".*
+5. **Jugadores en el plantel (`SeasonTeamPlayer`)**: los inscribe el DELEGADO en los equipos que
+   tiene asignados (`SeasonTeam::effectiveDelegate()`), y nunca en equipos ajenos. El organizador
+   del torneo y el admin conservan acceso de supervisión (`SeasonTeamPlayerPolicy::managesSeasonTeam()`).
+
 ## Arquitectura (no negociable sin pasar por diseño primero)
 
 - **Lógica de negocio SOLO en `app/Services`.** Los componentes Livewire autorizan
@@ -79,7 +102,7 @@ sirven de referencia exacta: `app/Livewire/Teams/Index.php`, `app/Livewire/Playe
 | 3 | Equipos y Jugadores | ✅ Completa (CRUD, fotos, filtros, orden, alta rápida de delegado) |
 | — | Módulo Administración | ✅ Completa (Deportes/Disciplinas, Usuarios, Roles y Permisos) |
 | 4 | Torneos y Temporadas | ✅ Completa (Category, Venue, GamesEdition, Tournament, Season con fases de ScoringConfig en el modal). Season no tiene sede (se elige por partido); `scoring_configs.rules` aún sin editar |
-| 5 | Inscripciones | ✅ Completa (SeasonTeam: el delegado inscribe sus equipos en Borrador, organizador/admin también En curso; SeasonTeamPlayer: edad por categoría, jugador único por temporada, camiseta única y un capitán por equipo) |
+| 5 | Inscripciones | ✅ Completa (SeasonTeam: solo organizador/admin inscriben, en Borrador o En curso — ver "Flujo de permisos" punto 4; SeasonTeamPlayer: edad por categoría, jugador único por temporada, camiseta única y un capitán por equipo) |
 | 6 | Jornadas y Partidos | ✅ Completa (Matchday, GameMatch con participantes en el modal según formato efectivo = `discipline.format_type ?? sport.format_type`, EventLineup solo en postas, MatchPeriod solo en enfrentamientos). Disciplina/deporte la valida el trigger; el Service traduce su SQLSTATE 45000 |
 | 7 | Resultados y Estadísticas | ✅ Completa (Resultados con reapertura auditada, Incidencias, Sanciones automáticas por roja/doble amarilla, tabla y medallero recalculados de forma síncrona en `ResultService::afterResultChanged()` — ver docblock de `StandingService`, vista de solo lectura de reaperturas) |
 | 8 | Reportes y Dashboard | ✅ Completa (Dashboard con métricas acotadas por rol vía `DashboardService`; `/reportes` con tabla de posiciones y medallero de solo lectura) |

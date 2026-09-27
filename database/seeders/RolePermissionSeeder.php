@@ -33,9 +33,13 @@ class RolePermissionSeeder extends Seeder
         $admin->syncPermissions($permissions); // el admin recibe todos los permisos
 
         $organizador = Role::findOrCreate('organizador', 'web');
+        // teams.manage: el organizador crea equipos y les asigna delegado
+        // ("Flujo de permisos" punto 3 de CLAUDE.md). Agregado en el fix de
+        // permisos; en una BD ya sembrada se aplico con givePermissionTo().
         $organizador->syncPermissions([
             'tournaments.manage',
             'seasons.manage',
+            'teams.manage',
             'venues.manage',
             'matches.manage',
             'reports.view',

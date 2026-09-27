@@ -16,11 +16,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Inscripcion de equipos a temporadas (season_team). Reglas confirmadas:
- *   - Delegado: inscribe solo SUS equipos (teams.delegate_id), solo en
- *     temporadas en Borrador, y no elige delegado de temporada.
- *   - Organizador (de ese torneo) y admin: cualquier equipo, en Borrador
- *     o En curso.
+ * Inscripcion de equipos a temporadas (season_team). Reglas confirmadas
+ * ("Flujo de permisos" punto 4 de CLAUDE.md):
+ *   - Organizador (de ese torneo) y admin: inscriben cualquier equipo, en
+ *     Borrador o En curso, y eligen delegado de temporada.
+ *   - CAMBIO DE REGLA: el delegado ya NO inscribe (antes lo hacia con sus
+ *     equipos en Borrador). No crea ni edita season_team en ningun estado.
  *   - Nadie inscribe en una temporada Cerrada.
  */
 class SeasonTeamService
@@ -33,19 +34,16 @@ class SeasonTeamService
         $season = Season::with('tournament')->findOrFail($data['season_id']);
         $team = Team::findOrFail($data['team_id']);
 
-        if (! $this->seasonsFor($actor)->contains('id', $season->id)) {
-            throw ValidationException::withMessages([
-                'form.season_id' => $this->seasonRejectionReason($season, $actor),
-            ]);
+        // Revalidado aqui (no solo en SeasonTeamPolicy): un delegado que
+        // llame a save() desde la consola del navegador no inscribe nada.
+        if (! $this->isManager($actor, $season)) {
+            throw new AuthorizationException('Solo el organizador del torneo o el administrador pueden inscribir equipos.');
         }
 
-        if (! $this->isManager($actor, $season)) {
-            // Delegado: solo sus equipos y sin delegado de temporada propio.
-            if ($team->delegate_id !== $actor->id) {
-                throw new AuthorizationException('Solo puedes inscribir equipos de los que eres delegado.');
-            }
-
-            $data['delegate_id'] = null;
+        if (! $this->seasonsFor($actor)->contains('id', $season->id)) {
+            throw ValidationException::withMessages([
+                'form.season_id' => $this->seasonRejectionReason($season),
+            ]);
         }
 
         if (! $team->is_active) {
@@ -74,8 +72,12 @@ class SeasonTeamService
      *
      * @param array{category_id: int|null, delegate_id: int|null, is_active: bool} $data
      */
-    public function update(SeasonTeam $seasonTeam, array $data): SeasonTeam
+    public function update(SeasonTeam $seasonTeam, array $data, User $actor): SeasonTeam
     {
+        if (! $this->isManager($actor, $seasonTeam->season)) {
+            throw new AuthorizationException('Solo el organizador del torneo o el administrador pueden editar inscripciones.');
+        }
+
         $this->ensureValidSeasonDelegate($data['delegate_id'] ?? null);
 
         $seasonTeam->update([
@@ -125,46 +127,33 @@ class SeasonTeamService
      */
     public function seasonsFor(User $actor): Collection
     {
-        $isDelegate = $actor->hasRole('delegado') && $actor->can('teams.manage');
         $isOrganizer = $actor->hasRole('organizador') && $actor->can('seasons.manage');
-        $ownTournament = fn ($t) => $t->where('organizer_id', $actor->id);
 
         return Season::query()
             ->with('tournament:id,name,organizer_id')
             ->where('status', '!=', SeasonStatus::Closed->value)
-            ->unless($actor->hasRole('admin'), function ($q) use ($isDelegate, $isOrganizer, $ownTournament) {
-                $q->where(function ($q) use ($isDelegate, $isOrganizer, $ownTournament) {
-                    // Borrador: el delegado en cualquier torneo; el organizador en los suyos.
-                    $q->where(function ($q) use ($isDelegate, $isOrganizer, $ownTournament) {
-                        $q->where('status', SeasonStatus::Draft->value)
-                            ->where(function ($q) use ($isDelegate, $isOrganizer, $ownTournament) {
-                                $q->whereRaw($isDelegate ? '1 = 1' : '1 = 0')
-                                    ->when($isOrganizer, fn ($q) => $q->orWhereHas('tournament', $ownTournament));
-                            });
-                    });
-
-                    // En curso: solo el organizador de ese torneo.
-                    if ($isOrganizer) {
-                        $q->orWhere(fn ($q) => $q->where('status', SeasonStatus::Active->value)
-                            ->whereHas('tournament', $ownTournament));
-                    }
-                });
-            })
+            // Admin: todas las no cerradas. Organizador: las de sus torneos.
+            // Delegado (u otro rol): ninguna, ya no inscribe equipos.
+            ->unless($actor->hasRole('admin'), fn ($q) => $isOrganizer
+                ? $q->whereHas('tournament', fn ($t) => $t->where('organizer_id', $actor->id))
+                : $q->whereRaw('1 = 0'))
             ->orderByDesc('start_date')
             ->get();
     }
 
     /**
      * Equipos que $actor puede inscribir en $season (activos y aun no
-     * inscritos). El delegado solo ve los suyos, salvo que sea organizador
-     * de ese torneo.
+     * inscritos). Vacio si no es admin ni organizador de ese torneo.
      */
     public function teamsFor(User $actor, Season $season): Collection
     {
+        if (! $this->isManager($actor, $season)) {
+            return collect();
+        }
+
         return Team::query()
             ->where('is_active', true)
             ->whereDoesntHave('seasonTeams', fn ($q) => $q->where('season_id', $season->id))
-            ->when(! $this->isManager($actor, $season), fn ($q) => $q->where('delegate_id', $actor->id))
             ->orderBy('name')
             ->get(['id', 'name']);
     }
@@ -173,17 +162,15 @@ class SeasonTeamService
     public function isManager(User $actor, Season $season): bool
     {
         return $actor->hasRole('admin')
-            || ($actor->hasRole('organizador') && $season->tournament->organizer_id === $actor->id);
+            || ($actor->hasRole('organizador')
+                && $actor->can('seasons.manage')
+                && $season->tournament->organizer_id === $actor->id);
     }
 
-    private function seasonRejectionReason(Season $season, User $actor): string
+    private function seasonRejectionReason(Season $season): string
     {
         if ($season->status === SeasonStatus::Closed) {
             return 'La temporada está cerrada: no admite inscripciones.';
-        }
-
-        if ($season->status === SeasonStatus::Active) {
-            return 'La temporada ya está en curso: solo el organizador del torneo puede inscribir equipos.';
         }
 
         return 'No puedes inscribir equipos en esta temporada.';

@@ -93,6 +93,12 @@ class Index extends Component
         return auth()->user()->hasRole('admin');
     }
 
+    /** Admin u organizador eligen el delegado del equipo (el delegado no). */
+    public function canAssignDelegate(): bool
+    {
+        return app(TeamRegistrationService::class)->canAssignDelegate(auth()->user());
+    }
+
     public function create(): void
     {
         $this->authorize('create', Team::class);

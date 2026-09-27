@@ -120,11 +120,11 @@
                     @error('form.name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
-                @if ($this->isAdmin())
+                @if ($this->canAssignDelegate())
                     <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
                         <div class="flex items-center justify-between">
                             <label class="block text-sm font-medium text-gray-700">Delegado responsable</label>
-                            @if (! $form['delegate_id'])
+                            @if (! $form['delegate_id'] && $this->isAdmin())
                                 <button type="button" wire:click="toggleCreatingDelegate"
                                         class="text-xs font-semibold text-indigo-600 hover:text-indigo-500">
                                     {{ $creatingDelegate ? '← Volver al selector' : '+ Crear nueva cuenta' }}
@@ -132,7 +132,7 @@
                             @endif
                         </div>
 
-                        @if ($creatingDelegate)
+                        @if ($creatingDelegate && $this->isAdmin())
                             {{-- Solo visible para admin: crear cuentas es una regla de negocio
                                  exclusiva de admin, revalidada tambien en el Service. --}}
                             <div class="mt-2 space-y-2 rounded-lg bg-white p-3 ring-1 ring-gray-200">

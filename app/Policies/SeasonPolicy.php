@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Models\Season;
+use App\Models\Tournament;
 use App\Models\User;
 
 class SeasonPolicy
@@ -25,9 +26,18 @@ class SeasonPolicy
         return $user->hasAnyRole(['admin', 'organizador', 'delegado']);
     }
 
+    /**
+     * "Flujo de permisos" punto 2 de CLAUDE.md: el organizador crea
+     * temporadas SOLO dentro de un torneo que el admin le asigno. Aqui aun
+     * no se conoce el torneo destino, asi que se exige tener al menos uno;
+     * que el tournament_id enviado sea suyo lo revalida
+     * SeasonService::ensureCanUseTournament().
+     */
     public function create(User $user): bool
     {
-        return $user->hasRole('organizador') && $user->can('seasons.manage');
+        return $user->hasRole('organizador')
+            && $user->can('seasons.manage')
+            && Tournament::where('organizer_id', $user->id)->exists();
     }
 
     public function update(User $user, Season $season): bool

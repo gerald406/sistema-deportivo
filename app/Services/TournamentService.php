@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Tournament;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +22,13 @@ class TournamentService
      */
     public function register(array $data, User $actor): Tournament
     {
+        // "Flujo de permisos" punto 1 de CLAUDE.md: solo el admin crea torneos. Se revalida
+        // aqui y no solo en TournamentPolicy::create porque cualquier
+        // metodo publico del componente es invocable desde el navegador.
+        if (! $actor->hasRole('admin')) {
+            throw new AuthorizationException('Solo el administrador puede crear torneos.');
+        }
+
         $data['organizer_id'] = $this->resolveOrganizerId($data, $actor);
 
         return Tournament::create($data);
