@@ -50,6 +50,7 @@ class ResultService
     public function __construct(
         private GameMatchService $matches,
         private MatchPeriodService $periods,
+        private SuspensionService $suspensions,
     ) {
     }
 
@@ -110,7 +111,7 @@ class ResultService
                 'periods' => $match->periods->map(fn ($p) => [$p->period_number, $p->home_points, $p->away_points])->values()->all(),
             ];
 
-            $suspensionsDeleted = $match->suspensions()->where('is_served', false)->delete();
+            $suspensionsDeleted = $this->suspensions->deleteUnservedForMatch($match);
 
             $log = MatchReopenLog::create([
                 'match_id' => $match->id,
@@ -168,7 +169,11 @@ class ResultService
      */
     private function afterResultChanged(GameMatch $match): void
     {
-        //
+        // Sanciones automaticas (regla 6A): solo al CERRAR. En la
+        // reapertura ya se borraron las pendientes (deleteUnservedForMatch).
+        if (in_array($match->status, [MatchStatus::Played, MatchStatus::Walkover], true)) {
+            $this->suspensions->generateForMatch($match);
+        }
     }
 
     private function closeHeadToHead(GameMatch $match, array $input): void

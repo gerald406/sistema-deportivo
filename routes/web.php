@@ -16,6 +16,7 @@ use App\Livewire\Results\Index as ResultsIndex;
 use App\Livewire\Rosters\Index as RostersIndex;
 use App\Livewire\SeasonTeams\Index as SeasonTeamsIndex;
 use App\Livewire\Seasons\Index as SeasonsIndex;
+use App\Livewire\Suspensions\Index as SuspensionsIndex;
 use App\Livewire\Teams\Index as TeamsIndex;
 use App\Livewire\Tournaments\Index as TournamentsIndex;
 use App\Livewire\Venues\Index as VenuesIndex;
@@ -68,6 +69,9 @@ Route::middleware([
 
     Route::get('/incidencias', MatchEventsIndex::class)
         ->name('match-events.index');
+
+    Route::get('/sanciones', SuspensionsIndex::class)
+        ->name('suspensions.index');
 
     Route::get('/categorias', CategoriesIndex::class)
         ->name('categories.index');
