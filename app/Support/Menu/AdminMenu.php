@@ -27,6 +27,13 @@ class AdminMenu
 
     private static function resolveItem(array $item, User $user): ?array
     {
+        // El 'role'/'permission' del padre aplica a todo su submenu (ej.
+        // Administracion, solo admin): sin esto sus hijos, que no declaran
+        // regla propia, quedaban visibles para cualquier rol.
+        if (! self::isVisible($item, $user)) {
+            return null;
+        }
+
         if (! empty($item['children'])) {
             $children = array_values(array_filter(
                 $item['children'],
