@@ -146,17 +146,25 @@ class Index extends Component
         return SeasonAccess::manageableSeasons(auth()->user());
     }
 
+    /**
+     * Temporada del formulario, solo si el usuario la gestiona: season_id
+     * viene del navegador y las opciones (jornadas, equipos, plantel) no
+     * deben revelar datos de temporadas ajenas (el delegado no gestiona
+     * ninguna). Incluye Cerradas para poder abrir un partido existente.
+     */
     public function formSeason(): ?Season
     {
         return ctype_digit((string) $this->form['season_id'])
-            ? Season::with('sport', 'tournament')->find($this->form['season_id'])
+            ? SeasonAccess::manageableSeasons(auth()->user(), includeClosed: true)->firstWhere('id', (int) $this->form['season_id'])
             : null;
     }
 
     public function matchdayOptions(): Collection
     {
-        return ctype_digit((string) $this->form['season_id'])
-            ? Matchday::where('season_id', $this->form['season_id'])->orderBy('start_date')->orderBy('id')->get(['id', 'name', 'is_completed'])
+        $season = $this->formSeason();
+
+        return $season
+            ? Matchday::where('season_id', $season->id)->orderBy('start_date')->orderBy('id')->get(['id', 'name', 'is_completed'])
             : collect();
     }
 
@@ -190,18 +198,22 @@ class Index extends Component
 
     public function teamOptions(): Collection
     {
-        return ctype_digit((string) $this->form['season_id'])
-            ? SeasonTeam::with('team:id,name')->where('season_id', $this->form['season_id'])->where('is_active', true)->get()
+        $season = $this->formSeason();
+
+        return $season
+            ? SeasonTeam::with('team:id,name')->where('season_id', $season->id)->where('is_active', true)->get()
                 ->map(fn ($st) => ['id' => $st->id, 'label' => $st->team->name])->sortBy('label')->values()
             : collect();
     }
 
     public function playerOptions(): Collection
     {
-        return ctype_digit((string) $this->form['season_id'])
+        $season = $this->formSeason();
+
+        return $season
             ? SeasonTeamPlayer::with(['player:id,first_name,last_name', 'seasonTeam.team:id,name'])
                 ->where('status', SeasonTeamPlayerStatus::Active->value)
-                ->whereHas('seasonTeam', fn ($q) => $q->where('season_id', $this->form['season_id'])->where('is_active', true))
+                ->whereHas('seasonTeam', fn ($q) => $q->where('season_id', $season->id)->where('is_active', true))
                 ->get()
                 ->map(fn ($e) => ['id' => $e->id, 'label' => "{$e->player->last_name}, {$e->player->first_name} — {$e->seasonTeam->team->name}"])
                 ->sortBy('label')->values()
@@ -240,7 +252,7 @@ class Index extends Component
 
     public function edit(int $id, GameMatchService $service): void
     {
-        $match = GameMatch::findOrFail($id);
+        $match = $this->findVisibleMatch($id);
         $this->authorize('update', $match);
 
         $this->editingId = $match->id;
@@ -276,7 +288,7 @@ class Index extends Component
         $actor = auth()->user();
 
         if ($this->editingId) {
-            $match = GameMatch::findOrFail($this->editingId);
+            $match = $this->findVisibleMatch($this->editingId);
             $this->authorize('update', $match);
             $service->update($match, $data, $participants, $actor);
         } else {
@@ -291,7 +303,7 @@ class Index extends Component
 
     public function delete(int $id, GameMatchService $service): void
     {
-        $match = GameMatch::findOrFail($id);
+        $match = $this->findVisibleMatch($id);
         $this->authorize('delete', $match);
 
         $result = $service->delete($match);
@@ -317,13 +329,12 @@ class Index extends Component
         return ParticipantLabel::for($p);
     }
 
-    public function render()
+    public function render(GameMatchService $service)
     {
         $user = auth()->user();
         $term = trim($this->search);
 
-        $query = GameMatch::query()
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+        $query = $service->scopeVisibleTo(GameMatch::query(), $user)
             ->when($term !== '', fn ($q) => $q->whereHas('participants', fn ($p) => $p->whereHasMorph('participant', [SeasonTeam::class, SeasonTeamPlayer::class],
                 fn ($m, string $type) => $type === SeasonTeam::class
                     ? $m->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$term}%"))
@@ -344,12 +355,13 @@ class Index extends Component
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('id');
 
-        $filterSeasons = SeasonAccess::manageableSeasons($user, includeClosed: true);
+        $filterSeasons = $service->visibleSeasons($user);
 
         return view('livewire.matches.index', [
             'matches' => $query->paginate($this->perPageLimit()),
             'filterSeasons' => $filterSeasons,
-            'filterMatchdays' => ctype_digit($this->seasonFilter)
+            // Jornadas solo de una temporada visible (seasonFilter viene del navegador).
+            'filterMatchdays' => ctype_digit($this->seasonFilter) && $filterSeasons->contains('id', (int) $this->seasonFilter)
                 ? Matchday::where('season_id', (int) $this->seasonFilter)->orderBy('start_date')->orderBy('id')->get(['id', 'name'])
                 : collect(),
             'statusOptions' => MatchStatus::cases(),
@@ -359,6 +371,18 @@ class Index extends Component
     protected function sortableFields(): array
     {
         return ['scheduled_at', 'status', 'round_type', 'participants_count'];
+    }
+
+    /**
+     * Ids que llegan del navegador se buscan acotados al alcance del
+     * usuario (GameMatchService::scopeVisibleTo): un partido ajeno da 404
+     * antes de llegar a la Policy.
+     */
+    private function findVisibleMatch(int $id): GameMatch
+    {
+        return app(GameMatchService::class)
+            ->scopeVisibleTo(GameMatch::query(), auth()->user())
+            ->findOrFail($id);
     }
 
     /** Traduce el estado del formulario al formato de GameMatchService. */

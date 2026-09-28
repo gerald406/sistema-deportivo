@@ -58,7 +58,8 @@ return [
             'icon' => 'fa-solid fa-futbol',
             'children' => [
                 ['label' => 'Jornadas', 'route' => 'matchdays.index', 'permission' => 'matches.manage'],
-                ['label' => 'Partidos', 'route' => 'matches.index', 'permission' => 'matches.manage'],
+                // Delegado: solo lectura, partidos de su equipo (GameMatchPolicy::viewAny).
+                ['label' => 'Partidos', 'route' => 'matches.index', 'role' => ['admin', 'organizador', 'delegado']],
                 ['label' => 'Parciales', 'route' => 'periods.index', 'permission' => 'matches.manage'],
                 ['label' => 'Incidencias', 'route' => 'match-events.index', 'permission' => 'matches.manage'],
                 ['label' => 'Resultados', 'route' => 'results.index', 'permission' => 'matches.manage'],

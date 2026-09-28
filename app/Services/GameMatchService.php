@@ -22,6 +22,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -153,6 +154,69 @@ class GameMatchService
         }
 
         return true;
+    }
+
+    /**
+     * Partidos que $actor ve en /partidos y /resultados (union si tiene
+     * varios roles). Solo lectura para el delegado: escribir sigue siendo
+     * SeasonAccess::manages() (organizador del torneo o admin).
+     *   - Admin: todos.
+     *   - Organizador: los de temporadas de un torneo suyo.
+     *   - Delegado: aquellos donde participa su equipo, como equipo
+     *     (season_team) o con jugadores de su plantel (season_team_player,
+     *     individual/ajedrez). "Su equipo" = inscripciones visibles segun
+     *     SeasonTeamService::scopeVisibleTo() (delegado efectivo).
+     *   - Cualquier otro: ninguno.
+     */
+    public function scopeVisibleTo(Builder $query, User $actor): Builder
+    {
+        if ($actor->hasRole('admin')) {
+            return $query;
+        }
+
+        $isOrganizer = $actor->hasRole('organizador');
+        $isDelegate = $actor->hasRole('delegado');
+
+        if (! $isOrganizer && ! $isDelegate) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $seasonTeams = app(SeasonTeamService::class);
+
+        return $query->where(function ($q) use ($actor, $isOrganizer, $isDelegate, $seasonTeams) {
+            if ($isOrganizer) {
+                $q->orWhereHas('season.tournament', fn ($t) => $t->where('organizer_id', $actor->id));
+            }
+
+            if ($isDelegate) {
+                $q->orWhereHas('participants', fn ($p) => $p->whereHasMorph('participant', [SeasonTeam::class, SeasonTeamPlayer::class],
+                    fn ($m, string $type) => $type === SeasonTeam::class
+                        ? $seasonTeams->scopeVisibleTo($m, $actor)
+                        : $m->whereHas('seasonTeam', fn ($st) => $seasonTeams->scopeVisibleTo($st, $actor))));
+            }
+        });
+    }
+
+    /** El partido esta dentro del alcance de $actor (GameMatchPolicy::view). */
+    public function isVisibleTo(User $actor, GameMatch $match): bool
+    {
+        return $this->scopeVisibleTo(GameMatch::query(), $actor)->whereKey($match->id)->exists();
+    }
+
+    /**
+     * Temporadas para el filtro de /partidos y /resultados: admin todas;
+     * organizador las de sus torneos (tengan o no partidos); delegado las
+     * que tienen algun partido visible para el.
+     */
+    public function visibleSeasons(User $actor): Collection
+    {
+        return Season::query()
+            ->with(['tournament:id,name,organizer_id', 'sport:id,name,format_type'])
+            ->unless($actor->hasRole('admin'), fn ($q) => $q->where(fn ($q) => $q
+                ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('tournament', fn ($t) => $t->where('organizer_id', $actor->id)))
+                ->orWhereHas('matches', fn ($m) => $this->scopeVisibleTo($m, $actor))))
+            ->orderByDesc('start_date')
+            ->get();
     }
 
     public function formatFor(Season $season, ?Discipline $discipline): SportFormatType
