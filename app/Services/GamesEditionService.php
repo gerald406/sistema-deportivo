@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\GamesEdition;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 
 /**
@@ -54,5 +56,19 @@ class GamesEditionService
         }
 
         return true;
+    }
+
+    /**
+     * Ediciones que $actor ve en el medallero de /reportes: las que agrupan
+     * alguna temporada visible para el (SeasonService::scopeVisibleTo()).
+     * El admin ve todas, incluso las que aun no tienen temporadas.
+     */
+    public function scopeVisibleTo(Builder $query, User $actor): Builder
+    {
+        if ($actor->hasRole('admin')) {
+            return $query;
+        }
+
+        return $query->whereHas('seasons', fn ($s) => app(SeasonService::class)->scopeVisibleTo($s, $actor));
     }
 }

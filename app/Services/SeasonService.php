@@ -8,6 +8,7 @@ use App\Models\Season;
 use App\Models\Tournament;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -166,5 +167,29 @@ class SeasonService
         foreach ($toCreate as $values) {
             $season->scoringConfigs()->create($values);
         }
+    }
+
+    /**
+     * Temporadas que $actor ve en los reportes de solo lectura (/reportes),
+     * union si tiene varios roles:
+     *   - Admin: todas.
+     *   - Organizador: las de sus torneos.
+     *   - Delegado: aquellas donde su equipo esta inscrito
+     *     (SeasonTeamService::scopeVisibleTo(), delegado efectivo).
+     *   - Cualquier otro: ninguna.
+     */
+    public function scopeVisibleTo(Builder $query, User $actor): Builder
+    {
+        if ($actor->hasRole('admin')) {
+            return $query;
+        }
+
+        if (! $actor->hasAnyRole(['organizador', 'delegado'])) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(fn ($q) => $q
+            ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('tournament', fn ($t) => $t->where('organizer_id', $actor->id)))
+            ->orWhereHas('seasonTeams', fn ($st) => app(SeasonTeamService::class)->scopeVisibleTo($st, $actor)));
     }
 }
