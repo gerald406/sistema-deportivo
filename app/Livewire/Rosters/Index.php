@@ -12,6 +12,7 @@ use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use App\Models\SportPosition;
 use App\Services\SeasonTeamPlayerService;
+use App\Services\SeasonTeamService;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -162,7 +163,7 @@ class Index extends Component
 
     public function edit(int $id): void
     {
-        $entry = SeasonTeamPlayer::findOrFail($id);
+        $entry = $this->findVisibleEntry($id);
         $this->authorize('update', $entry);
 
         $this->editingId = $entry->id;
@@ -189,7 +190,7 @@ class Index extends Component
         $data['observations'] = trim((string) $data['observations']) === '' ? null : $data['observations'];
 
         if ($this->editingId) {
-            $entry = SeasonTeamPlayer::findOrFail($this->editingId);
+            $entry = $this->findVisibleEntry($this->editingId);
             $this->authorize('update', $entry);
             $service->update($entry, $data);
         } else {
@@ -204,7 +205,7 @@ class Index extends Component
 
     public function delete(int $id, SeasonTeamPlayerService $service): void
     {
-        $entry = SeasonTeamPlayer::findOrFail($id);
+        $entry = $this->findVisibleEntry($id);
         $this->authorize('delete', $entry);
 
         $result = $service->delete($entry);
@@ -224,9 +225,11 @@ class Index extends Component
         $this->resetForm();
     }
 
-    public function render()
+    public function render(SeasonTeamPlayerService $service, SeasonTeamService $seasonTeams)
     {
-        $query = SeasonTeamPlayer::query()
+        $user = auth()->user();
+
+        $query = $service->scopeVisibleTo(SeasonTeamPlayer::query(), $user)
             ->addSelect([
                 'season_team_player.*',
                 // Alias para ordenar por apellido sin JOIN.
@@ -249,7 +252,9 @@ class Index extends Component
 
         return view('livewire.rosters.index', [
             'entries' => $query->paginate($this->perPageLimit()),
-            'filterSeasonTeams' => SeasonTeam::with(['team:id,name', 'season:id,name'])->get()->sortBy(fn ($st) => $st->team->name),
+            // Mismo alcance que /inscripciones: el filtro no lista equipos ajenos.
+            'filterSeasonTeams' => $seasonTeams->scopeVisibleTo(SeasonTeam::query(), $user)
+                ->with(['team:id,name', 'season:id,name'])->get()->sortBy(fn ($st) => $st->team->name),
         ]);
     }
 
@@ -261,8 +266,21 @@ class Index extends Component
     private function formSeasonTeam(): ?SeasonTeam
     {
         return ctype_digit((string) $this->form['season_team_id'])
-            ? SeasonTeam::with('season')->find($this->form['season_team_id'])
+            ? app(SeasonTeamService::class)->scopeVisibleTo(SeasonTeam::query(), auth()->user())
+                ->with('season')->find($this->form['season_team_id'])
             : null;
+    }
+
+    /**
+     * Ids que llegan del navegador se buscan acotados al alcance del
+     * usuario (scopeVisibleTo): un convocado de otro torneo/equipo da 404
+     * antes de llegar a la Policy.
+     */
+    private function findVisibleEntry(int $id): SeasonTeamPlayer
+    {
+        return app(SeasonTeamPlayerService::class)
+            ->scopeVisibleTo(SeasonTeamPlayer::query(), auth()->user())
+            ->findOrFail($id);
     }
 
     private function resetForm(): void

@@ -7,6 +7,7 @@ namespace App\Policies;
 use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use App\Models\User;
+use App\Services\SeasonTeamPlayerService;
 
 class SeasonTeamPlayerPolicy
 {
@@ -19,6 +20,16 @@ class SeasonTeamPlayerPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasAnyRole(['admin', 'organizador', 'delegado']);
+    }
+
+    /**
+     * Mismo alcance que el listado de /planteles (una sola fuente de
+     * verdad): SeasonTeamPlayerService::scopeVisibleTo(). El admin pasa por
+     * Gate::before.
+     */
+    public function view(User $user, SeasonTeamPlayer $entry): bool
+    {
+        return app(SeasonTeamPlayerService::class)->isVisibleTo($user, $entry);
     }
 
     public function create(User $user): bool

@@ -13,6 +13,7 @@ use App\Models\SportPosition;
 use App\Models\User;
 use App\Policies\SeasonTeamPlayerPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -127,6 +128,32 @@ class SeasonTeamPlayerService
         }
 
         return true;
+    }
+
+    /**
+     * Convocados que $actor ve en /planteles: los de inscripciones que ve
+     * en /inscripciones (SeasonTeamService::scopeVisibleTo(), misma regla
+     * por construccion). Sin created_by: aqui no se crean jugadores
+     * sueltos, se convocan a una inscripcion que ya determina el alcance.
+     * Tambien es la base del alcance de /jugadores
+     * (PlayerRegistrationService::scopeVisibleTo()).
+     */
+    public function scopeVisibleTo(Builder $query, User $actor): Builder
+    {
+        if ($actor->hasRole('admin')) {
+            return $query;
+        }
+
+        return $query->whereHas('seasonTeam', fn ($st) => app(SeasonTeamService::class)->scopeVisibleTo($st, $actor));
+    }
+
+    /**
+     * El convocado esta dentro del alcance de $actor (lo usa
+     * SeasonTeamPlayerPolicy::view): misma regla que scopeVisibleTo().
+     */
+    public function isVisibleTo(User $actor, SeasonTeamPlayer $entry): bool
+    {
+        return $this->scopeVisibleTo(SeasonTeamPlayer::query(), $actor)->whereKey($entry->id)->exists();
     }
 
     /** Inscripciones cuyo plantel puede gestionar $actor (temporadas no cerradas). */
