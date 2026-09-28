@@ -6,6 +6,7 @@ namespace App\Policies;
 
 use App\Models\Player;
 use App\Models\User;
+use App\Services\PlayerRegistrationService;
 use Closure;
 
 class PlayerPolicy
@@ -26,13 +27,14 @@ class PlayerPolicy
         return $user->hasAnyRole(['admin', 'organizador', 'delegado']);
     }
 
+    /**
+     * Mismo alcance que el listado de /jugadores (una sola fuente de
+     * verdad): PlayerRegistrationService::scopeVisibleTo(). El admin pasa
+     * por Gate::before.
+     */
     public function view(User $user, Player $player): bool
     {
-        if ($user->hasAnyRole(['admin', 'organizador'])) {
-            return true;
-        }
-
-        return $this->belongsToDelegate($player, $user);
+        return app(PlayerRegistrationService::class)->isVisibleTo($user, $player);
     }
 
     public function create(User $user): bool

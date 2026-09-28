@@ -99,4 +99,14 @@ class PlayerRegistrationService
             }
         });
     }
+
+    /**
+     * El jugador esta dentro del alcance de $actor (lo usa
+     * PlayerPolicy::view): misma regla que scopeVisibleTo(), aplicada a un
+     * solo registro.
+     */
+    public function isVisibleTo(User $actor, Player $player): bool
+    {
+        return $this->scopeVisibleTo(Player::query(), $actor)->whereKey($player->id)->exists();
+    }
 }
