@@ -82,7 +82,7 @@ class Index extends Component
 
     public function edit(int $id): void
     {
-        $player = Player::findOrFail($id);
+        $player = $this->findVisiblePlayer($id);
         $this->authorize('update', $player);
 
         $this->editingId = $player->id;
@@ -103,7 +103,7 @@ class Index extends Component
         $data = $validated['form'];
 
         if ($this->editingId) {
-            $player = Player::findOrFail($this->editingId);
+            $player = $this->findVisiblePlayer($this->editingId);
             $this->authorize('update', $player);
 
             if ($this->newPhoto) {
@@ -129,7 +129,7 @@ class Index extends Component
 
     public function delete(int $id, PlayerRegistrationService $service): void
     {
-        $player = Player::findOrFail($id);
+        $player = $this->findVisiblePlayer($id);
         $this->authorize('delete', $player);
 
         $result = $service->delete($player);
@@ -149,11 +149,11 @@ class Index extends Component
         $this->resetForm();
     }
 
-    public function render()
+    public function render(PlayerRegistrationService $service)
     {
         $user = auth()->user();
 
-        $query = Player::query()
+        $query = $service->scopeVisibleTo(Player::query(), $user)
             ->when($this->search !== '', function ($q) {
                 $q->where(function ($q) {
                     $q->where('first_name', 'like', "%{$this->search}%")
@@ -179,6 +179,18 @@ class Index extends Component
     protected function sortableFields(): array
     {
         return ['last_name', 'first_name', 'dni', 'birth_date', 'is_active'];
+    }
+
+    /**
+     * Ids que llegan del navegador se buscan acotados al alcance del
+     * usuario (scopeVisibleTo): quien mande el id de un jugador fuera de
+     * su torneo/equipo recibe 404 antes de llegar a la Policy.
+     */
+    private function findVisiblePlayer(int $id): Player
+    {
+        return app(PlayerRegistrationService::class)
+            ->scopeVisibleTo(Player::query(), auth()->user())
+            ->findOrFail($id);
     }
 
     private function deletePhotoIfExists(?string $path): void
