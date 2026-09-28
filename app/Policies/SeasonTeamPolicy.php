@@ -6,6 +6,8 @@ namespace App\Policies;
 
 use App\Models\SeasonTeam;
 use App\Models\User;
+use App\Services\SeasonTeamService;
+use Closure;
 
 class SeasonTeamPolicy
 {
@@ -21,6 +23,16 @@ class SeasonTeamPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasAnyRole(['admin', 'organizador', 'delegado']);
+    }
+
+    /**
+     * Mismo alcance que el listado de /inscripciones (una sola fuente de
+     * verdad): SeasonTeamService::scopeVisibleTo(). El admin pasa por
+     * Gate::before.
+     */
+    public function view(User $user, SeasonTeam $seasonTeam): bool
+    {
+        return app(SeasonTeamService::class)->isVisibleTo($user, $seasonTeam);
     }
 
     public function create(User $user): bool
@@ -44,6 +56,30 @@ class SeasonTeamPolicy
     public function delete(User $user, SeasonTeam $seasonTeam): bool
     {
         return $this->isTournamentOrganizer($user, $seasonTeam);
+    }
+
+    /**
+     * Restriccion sobre season_team: inscripciones cuyo delegado EFECTIVO
+     * es $user. Replica en SQL la regla de SeasonTeam::effectiveDelegate():
+     * el delegado de la temporada, si existe, tiene precedencia; solo si es
+     * null cuenta el delegado general del club (teams.delegate_id).
+     *
+     * Unica version SQL de esa regla: la usan SeasonTeamService::scopeVisibleTo()
+     * y PlayerPolicy::managedRosterConstraint().
+     */
+    public static function effectiveDelegateConstraint(User $user): Closure
+    {
+        return function ($seasonTeam) use ($user) {
+            // where(closure) agrupa el OR entre parentesis: sin esto
+            // romperia la correlacion de un whereHas externo.
+            $seasonTeam->where(function ($q) use ($user) {
+                $q->where('season_team.delegate_id', $user->id)
+                    ->orWhere(function ($q) use ($user) {
+                        $q->whereNull('season_team.delegate_id')
+                            ->whereHas('team', fn ($team) => $team->where('delegate_id', $user->id));
+                    });
+            });
+        };
     }
 
     private function isTournamentOrganizer(User $user, SeasonTeam $seasonTeam): bool

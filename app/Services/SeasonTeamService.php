@@ -10,6 +10,7 @@ use App\Models\Season;
 use App\Models\SeasonTeam;
 use App\Models\Team;
 use App\Models\User;
+use App\Policies\SeasonTeamPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
@@ -121,6 +122,49 @@ class SeasonTeamService
         }
 
         return true;
+    }
+
+    /**
+     * Inscripciones que $actor ve en /inscripciones (union si tiene varios
+     * roles). Tambien es la base del alcance de /planteles y /jugadores
+     * (SeasonTeamPlayerService::scopeVisibleTo()).
+     *   - Admin: todas.
+     *   - Organizador: las de temporadas de un torneo suyo.
+     *   - Delegado: las de equipos cuyo delegado EFECTIVO es el
+     *     (SeasonTeamPolicy::effectiveDelegateConstraint()).
+     *   - Cualquier otro: ninguna.
+     */
+    public function scopeVisibleTo(Builder $query, User $actor): Builder
+    {
+        if ($actor->hasRole('admin')) {
+            return $query;
+        }
+
+        $isOrganizer = $actor->hasRole('organizador');
+        $isDelegate = $actor->hasRole('delegado');
+
+        if (! $isOrganizer && ! $isDelegate) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function ($q) use ($actor, $isOrganizer, $isDelegate) {
+            if ($isOrganizer) {
+                $q->orWhereHas('season.tournament', fn ($t) => $t->where('organizer_id', $actor->id));
+            }
+
+            if ($isDelegate) {
+                $q->orWhere(SeasonTeamPolicy::effectiveDelegateConstraint($actor));
+            }
+        });
+    }
+
+    /**
+     * La inscripcion esta dentro del alcance de $actor (lo usa
+     * SeasonTeamPolicy::view): misma regla que scopeVisibleTo().
+     */
+    public function isVisibleTo(User $actor, SeasonTeam $seasonTeam): bool
+    {
+        return $this->scopeVisibleTo(SeasonTeam::query(), $actor)->whereKey($seasonTeam->id)->exists();
     }
 
     /**

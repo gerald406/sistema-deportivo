@@ -58,10 +58,8 @@ class PlayerPolicy
 
     /**
      * Restriccion sobre season_team_player: inscripciones cuyo delegado
-     * EFECTIVO es $user. Replica en SQL la regla de
-     * SeasonTeam::effectiveDelegate(): el delegado de la temporada, si
-     * existe, tiene precedencia; solo si es null cuenta el delegado
-     * general del club (teams.delegate_id).
+     * EFECTIVO es $user (SeasonTeamPolicy::effectiveDelegateConstraint(),
+     * la unica version SQL de SeasonTeam::effectiveDelegate()).
      *
      * Publica y estatica para que un listado pueda precargarla con
      * withExists() (ver managedAttribute()) y evitar una consulta por
@@ -69,19 +67,7 @@ class PlayerPolicy
      */
     public static function managedRosterConstraint(User $user): Closure
     {
-        return function ($roster) use ($user) {
-            $roster->whereHas('seasonTeam', function ($seasonTeam) use ($user) {
-                // where(closure) agrupa el OR entre parentesis: sin esto
-                // romperia la correlacion del whereHas.
-                $seasonTeam->where(function ($q) use ($user) {
-                    $q->where('delegate_id', $user->id)
-                        ->orWhere(function ($q) use ($user) {
-                            $q->whereNull('delegate_id')
-                                ->whereHas('team', fn ($team) => $team->where('delegate_id', $user->id));
-                        });
-                });
-            });
-        };
+        return fn ($roster) => $roster->whereHas('seasonTeam', SeasonTeamPolicy::effectiveDelegateConstraint($user));
     }
 
     /**

@@ -154,7 +154,7 @@ class Index extends Component
     public function formTeam(): ?Team
     {
         $teamId = $this->editingId
-            ? SeasonTeam::whereKey($this->editingId)->value('team_id')
+            ? $this->findVisibleSeasonTeam($this->editingId)->team_id
             : (ctype_digit((string) $this->form['team_id']) ? (int) $this->form['team_id'] : null);
 
         return $teamId ? Team::with('delegate:id,name')->find($teamId, ['id', 'name', 'delegate_id']) : null;
@@ -171,7 +171,7 @@ class Index extends Component
         $user = auth()->user();
 
         if ($this->editingId) {
-            return $user->can('update', SeasonTeam::findOrFail($this->editingId));
+            return $user->can('update', $this->findVisibleSeasonTeam($this->editingId));
         }
 
         $season = $this->formSeason();
@@ -194,7 +194,7 @@ class Index extends Component
 
     public function edit(int $id): void
     {
-        $seasonTeam = SeasonTeam::findOrFail($id);
+        $seasonTeam = $this->findVisibleSeasonTeam($id);
         $this->authorize('update', $seasonTeam);
 
         $this->editingId = $seasonTeam->id;
@@ -217,7 +217,7 @@ class Index extends Component
         }
 
         if ($this->editingId) {
-            $seasonTeam = SeasonTeam::findOrFail($this->editingId);
+            $seasonTeam = $this->findVisibleSeasonTeam($this->editingId);
             $this->authorize('update', $seasonTeam);
             $service->update($seasonTeam, $data, auth()->user());
         } else {
@@ -232,7 +232,7 @@ class Index extends Component
 
     public function delete(int $id, SeasonTeamService $service): void
     {
-        $seasonTeam = SeasonTeam::findOrFail($id);
+        $seasonTeam = $this->findVisibleSeasonTeam($id);
         $this->authorize('delete', $seasonTeam);
 
         $result = $service->delete($seasonTeam);
@@ -252,9 +252,17 @@ class Index extends Component
         $this->resetForm();
     }
 
-    public function render()
+    /** Inscripcion en edicion para la cabecera del modal (acotada al alcance). */
+    public function editingSeasonTeam(): ?SeasonTeam
     {
-        $query = SeasonTeam::query()
+        return $this->editingId ? $this->findVisibleSeasonTeam($this->editingId)->load(['team:id,name', 'season:id,name']) : null;
+    }
+
+    public function render(SeasonTeamService $service)
+    {
+        $user = auth()->user();
+
+        $query = $service->scopeVisibleTo(SeasonTeam::query(), $user)
             // Alias para poder ordenar por nombre de equipo sin JOIN.
             ->addSelect(['season_team.*', 'team_name' => Team::select('name')->whereColumn('teams.id', 'season_team.team_id')])
             ->when($this->search !== '', fn ($q) => $q->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$this->search}%")))
@@ -272,7 +280,12 @@ class Index extends Component
 
         return view('livewire.season-teams.index', [
             'seasonTeams' => $query->paginate($this->perPageLimit()),
-            'filterSeasons' => Season::with('tournament:id,name')->orderByDesc('start_date')->get(['id', 'name', 'tournament_id']),
+            // Solo temporadas con alguna inscripcion visible: el filtro no
+            // debe revelar temporadas de torneos ajenos (el admin ve todas).
+            'filterSeasons' => Season::with('tournament:id,name')
+                ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('seasonTeams', fn ($st) => $service->scopeVisibleTo($st, $user)))
+                ->orderByDesc('start_date')
+                ->get(['id', 'name', 'tournament_id']),
             'filterCategories' => Category::orderBy('name')->get(['id', 'name', 'gender']),
         ]);
     }
@@ -280,6 +293,18 @@ class Index extends Component
     protected function sortableFields(): array
     {
         return ['team_name', 'roster_count', 'is_active', 'created_at'];
+    }
+
+    /**
+     * Ids que llegan del navegador se buscan acotados al alcance del
+     * usuario (scopeVisibleTo): una inscripcion de otro torneo/equipo da
+     * 404 antes de llegar a la Policy.
+     */
+    private function findVisibleSeasonTeam(int $id): SeasonTeam
+    {
+        return app(SeasonTeamService::class)
+            ->scopeVisibleTo(SeasonTeam::query(), auth()->user())
+            ->findOrFail($id);
     }
 
     private function resetForm(): void

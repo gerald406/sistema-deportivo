@@ -143,7 +143,7 @@
             <form wire:submit="save" class="mt-4 space-y-4">
                 @if ($editingId)
                     {{-- Temporada y equipo no se cambian: seria otra inscripcion. --}}
-                    @php($current = \App\Models\SeasonTeam::with(['team:id,name', 'season:id,name'])->find($editingId))
+                    @php($current = $this->editingSeasonTeam())
                     <div class="rounded-lg bg-gray-50 p-3 text-sm">
                         <p class="font-medium text-gray-900">{{ $current?->team->name }}</p>
                         <p class="text-gray-500">{{ $current?->season->name }}</p>
