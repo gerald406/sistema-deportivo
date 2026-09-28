@@ -96,7 +96,7 @@
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
-                                    @if ($match->status === \App\Enums\MatchStatus::Pending && $match->participants_count > 0)
+                                    @if ($match->status === \App\Enums\MatchStatus::Pending && $match->participants_count > 0 && $this->canManage($match))
                                         <button wire:click="openResult({{ $match->id }})" class="text-gray-400 hover:text-indigo-600" title="Cargar resultado">
                                             <i class="fa-solid fa-flag-checkered"></i>
                                         </button>

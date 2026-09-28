@@ -16,6 +16,7 @@ use App\Services\GameMatchService;
 use App\Services\ResultService;
 use App\Support\ParticipantLabel;
 use App\Support\SeasonAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -104,7 +105,7 @@ class Index extends Component
     public function editingMatch(): ?GameMatch
     {
         return $this->editingId
-            ? GameMatch::with(['season.sport', 'discipline', 'matchday', 'periods', 'participants' => ParticipantLabel::eagerLoad()])->find($this->editingId)
+            ? $this->visibleMatches()->with(['season.sport', 'discipline', 'matchday', 'periods', 'participants' => ParticipantLabel::eagerLoad()])->find($this->editingId)
             : null;
     }
 
@@ -116,6 +117,15 @@ class Index extends Component
         return $match ? app(ResultService::class)->scoreFromPeriods($match) : null;
     }
 
+    /**
+     * Cargar el resultado: solo quien gestiona la temporada (organizador del
+     * torneo o admin). El delegado ve /resultados en solo lectura.
+     */
+    public function canManage(GameMatch $match): bool
+    {
+        return SeasonAccess::manages(auth()->user(), $match->season);
+    }
+
     public function canReopen(GameMatch $match): bool
     {
         return in_array($match->status, [MatchStatus::Played, MatchStatus::Walkover], true)
@@ -124,8 +134,8 @@ class Index extends Component
 
     public function openResult(int $id): void
     {
-        $match = GameMatch::with('season.tournament')->findOrFail($id);
-        abort_unless(SeasonAccess::manages(auth()->user(), $match->season), 403);
+        $match = $this->visibleMatches()->with('season.tournament')->findOrFail($id);
+        abort_unless($this->canManage($match), 403);
 
         $this->editingId = $match->id;
         $this->walkover = '';
@@ -138,7 +148,8 @@ class Index extends Component
 
     public function saveResult(ResultService $service): void
     {
-        $match = GameMatch::findOrFail($this->editingId);
+        // ResultService::close() revalida SeasonAccess::manages().
+        $match = $this->visibleMatches()->findOrFail($this->editingId);
 
         $service->close($match, [
             'walkover' => $this->walkover ?: null,
@@ -153,7 +164,7 @@ class Index extends Component
 
     public function openReopen(int $id): void
     {
-        $match = GameMatch::with('season.tournament')->findOrFail($id);
+        $match = $this->visibleMatches()->with('season.tournament')->findOrFail($id);
         abort_unless($this->canReopen($match), 403);
 
         $this->reopeningId = $match->id;
@@ -170,7 +181,7 @@ class Index extends Component
      */
     public function reopen(ResultService $service): void
     {
-        $match = GameMatch::findOrFail($this->reopeningId);
+        $match = $this->visibleMatches()->findOrFail($this->reopeningId);
         $service->reopen($match, $this->reopenReason, auth()->user());
 
         $this->showReopenModal = false;
@@ -190,13 +201,12 @@ class Index extends Component
         $this->resetErrorBag();
     }
 
-    public function render()
+    public function render(GameMatchService $service)
     {
         $user = auth()->user();
         $term = trim($this->search);
 
-        $query = GameMatch::query()
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+        $query = $service->scopeVisibleTo(GameMatch::query(), $user)
             ->when($term !== '', fn ($q) => $q->whereHas('participants', fn ($p) => $p->whereHasMorph('participant', [SeasonTeam::class, SeasonTeamPlayer::class],
                 fn ($m, string $type) => $type === SeasonTeam::class
                     ? $m->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$term}%"))
@@ -214,7 +224,7 @@ class Index extends Component
 
         return view('livewire.results.index', [
             'matches' => $query->paginate($this->perPageLimit()),
-            'filterSeasons' => SeasonAccess::manageableSeasons($user, includeClosed: true),
+            'filterSeasons' => $service->visibleSeasons($user),
             'statusOptions' => MatchStatus::cases(),
         ]);
     }
@@ -222,5 +232,15 @@ class Index extends Component
     protected function sortableFields(): array
     {
         return ['scheduled_at', 'status', 'participants_count'];
+    }
+
+    /**
+     * Ids que llegan del navegador (editingId, reopeningId, parametros) se
+     * buscan acotados al alcance del usuario (GameMatchService::scopeVisibleTo):
+     * un partido ajeno da 404 antes de cualquier chequeo de permiso.
+     */
+    private function visibleMatches(): Builder
+    {
+        return app(GameMatchService::class)->scopeVisibleTo(GameMatch::query(), auth()->user());
     }
 }

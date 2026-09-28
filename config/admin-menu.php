@@ -62,7 +62,8 @@ return [
                 ['label' => 'Partidos', 'route' => 'matches.index', 'role' => ['admin', 'organizador', 'delegado']],
                 ['label' => 'Parciales', 'route' => 'periods.index', 'permission' => 'matches.manage'],
                 ['label' => 'Incidencias', 'route' => 'match-events.index', 'permission' => 'matches.manage'],
-                ['label' => 'Resultados', 'route' => 'results.index', 'permission' => 'matches.manage'],
+                // Delegado: solo lectura, resultados de su equipo (EventParticipantPolicy::viewAny).
+                ['label' => 'Resultados', 'route' => 'results.index', 'role' => ['admin', 'organizador', 'delegado']],
                 ['label' => 'Sanciones', 'route' => 'suspensions.index', 'permission' => 'matches.manage'],
                 // Solo lectura (auditoria). La accion "Reabrir resultado" vive en Resultados.
                 ['label' => 'Bitácora de reaperturas', 'route' => 'reopen-logs.index', 'permission' => 'matches.manage'],
