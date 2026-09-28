@@ -77,7 +77,8 @@ return [
             'children' => [
                 ['label' => 'Posiciones y medallero', 'route' => 'reports.index', 'permission' => 'reports.view'],
                 // PDFs por temporada: admin y organizador (SeasonPolicy::printReports).
-                ['label' => 'Padrón de jugadores', 'route' => 'reports.roster', 'role' => ['admin', 'organizador']],
+                // Padron: tambien el delegado, solo de su equipo (SeasonTeamPolicy::printRoster).
+                ['label' => 'Padrón de jugadores', 'route' => 'reports.roster', 'role' => ['admin', 'organizador', 'delegado']],
                 ['label' => 'Reporte gerencial', 'route' => 'reports.managerial', 'role' => ['admin', 'organizador']],
             ],
         ],

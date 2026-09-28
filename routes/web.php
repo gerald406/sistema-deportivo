@@ -117,7 +117,8 @@ Route::middleware([
     Route::get('/reportes', ReportsIndex::class)
         ->name('reports.index');
 
-    // Padron de Jugadores: filtros (solo admin/organizador, ver boot()) y PDF (SeasonPolicy::printReports).
+    // Padron de Jugadores: filtros acotados por rol (admin/organizador/delegado) y PDF
+    // (un equipo: SeasonTeamPolicy::printRoster; todos: SeasonPolicy::printReports).
     Route::get('/reportes/padron', RosterReport::class)
         ->name('reports.roster');
     Route::get('/reportes/padron/pdf', [RosterReportController::class, 'pdf'])

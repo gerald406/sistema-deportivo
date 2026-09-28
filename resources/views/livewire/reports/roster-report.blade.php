@@ -41,15 +41,31 @@
                 </select>
             </div>
 
+            @php($canPrintAll = $this->canPrintAll())
+
             <div class="{{ $showFilters ? 'block' : 'hidden sm:block' }}">
                 <label class="mb-2 block text-sm font-medium text-gray-700">
-                    <i class="fa-solid fa-users mr-1 text-blue-500"></i> Equipo (opcional)
+                    <i class="fa-solid fa-layer-group mr-1 text-emerald-500"></i> Categoría (opcional)
+                </label>
+                <select wire:model.live="categoryId" @disabled($seasonId === '')
+                        class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100">
+                    <option value="">-- Todas las categorías --</option>
+                    @foreach ($this->categories() as $category)
+                        <option value="{{ $category->id }}">{{ $category->name }} ({{ $category->gender->label() }})</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="{{ $showFilters || ! $canPrintAll ? 'block' : 'hidden sm:block' }}">
+                <label class="mb-2 block text-sm font-medium text-gray-700">
+                    {{-- El delegado solo imprime el padron de SU equipo: debe elegirlo. --}}
+                    <i class="fa-solid fa-users mr-1 text-blue-500"></i> Equipo {{ $canPrintAll ? '(opcional)' : '*' }}
                 </label>
                 <select wire:model.live="seasonTeamId" @disabled($seasonId === '')
                         class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100">
-                    <option value="">-- Todos los equipos --</option>
+                    <option value="">{{ $canPrintAll ? '-- Todos los equipos --' : '-- Seleccione su equipo --' }}</option>
                     @foreach ($this->seasonTeams() as $seasonTeam)
-                        <option value="{{ $seasonTeam->id }}">{{ $seasonTeam->team->name }}</option>
+                        <option value="{{ $seasonTeam->id }}">{{ $seasonTeam->team->name }}{{ $seasonTeam->category ? ' — '.$seasonTeam->category->name : '' }}</option>
                     @endforeach
                 </select>
             </div>
@@ -68,7 +84,7 @@
                     <button type="button" disabled
                             class="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-gray-300 px-6 py-3 font-bold text-gray-500 sm:w-auto">
                         <i class="fa-solid fa-file-pdf text-lg"></i>
-                        Selecciona una temporada
+                        {{ $seasonId === '' ? 'Selecciona una temporada' : 'Selecciona tu equipo' }}
                     </button>
                 @endif
             </div>

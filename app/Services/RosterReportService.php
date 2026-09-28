@@ -19,8 +19,8 @@ use Illuminate\Support\Collection;
  * inscripcion (season_team_player), no Team->players: el dorsal, el
  * capitan y el estado son POR TEMPORADA.
  *
- * No autoriza: RosterReportController lo hace con
- * SeasonPolicy::printReports antes de llamar aqui.
+ * No autoriza: RosterReportController lo hace (SeasonTeamPolicy::printRoster
+ * para un equipo, SeasonPolicy::printReports para todos) antes de llamar aqui.
  */
 class RosterReportService
 {
@@ -31,7 +31,7 @@ class RosterReportService
     /**
      * @return array<string, mixed> datos para reports.pdf.player-roster
      */
-    public function collect(int $seasonId, ?int $seasonTeamId = null): array
+    public function collect(int $seasonId, ?int $seasonTeamId = null, ?int $categoryId = null): array
     {
         $season = Season::with('tournament.organizer')->findOrFail($seasonId);
         $tournament = $season->tournament;
@@ -40,6 +40,8 @@ class RosterReportService
             ->where('is_active', true)
             // Acotado a la temporada: un season_team_id de otra temporada da 404.
             ->when($seasonTeamId !== null, fn ($q) => $q->whereKey($seasonTeamId))
+            // Categoria de la inscripcion (division por edad/genero, ej. Sub-17 Damas).
+            ->when($categoryId !== null, fn ($q) => $q->where('category_id', $categoryId))
             ->with([
                 'team:id,name,logo_path,delegate_id', 'team.delegate:id,name', 'delegate:id,name',
                 'roster.player:id,dni,first_name,last_name,birth_date',
@@ -50,6 +52,10 @@ class RosterReportService
 
         if ($seasonTeamId !== null && $seasonTeams->isEmpty()) {
             abort(404, 'El equipo no está inscrito en esta temporada.');
+        }
+
+        if ($categoryId !== null && $seasonTeams->isEmpty()) {
+            abort(404, 'No hay equipos inscritos en esa categoría en esta temporada.');
         }
 
         $teams = $seasonTeams->map(fn (SeasonTeam $st) => $this->teamBlock($st));
@@ -75,13 +81,13 @@ class RosterReportService
         ];
     }
 
-    public function pdf(int $seasonId, ?int $seasonTeamId = null): DomPdf
+    public function pdf(int $seasonId, ?int $seasonTeamId = null, ?int $categoryId = null): DomPdf
     {
         // Igual que la referencia: un padron completo con logos puede ser pesado.
         ini_set('memory_limit', '512M');
         ini_set('max_execution_time', '120');
 
-        return Pdf::loadView('reports.pdf.player-roster', $this->collect($seasonId, $seasonTeamId))
+        return Pdf::loadView('reports.pdf.player-roster', $this->collect($seasonId, $seasonTeamId, $categoryId))
             ->setPaper('A4', 'portrait');
     }
 

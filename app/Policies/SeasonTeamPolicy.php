@@ -59,6 +59,18 @@ class SeasonTeamPolicy
     }
 
     /**
+     * Padron de Jugadores (PDF) de UNA inscripcion: el organizador del
+     * torneo y el delegado EFECTIVO del equipo (admin por Gate::before).
+     * Es el mismo alcance de /inscripciones, asi que reutiliza
+     * isVisibleTo() en vez de otra regla. El padron de TODOS los equipos de
+     * la temporada sigue siendo SeasonPolicy::printReports (sin delegado).
+     */
+    public function printRoster(User $user, SeasonTeam $seasonTeam): bool
+    {
+        return app(SeasonTeamService::class)->isVisibleTo($user, $seasonTeam);
+    }
+
+    /**
      * Restriccion sobre season_team: inscripciones cuyo delegado EFECTIVO
      * es $user. Replica en SQL la regla de SeasonTeam::effectiveDelegate():
      * el delegado de la temporada, si existe, tiene precedencia; solo si es

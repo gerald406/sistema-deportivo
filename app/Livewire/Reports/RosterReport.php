@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire\Reports;
 
+use App\Models\Category;
 use App\Models\Season;
 use App\Models\SeasonTeam;
 use App\Models\Tournament;
+use App\Services\SeasonTeamService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -19,8 +23,14 @@ use Livewire\Component;
  * INSCRIPCIONES (season_team) de la temporada, porque Team es un catalogo
  * global sin torneo propio.
  *
- * Solo arma la URL del PDF: RosterReportController la revalida con
- * SeasonPolicy::printReports (estas propiedades vienen del navegador).
+ * Alcance por rol: las opciones salen de las inscripciones que el usuario
+ * ve en /inscripciones (SeasonTeamService::scopeVisibleTo()). El delegado
+ * solo ve torneos/temporadas/categorias donde su equipo esta inscrito y
+ * debe elegir su equipo (no hay "todos los equipos" para el).
+ *
+ * Solo arma la URL del PDF: RosterReportController la revalida
+ * (SeasonTeamPolicy::printRoster / SeasonPolicy::printReports), porque
+ * estas propiedades vienen del navegador.
  */
 #[Layout('layouts.admin')]
 #[Title('Padrón de Jugadores')]
@@ -30,6 +40,9 @@ class RosterReport extends Component
 
     public string $seasonId = '';
 
+    /** Categoria de la inscripcion (division por edad/genero), no el deporte. */
+    public string $categoryId = '';
+
     public string $seasonTeamId = '';
 
     public bool $showFilters = false;
@@ -37,7 +50,7 @@ class RosterReport extends Component
     /** Modulo por rol (sin CRUD): se revalida en cada request, no solo en mount(). */
     public function boot(): void
     {
-        abort_unless(auth()->user()?->hasAnyRole(['admin', 'organizador']), 403);
+        abort_unless(auth()->user()?->hasAnyRole(['admin', 'organizador', 'delegado']), 403);
     }
 
     public function toggleFilters(): void
@@ -48,52 +61,96 @@ class RosterReport extends Component
     public function updatedTournamentId(): void
     {
         $this->seasonId = '';
+        $this->categoryId = '';
         $this->seasonTeamId = '';
     }
 
     public function updatedSeasonId(): void
     {
+        $this->categoryId = '';
         $this->seasonTeamId = '';
     }
 
-    /** Admin: todos los torneos; organizador: solo los suyos (organizer_id). */
+    public function updatedCategoryId(): void
+    {
+        $this->seasonTeamId = '';
+    }
+
+    /**
+     * Admin: todos los torneos. Organizador: los suyos (organizer_id).
+     * Delegado: aquellos con alguna inscripcion activa de su equipo.
+     */
     public function tournaments(): Collection
     {
         $user = auth()->user();
 
         return Tournament::query()
-            ->unless($user->hasRole('admin'), fn ($q) => $q->where('organizer_id', $user->id))
+            ->unless($user->hasRole('admin'), fn ($q) => $q->where(fn ($q) => $q
+                ->when($user->hasRole('organizador'), fn ($q) => $q->orWhere('organizer_id', $user->id))
+                ->orWhereHas('seasons.seasonTeams', fn ($st) => $this->scopeVisibleSeasonTeams($st))))
             ->orderBy('name')
-            ->get(['id', 'name', 'is_active']);
+            ->get(['id', 'name', 'is_active', 'organizer_id']);
     }
 
+    /** Temporadas del torneo; si no lo gestiona, solo donde su equipo esta inscrito. */
     public function seasons(): Collection
     {
         $tournament = $this->selectedTournament();
 
         return $tournament
-            ? $tournament->seasons()->orderByDesc('start_date')->orderBy('name')->get(['id', 'name', 'status'])
+            ? $tournament->seasons()
+                ->unless($this->managesTournament($tournament), fn ($q) => $q->whereHas('seasonTeams', fn ($st) => $this->scopeVisibleSeasonTeams($st)))
+                ->orderByDesc('start_date')->orderBy('name')
+                ->get(['id', 'name', 'status', 'tournament_id'])
             : collect();
     }
 
-    /** Inscripciones activas de la temporada (equipo = season_team, no Team suelto). */
+    /** Categorias de las inscripciones visibles de la temporada elegida. */
+    public function categories(): Collection
+    {
+        $season = $this->selectedSeason();
+
+        if (! $season) {
+            return collect();
+        }
+
+        $ids = $this->scopeVisibleSeasonTeams(SeasonTeam::query())
+            ->where('season_id', $season->id)
+            ->whereNotNull('category_id')
+            ->distinct()
+            ->pluck('category_id');
+
+        return Category::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'gender']);
+    }
+
+    /** Inscripciones activas y visibles de la temporada (y categoria, si se eligio). */
     public function seasonTeams(): Collection
     {
         $season = $this->selectedSeason();
 
         return $season
-            ? $season->seasonTeams()->where('is_active', true)->with('team:id,name')->get()->sortBy('team.name')->values()
+            ? $this->scopeVisibleSeasonTeams(SeasonTeam::query())
+                ->where('season_id', $season->id)
+                ->when(ctype_digit($this->categoryId), fn ($q) => $q->where('category_id', (int) $this->categoryId))
+                ->with(['team:id,name', 'category:id,name'])
+                ->get()->sortBy('team.name')->values()
             : collect();
     }
 
-    /** Season elegida, solo si pertenece a un torneo visible para el usuario. */
+    /** Season elegida, solo si esta entre las opciones visibles para el usuario. */
     public function selectedSeason(): ?Season
     {
-        $tournament = $this->selectedTournament();
-
-        return $tournament && ctype_digit($this->seasonId)
-            ? $tournament->seasons()->find((int) $this->seasonId)
+        return ctype_digit($this->seasonId)
+            ? $this->seasons()->firstWhere('id', (int) $this->seasonId)
             : null;
+    }
+
+    /** Padron de todos los equipos: solo admin u organizador del torneo. */
+    public function canPrintAll(): bool
+    {
+        $season = $this->selectedSeason();
+
+        return $season !== null && Gate::allows('printReports', $season);
     }
 
     public function pdfUrl(): ?string
@@ -105,12 +162,21 @@ class RosterReport extends Component
         }
 
         $seasonTeam = ctype_digit($this->seasonTeamId)
-            ? SeasonTeam::where('season_id', $season->id)->find((int) $this->seasonTeamId)
+            ? $this->seasonTeams()->firstWhere('id', (int) $this->seasonTeamId)
+            : null;
+
+        if (! $seasonTeam && ! $this->canPrintAll()) {
+            return null;
+        }
+
+        $categoryId = ! $seasonTeam && ctype_digit($this->categoryId) && $this->categories()->contains('id', (int) $this->categoryId)
+            ? (int) $this->categoryId
             : null;
 
         return route('reports.roster.pdf', array_filter([
             'season_id' => $season->id,
             'season_team_id' => $seasonTeam?->id,
+            'category_id' => $categoryId,
         ]));
     }
 
@@ -124,5 +190,21 @@ class RosterReport extends Component
         return ctype_digit($this->tournamentId)
             ? $this->tournaments()->firstWhere('id', (int) $this->tournamentId)
             : null;
+    }
+
+    private function managesTournament(Tournament $tournament): bool
+    {
+        $user = auth()->user();
+
+        return $user->hasRole('admin')
+            || ($user->hasRole('organizador') && $tournament->organizer_id === $user->id);
+    }
+
+    /** Inscripciones activas dentro del alcance del usuario (misma regla que /inscripciones). */
+    private function scopeVisibleSeasonTeams(Builder $query): Builder
+    {
+        return app(SeasonTeamService::class)
+            ->scopeVisibleTo($query, auth()->user())
+            ->where('season_team.is_active', true);
     }
 }
