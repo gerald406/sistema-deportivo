@@ -114,6 +114,67 @@ sirven de referencia exacta: `app/Livewire/Teams/Index.php`, `app/Livewire/Playe
 **Sigue este orden**: dentro de cada fase, implementa primero las tablas independientes/catálogo
 antes que las que dependen de ellas (ya se hizo así con Sport/Discipline antes de Season).
 
+## Rediseño "Ediciones flexibles" (rama `feature/ediciones-flexibles`) — ⬜ Diseño aprobado, sin implementar
+
+Motivo: sistematizar un evento real (XXVIII Juegos Deportivos Regionales de Docentes de IES/EES
+de la Región Puno 2026, Yunguyo, 28-30/10/2026) **sin atar el código a ese reglamento**. Cada
+fase se implementa solo cuando el usuario la pida.
+
+### Principios (confirmados por el usuario)
+
+1. **Genérico, flexible, no estricto.** Toda regla de reglamento (topes de plantel, mínimos,
+   edades, clasificados, puntajes, certificado de salud) es un **dato configurable por
+   edición**; campo vacío = sin restricción. No hardcodear nada de un reglamento concreto.
+2. Las reglas de reglamento **advierten por defecto** y solo bloquean si el organizador las
+   marca como bloqueantes (ej. Danza con menos parejas que el mínimo = alerta).
+3. **La seguridad NO es flexible**: roles, Policies y revalidación en el Service se mantienen
+   estrictas como en el resto del proyecto.
+4. Fuera del sistema (decisión del cliente): jurados, Comisión de Justicia, sanciones entre
+   ediciones, validación de ventana de reclamos, marcas/intentos de atletismo, pase de lista.
+
+### Modelo objetivo
+
+- **La edición es el eje**: `games_editions.tournament_id` (el organizador del torneo gestiona la
+  edición; hoy la pantalla es solo admin) + `GamesEditionPolicy`.
+- **Inscripción de la institución en la edición** (`games_edition_teams`): serie, delegado
+  titular y **suplente** (mismos permisos que el titular), estado. Institución = `Team`.
+  ⚠️ Cambia la regla 5 de "Reglas de negocio": precedencia pasará a ser delegado de temporada →
+  titular/suplente de la edición → delegado del club. Actualizar esa regla al implementar la Fase 1.
+- **Series** (`games_edition_groups`) a nivel de edición; cada competencia decide si las usa.
+- **Tabla genérica de competencias y puntaje** (`games_edition_events`): disciplina o deporte
+  (o ítem sin deporte: Estudiantina, Danza, Puntualidad) + nivel + género (vacío = podio mixto)
+  + límites opcionales + puntos 1°/2°/3° opcionales. Cualquier granularidad (por prueba o por
+  nivel). NO usar `scoring_configs.rules` para esto: `ScoringConfig` es puntaje por partido de
+  la tabla de posiciones.
+- **Season = competencia** (deporte × nivel × género) de la edición: `seasons.category_id` +
+  `seasons.gender`, generadas automáticamente e idempotentes desde la tabla anterior. Así se
+  reutilizan planteles, partidos, resultados y sanciones sin copiar datos entre fases.
+- **Fases configurables** (`season_stages`): las que el organizador cree (serie, final, fase
+  única), con clasificados configurables y dos modos de resultado: **partidos** (flujo actual +
+  llaves con byes, avance automático, 3er puesto, desempate penales/tiros libres/sorteo) o
+  **podio directo** (el organizador registra clasificados y 1°/2°/3°).
+- **Medallero por puntos**: `edition_awards` (destino único de podios, derivado y reconstruible)
+  + `games_edition_medals.total_points`; oros/platas/bronces quedan como desempate.
+- **Plantel**: `players.gender`; edad por **año de nacimiento** (año de la edición − año de
+  nacimiento ≥ `min_age`; hoy `ensureAgeFitsCategory()` usa edad cumplida a `season.start_date`);
+  un docente puede jugar en niveles menores y en varios niveles/deportes; una sola institución
+  por docente en la edición (configurable); suspendido no puede jugar; amarillas acumulables
+  (configurable).
+
+### Fases del rediseño
+
+| # | Fase | Estado |
+|---|---|---|
+| R1 | Edición como eje: `tournament_id`, `GamesEditionPolicy`, inscripción de instituciones con titular/suplente, actualizar regla 5 | ⬜ |
+| R2 | Plantel flexible: género, edad por año, reglas configurables | ⬜ |
+| R3 | Tabla de competencias y puntaje + series + generación de competencias | ⬜ |
+| R4 | Fases configurables: partidos con llaves o podio directo | ⬜ |
+| R5 | Medallero por puntos + reportes | ⬜ |
+| R6 | (Opcional, post-evento) pago de inscripción y bitácora de reclamos | ⬜ |
+
+Antes de codificar cada fase: presentar al usuario su plan detallado (migraciones, Service,
+Policy, pantalla) y esperar aprobación.
+
 ## Modelos y ubicación (dónde mirar antes de escribir código nuevo)
 
 - Migraciones: `database/migrations/` (26 archivos con comentarios en español + 4 migraciones
