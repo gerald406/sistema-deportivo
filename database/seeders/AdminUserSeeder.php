@@ -7,6 +7,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 class AdminUserSeeder extends Seeder
 {
@@ -16,16 +17,34 @@ class AdminUserSeeder extends Seeder
      * nacer con al menos una cuenta admin para poder crear al resto
      * desde la interfaz.
      *
-     * IMPORTANTE: cambiar esta contrasena inmediatamente despues del
-     * primer login en un entorno real.
+     * Las credenciales salen de .env (ADMIN_NAME, ADMIN_EMAIL,
+     * ADMIN_PASSWORD, via config/admin-user.php). Fuera de local son
+     * obligatorias: no se siembra una clave conocida en produccion.
+     * Si la cuenta ya existe no se toca (no pisa una clave ya cambiada).
      */
     public function run(): void
     {
+        $email = config('admin-user.email');
+        $password = config('admin-user.password');
+
+        if (! $email || ! $password) {
+            if (! app()->environment('local', 'testing')) {
+                throw new RuntimeException('Define ADMIN_EMAIL y ADMIN_PASSWORD en .env antes de ejecutar el seeder.');
+            }
+
+            $email = 'admin@sistema-deportivo.test';
+            $password = 'CambiaEstaClave123!';
+        }
+
+        if (mb_strlen($password) < 8) {
+            throw new RuntimeException('ADMIN_PASSWORD debe tener al menos 8 caracteres.');
+        }
+
         $admin = User::firstOrCreate(
-            ['email' => 'admin@sistema-deportivo.test'],
+            ['email' => $email],
             [
-                'name' => 'Administrador',
-                'password' => Hash::make('CambiaEstaClave123!'),
+                'name' => config('admin-user.name'),
+                'password' => Hash::make($password),
                 'email_verified_at' => now(),
             ]
         );
