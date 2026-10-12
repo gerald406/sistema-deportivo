@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\SeasonStatus;
+use App\Enums\SeasonTeamPlayerStatus;
 use App\Models\EventParticipant;
 use App\Models\Player;
 use App\Models\SeasonTeam;
@@ -88,6 +89,7 @@ class SeasonTeamPlayerService
         $entry->load('seasonTeam.season'); // load (no loadMissing): el estado de la temporada debe leerse fresco
         $this->ensureSeasonOpen($entry->seasonTeam);
         $this->ensureRosterRules($entry->seasonTeam, $data, $entry->id);
+        $this->ensureSuspensionRespected($entry, $data);
 
         $entry->update([
             'shirt_number' => $data['shirt_number'] ?? null,
@@ -184,6 +186,22 @@ class SeasonTeamPlayerService
     {
         if ($seasonTeam->season->status === SeasonStatus::Closed) {
             throw ValidationException::withMessages(['form.season_team_id' => 'La temporada está cerrada: el plantel ya no se modifica.']);
+        }
+    }
+
+    /**
+     * El estado "Habilitado" de un sancionado lo devuelve
+     * SuspensionService::syncRosterStatus() cuando ya no le quedan sanciones
+     * pendientes; desde el formulario de plantel (que tambien usa el
+     * delegado del equipo) no se puede levantar una suspension.
+     */
+    private function ensureSuspensionRespected(SeasonTeamPlayer $entry, array $data): void
+    {
+        if ($data['status'] === SeasonTeamPlayerStatus::Active->value
+            && $entry->suspensions()->where('is_served', false)->exists()) {
+            throw ValidationException::withMessages([
+                'form.status' => 'El jugador tiene sanciones pendientes: no se puede habilitar hasta que se marquen como cumplidas en Sanciones.',
+            ]);
         }
     }
 

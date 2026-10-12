@@ -62,7 +62,10 @@ return [
         Features::profilePhotos(),
         // Features::api(),
         // Features::teams(['invitations' => true]),
-        Features::accountDeletion(),
+        // Deshabilitado: las cuentas solo las elimina el admin desde
+        // Administracion > Usuarios (UserAccountService::delete(), con sus
+        // salvaguardas de ultimo admin e historial RESTRICT).
+        // Features::accountDeletion(),
     ],
 
     /*

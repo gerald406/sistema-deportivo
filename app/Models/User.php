@@ -34,6 +34,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        // Sin esto UserAccountService::update() lo descartaba en silencio
+        // y desactivar una cuenta no tenia efecto.
+        'is_active',
     ];
 
     /**
@@ -67,6 +70,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Fortify;
+use Laravel\Passkeys\Passkeys;
 use Illuminate\Support\Str;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -44,6 +45,9 @@ class FortifyServiceProvider extends ServiceProvider
 
             return $user;
         });
+
+        // El login con passkey no pasa por authenticateUsing(): misma regla.
+        Passkeys::authorizeLoginUsing(fn (Request $request, User $user) => (bool) $user->is_active);
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())) . '|' . $request->ip());
