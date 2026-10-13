@@ -57,6 +57,15 @@ class Index extends Component
 
     public string $awayScore = '';
 
+    /** Desempate de un partido de llave empatado: via ('' = sin desempate), lado ganador y marcador opcional. */
+    public string $tiebreakType = '';
+
+    public string $tiebreakWinner = '';
+
+    public string $tiebreakHome = '';
+
+    public string $tiebreakAway = '';
+
     /** Individual/posta: event_participant_id => marca. @var array<int, string> */
     public array $marks = [];
 
@@ -134,10 +143,21 @@ class Index extends Component
 
     public function openResult(int $id): void
     {
-        $match = $this->visibleMatches()->with('season.gamesEdition')->findOrFail($id);
+        $match = $this->visibleMatches()->with('season.gamesEdition', 'season.sport', 'discipline')->findOrFail($id);
         abort_unless($this->canManage($match), 403);
 
+        // Partido de llave que aun espera al ganador de la ronda anterior.
+        if ($this->formatOf($match) === SportFormatType::HeadToHead && $match->participants()->count() < 2) {
+            $this->dispatch('toast', type: 'info', message: 'El partido aún no tiene a sus dos participantes: se completa al cerrar la ronda anterior.');
+
+            return;
+        }
+
         $this->editingId = $match->id;
+        $this->tiebreakType = '';
+        $this->tiebreakWinner = '';
+        $this->tiebreakHome = '';
+        $this->tiebreakAway = '';
         $this->walkover = '';
         $this->homeScore = '';
         $this->awayScore = '';
@@ -156,6 +176,11 @@ class Index extends Component
             'home' => $this->homeScore,
             'away' => $this->awayScore,
             'results' => $this->marks,
+            // Solo se envia si se eligio una via: ResultService decide si corresponde.
+            'tiebreak_type' => $this->walkover === '' && $this->tiebreakType !== '' ? $this->tiebreakType : null,
+            'tiebreak_winner_side' => $this->tiebreakWinner ?: null,
+            'tiebreak_home' => $this->tiebreakHome,
+            'tiebreak_away' => $this->tiebreakAway,
         ], auth()->user());
 
         $this->closeModal();
