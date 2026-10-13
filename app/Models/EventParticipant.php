@@ -23,6 +23,7 @@ class EventParticipant extends Model
         'lane_or_board',
         'result_value',
         'position',
+        'tiebreak_score',
     ];
 
     protected function casts(): array
@@ -30,6 +31,7 @@ class EventParticipant extends Model
         return [
             'side' => ParticipantSide::class,
             'result_value' => 'decimal:4',
+            'tiebreak_score' => 'integer',
         ];
     }
 

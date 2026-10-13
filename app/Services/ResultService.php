@@ -9,6 +9,7 @@ use App\Enums\MatchModality;
 use App\Enums\MatchStatus;
 use App\Enums\SeasonStatus;
 use App\Enums\SportFormatType;
+use App\Enums\TiebreakType;
 use App\Models\EventParticipant;
 use App\Models\GameMatch;
 use App\Models\MatchReopenLog;
@@ -30,6 +31,12 @@ use Illuminate\Validation\ValidationException;
  *     otro caso (tiempos de futbol, cuartos) se suman los puntos. Sin
  *     empate en modalidades "al mejor de N".
  *     position guarda el desenlace: 1 = ganador, 2 = perdedor, 1/1 = empate.
+ *   - Partido de llave (matches.season_stage_id): no admite empate. Si el
+ *     marcador queda igualado hay que indicar la via del desempate
+ *     (tiempo extra, penales, tiros libres o sorteo) y el lado ganador; el
+ *     marcador del desempate es opcional. El sistema registra quien gano
+ *     y como, no simula el desempate. Al cerrar, BracketService::advance()
+ *     lleva al ganador a su siguiente partido.
  *   - Walkover: el ausente queda con position 2 y sin marcador; el
  *     presente con position 1. Los puntos (pts_walkover / pts_win) los
  *     aplica el calculo de la tabla.
@@ -53,11 +60,14 @@ class ResultService
         private SuspensionService $suspensions,
         private StandingService $standings,
         private MedalService $medals,
+        private BracketService $brackets,
     ) {
     }
 
     /**
      * Enfrentamiento: $input = ['walkover' => null|'home'|'away' (lado AUSENTE), 'home' => marcador, 'away' => marcador].
+     *   En partidos de llave empatados, ademas: 'tiebreak_type' (TiebreakType), 'tiebreak_winner_side'
+     *   ('home'|'away') y, opcionales, 'tiebreak_home' y 'tiebreak_away'.
      * Individual/posta: $input = ['results' => [event_participant_id => marca|null]].
      */
     public function close(GameMatch $match, array $input, User $actor): void
@@ -104,6 +114,9 @@ class ResultService
             throw ValidationException::withMessages(['reason' => 'Explica el motivo de la reapertura (mínimo 5 caracteres).']);
         }
 
+        // Llave: si la ronda siguiente ya se jugo, primero se reabre esa.
+        $this->brackets->ensureCanReopen($match);
+
         return DB::transaction(function () use ($match, $reason, $actor) {
             $snapshot = [
                 'participants' => $match->participants->map(fn (EventParticipant $p) => [
@@ -125,8 +138,8 @@ class ResultService
                 'reason' => trim($reason),
             ]);
 
-            $match->participants()->update(['result_value' => null, 'position' => null]);
-            $match->update(['status' => MatchStatus::Pending->value]);
+            $match->participants()->update(['result_value' => null, 'position' => null, 'tiebreak_score' => null]);
+            $match->update(['status' => MatchStatus::Pending->value, 'tiebreak_type' => null]);
 
             $this->afterResultChanged($match);
 
@@ -177,6 +190,10 @@ class ResultService
             $this->suspensions->generateForMatch($match);
         }
 
+        // Llave: el ganador (y el perdedor, si hay tercer puesto) pasa a su
+        // partido siguiente; al reabrir, se le retira.
+        $this->brackets->advance($match);
+
         // Tabla y medallero: recalculo SINCRONO dentro de la misma
         // transaccion (al cerrar y al reabrir). Por que no Observer ni Job:
         // ver el docblock de StandingService.
@@ -213,9 +230,92 @@ class ResultService
             throw ValidationException::withMessages(['result' => 'En una modalidad "al mejor de N" no puede haber empate. Revisa los parciales.']);
         }
 
+        $tied = $score['home'] === $score['away'];
+        $tiebreak = $this->tiebreakFrom($input);
+        $inBracket = $match->season_stage_id !== null;
+
+        if ($tiebreak !== null && ! $inBracket) {
+            throw ValidationException::withMessages(['tiebreak' => 'El desempate solo se registra en partidos de llave.']);
+        }
+
+        if ($tiebreak !== null && ! $tied) {
+            throw ValidationException::withMessages(['tiebreak' => 'El marcador no está empatado: no corresponde desempate.']);
+        }
+
+        if ($inBracket && $tied && $tiebreak === null) {
+            throw ValidationException::withMessages(['tiebreak' => 'En un partido de llave no puede haber empate: indica cómo se desempató y quién ganó.']);
+        }
+
+        if ($tiebreak !== null) {
+            $homeWins = $tiebreak['winner'] === 'home';
+
+            $home->update(['result_value' => $score['home'], 'position' => $homeWins ? 1 : 2, 'tiebreak_score' => $tiebreak['home']]);
+            $away->update(['result_value' => $score['away'], 'position' => $homeWins ? 2 : 1, 'tiebreak_score' => $tiebreak['away']]);
+            $match->update(['status' => MatchStatus::Played->value, 'tiebreak_type' => $tiebreak['type']->value]);
+
+            return;
+        }
+
         $home->update(['result_value' => $score['home'], 'position' => $score['home'] >= $score['away'] ? 1 : 2]);
         $away->update(['result_value' => $score['away'], 'position' => $score['away'] >= $score['home'] ? 1 : 2]);
         $match->update(['status' => MatchStatus::Played->value]);
+    }
+
+    /**
+     * Desempate enviado con el resultado, o null si no se envio ninguno.
+     *
+     * @return array{type: TiebreakType, winner: string, home: ?int, away: ?int}|null
+     */
+    private function tiebreakFrom(array $input): ?array
+    {
+        $raw = $input['tiebreak_type'] ?? null;
+
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        $type = TiebreakType::tryFrom((string) $raw)
+            ?? throw ValidationException::withMessages(['tiebreak' => 'La vía de desempate no es válida.']);
+
+        $winner = $input['tiebreak_winner_side'] ?? null;
+
+        if (! in_array($winner, ['home', 'away'], true)) {
+            throw ValidationException::withMessages(['tiebreak' => 'Indica quién ganó el desempate.']);
+        }
+
+        $scores = [];
+
+        foreach (['home', 'away'] as $side) {
+            $value = $input["tiebreak_{$side}"] ?? null;
+
+            if ($value === null || $value === '') {
+                $scores[$side] = null;
+
+                continue;
+            }
+
+            if (! is_numeric($value) || (int) $value < 0 || (int) $value != $value) {
+                throw ValidationException::withMessages(['tiebreak' => 'El marcador del desempate debe ser un entero de 0 o más.']);
+            }
+
+            $scores[$side] = (int) $value;
+        }
+
+        // El marcador del desempate es opcional (un sorteo no lo tiene),
+        // pero si se anota debe estar completo y dar por ganador al lado elegido.
+        if (($scores['home'] === null) !== ($scores['away'] === null)) {
+            throw ValidationException::withMessages(['tiebreak' => 'Anota el marcador del desempate de ambos lados, o de ninguno.']);
+        }
+
+        if ($scores['home'] !== null) {
+            $loser = $winner === 'home' ? 'away' : 'home';
+
+            if ($scores[$winner] <= $scores[$loser]) {
+                throw ValidationException::withMessages(['tiebreak' => 'El marcador del desempate no coincide con el ganador indicado.']);
+            }
+        }
+
+        return ['type' => $type, 'winner' => $winner, 'home' => $scores['home'], 'away' => $scores['away']];
     }
 
     /** @return array{home: int, away: int} */

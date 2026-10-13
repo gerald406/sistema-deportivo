@@ -46,6 +46,12 @@ class SeasonStage extends Model
         return $this->belongsTo(GamesEditionGroup::class, 'group_id');
     }
 
+    /** Partidos de la llave de esta fase, por ronda y casillero. */
+    public function matches(): HasMany
+    {
+        return $this->hasMany(GameMatch::class, 'season_stage_id')->orderBy('bracket_round')->orderBy('bracket_slot');
+    }
+
     /** Podio directo, ordenado por puesto. */
     public function results(): HasMany
     {

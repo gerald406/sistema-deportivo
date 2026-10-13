@@ -402,7 +402,7 @@ class GameMatchService
         } catch (QueryException $e) {
             if (($e->errorInfo[0] ?? null) === '45000') {
                 throw ValidationException::withMessages([
-                    'form.discipline_id' => $e->errorInfo[2] ?? 'La disciplina no pertenece al deporte de la competencia.',
+                    'form.discipline_id' => 'La disciplina no pertenece al deporte de la competencia del partido.',
                 ]);
             }
 

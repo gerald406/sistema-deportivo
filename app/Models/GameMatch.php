@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\MatchModality;
 use App\Enums\MatchStatus;
 use App\Enums\RoundType;
+use App\Enums\TiebreakType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,12 +26,19 @@ class GameMatch extends Model
     protected $fillable = [
         'season_id',
         'matchday_id',
+        'season_stage_id',
         'discipline_id',
         'venue_id',
         'round_type',
+        'bracket_round',
+        'bracket_slot',
+        'next_match_id',
+        'next_match_side',
+        'loser_next_match_id',
         'modality',
         'scheduled_at',
         'status',
+        'tiebreak_type',
     ];
 
     protected function casts(): array
@@ -40,12 +48,33 @@ class GameMatch extends Model
             'modality' => MatchModality::class,
             'scheduled_at' => 'datetime',
             'status' => MatchStatus::class,
+            'tiebreak_type' => TiebreakType::class,
+            'bracket_round' => 'integer',
+            'bracket_slot' => 'integer',
         ];
     }
 
     public function season(): BelongsTo
     {
         return $this->belongsTo(Season::class);
+    }
+
+    /** Fase de la competencia, si el partido es de una llave. */
+    public function stage(): BelongsTo
+    {
+        return $this->belongsTo(SeasonStage::class, 'season_stage_id');
+    }
+
+    /** Partido al que pasa el ganador. */
+    public function nextMatch(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'next_match_id');
+    }
+
+    /** Partido al que pasa el perdedor (tercer puesto). */
+    public function loserNextMatch(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'loser_next_match_id');
     }
 
     public function matchday(): BelongsTo

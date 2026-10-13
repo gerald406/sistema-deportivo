@@ -11,6 +11,7 @@ use App\Models\EventParticipant;
 use App\Models\GamesEdition;
 use App\Models\GamesEditionMedal;
 use App\Models\GameMatch;
+use App\Models\SeasonStage;
 use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -75,8 +76,13 @@ class MedalService
         $h2h = $this->matches->queryByFormat(SportFormatType::HeadToHead)
             ->whereIn('season_id', $seasonIds)
             ->whereIn('status', [MatchStatus::Played->value, MatchStatus::Walkover->value])
-            ->whereIn('round_type', [RoundType::Final->value, RoundType::SemiFinal->value])
+            ->whereIn('round_type', [RoundType::Final->value, RoundType::SemiFinal->value, RoundType::ThirdPlace->value])
             ->tap($load)->get();
+
+        // Con fases, solo la ULTIMA de cada competencia da medallas: la
+        // final de una serie clasifica, no premia.
+        $lastStages = SeasonStage::whereIn('season_id', $seasonIds)->orderBy('sort_order')->orderBy('id')->get()
+            ->groupBy('season_id')->map(fn ($stages) => $stages->last()->id);
 
         foreach ($h2h as $match) {
             /** @var GameMatch $match */
@@ -87,10 +93,17 @@ class MedalService
                 continue; // empate: sin medallas
             }
 
+            if ($match->season_stage_id !== null && ($lastStages[$match->season_id] ?? null) !== $match->season_stage_id) {
+                continue;
+            }
+
             if ($match->round_type === RoundType::Final) {
                 $add($this->teamOf($winner), 0);
                 $add($this->teamOf($loser), 1);
-            } else {
+            } elseif ($match->round_type === RoundType::ThirdPlace) {
+                $add($this->teamOf($winner), 2);
+            } elseif ($match->loser_next_match_id === null) {
+                // Semifinal sin partido por el tercer puesto: bronce al perdedor.
                 $add($this->teamOf($loser), 2);
             }
         }

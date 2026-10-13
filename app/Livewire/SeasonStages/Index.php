@@ -8,10 +8,13 @@ use App\Enums\EditionTeamStatus;
 use App\Enums\StageMode;
 use App\Models\Season;
 use App\Models\SeasonStage;
+use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use App\Models\Team;
+use App\Services\BracketService;
 use App\Services\DirectPodiumService;
 use App\Services\StageService;
+use App\Support\ParticipantLabel;
 use App\Support\SeasonAccess;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -50,6 +53,20 @@ class Index extends Component
      * @var array<int, list<array{team_id: int|string, season_team_player_id: int|string}>>
      */
     public array $podium = [];
+
+    public bool $showBracket = false;
+
+    public ?int $bracketStageId = null;
+
+    /**
+     * Participantes de la llave en orden (ids de season_team). El orden
+     * decide los cruces y quien descansa: los primeros reciben los byes.
+     *
+     * @var list<int>
+     */
+    public array $seeds = [];
+
+    public string $seedToAdd = '';
 
     public function boot(): void
     {
@@ -218,10 +235,79 @@ class Index extends Component
         $this->dispatch('toast', type: 'success', message: 'Podio guardado.');
     }
 
+    /** Abre el armado de la llave con la lista sugerida de participantes. */
+    public function openBracket(int $id, StageService $stages): void
+    {
+        $stage = $this->findStage($id);
+
+        $this->bracketStageId = $stage->id;
+        $this->seeds = $this->suggestedSeeds($stage, $stages);
+        $this->seedToAdd = '';
+        $this->resetErrorBag();
+        $this->showBracket = true;
+    }
+
+    /** Inscripciones de la competencia que aun no estan en la lista. */
+    public function entrantOptions(): Collection
+    {
+        return $this->entrants()->reject(fn ($name, $id) => in_array($id, $this->seeds, true));
+    }
+
+    public function addSeed(): void
+    {
+        if (ctype_digit($this->seedToAdd) && $this->entrantOptions()->has((int) $this->seedToAdd)) {
+            $this->seeds[] = (int) $this->seedToAdd;
+        }
+
+        $this->seedToAdd = '';
+    }
+
+    public function removeSeed(int $index): void
+    {
+        unset($this->seeds[$index]);
+        $this->seeds = array_values($this->seeds);
+    }
+
+    /** Sube (-1) o baja (+1) a un participante en el orden. */
+    public function moveSeed(int $index, int $direction): void
+    {
+        $target = $index + ($direction < 0 ? -1 : 1);
+
+        if (isset($this->seeds[$index], $this->seeds[$target])) {
+            [$this->seeds[$index], $this->seeds[$target]] = [$this->seeds[$target], $this->seeds[$index]];
+        }
+    }
+
+    /** Sorteo: orden al azar. */
+    public function shuffleSeeds(): void
+    {
+        shuffle($this->seeds);
+    }
+
+    public function generateBracket(BracketService $service): void
+    {
+        $stage = $this->findStage((int) $this->bracketStageId);
+
+        $matches = $service->generate($stage, $this->seeds, auth()->user());
+
+        $this->showBracket = false;
+        $this->bracketStageId = null;
+        $this->dispatch('toast', type: 'success', message: "Llave generada: {$matches->count()} partidos. Prográmalos en Partidos.");
+    }
+
+    public function clearBracket(int $id, BracketService $service): void
+    {
+        $result = $service->clear($this->findStage($id), auth()->user());
+
+        $this->dispatch('toast', type: $result === true ? 'success' : 'error', message: $result === true ? 'Llave borrada.' : $result);
+    }
+
     public function closeModal(): void
     {
         $this->showModal = false;
         $this->showPodium = false;
+        $this->showBracket = false;
+        $this->bracketStageId = null;
         $this->podiumStageId = null;
         $this->resetForm();
     }
@@ -233,9 +319,53 @@ class Index extends Component
         return view('livewire.season-stages.index', [
             'season' => $season,
             'stages' => $season
-                ? $season->stages()->with(['group:id,name', 'results.team:id,name', 'results.seasonTeamPlayer.player:id,first_name,last_name'])->get()
+                ? $season->stages()->with([
+                    'group:id,name', 'results.team:id,name', 'results.seasonTeamPlayer.player:id,first_name,last_name',
+                    'matches.participants' => ParticipantLabel::eagerLoad(),
+                ])->get()
                 : collect(),
+            'entrantNames' => $this->showBracket ? $this->entrants() : collect(),
         ]);
+    }
+
+    /** Inscripciones activas de la competencia: id de season_team => nombre de la delegacion. */
+    private function entrants(): Collection
+    {
+        $season = $this->season();
+
+        return $season
+            ? SeasonTeam::with('team:id,name')->where('season_id', $season->id)->where('is_active', true)->get()
+                ->sortBy(fn (SeasonTeam $st) => $st->team->name)
+                ->mapWithKeys(fn (SeasonTeam $st) => [$st->id => $st->team->name])
+            : collect();
+    }
+
+    /**
+     * Lista inicial de la llave: en una serie, las delegaciones de esa
+     * serie con plantel en la competencia; en una fase sin serie, los
+     * clasificados de las fases anteriores; si no hay ninguno, todas las
+     * delegaciones de la competencia. El organizador la ajusta y ordena.
+     *
+     * @return list<int>
+     */
+    private function suggestedSeeds(SeasonStage $stage, StageService $stages): array
+    {
+        $season = $this->seasonOrFail();
+        $all = $this->entrants()->keys();
+
+        if ($stage->group_id) {
+            return SeasonTeam::where('season_id', $season->id)->where('is_active', true)
+                ->whereHas('team.editionTeams', fn ($q) => $q
+                    ->where('games_edition_id', $season->games_edition_id)
+                    ->where('group_id', $stage->group_id))
+                ->pluck('id')->intersect($all)->values()->all();
+        }
+
+        $qualified = $season->stages()->whereKeyNot($stage->id)->where('mode', StageMode::Matches->value)->get()
+            ->flatMap(fn (SeasonStage $previous) => $stages->winners($previous)->pluck('id'))
+            ->intersect($all)->values();
+
+        return ($qualified->isNotEmpty() ? $qualified : $all)->all();
     }
 
     private function seasonOrFail(): Season

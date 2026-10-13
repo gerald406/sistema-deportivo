@@ -73,6 +73,19 @@
                                     <i class="fa-solid fa-trophy"></i> {{ $stage->results->isEmpty() ? 'Registrar podio' : 'Editar podio' }}
                                 </button>
                             @endif
+                            @if ($stage->mode === \App\Enums\StageMode::Matches)
+                                @if ($stage->matches->isEmpty())
+                                    <button wire:click="openBracket({{ $stage->id }})" type="button"
+                                            class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500">
+                                        <i class="fa-solid fa-sitemap"></i> Generar llave
+                                    </button>
+                                @else
+                                    <button type="button" class="text-sm font-medium text-gray-500 hover:text-red-600"
+                                            x-on:click="confirmDelete(@js('la llave de '.$stage->name), () => $wire.clearBracket({{ $stage->id }}))">
+                                        <i class="fa-solid fa-eraser"></i> Borrar llave
+                                    </button>
+                                @endif
+                            @endif
                             <button wire:click="edit({{ $stage->id }})" class="text-gray-400 hover:text-indigo-600" title="Editar fase">
                                 <i class="fa-solid fa-pen"></i>
                             </button>
@@ -82,6 +95,28 @@
                             </button>
                         </div>
                     </div>
+
+                    {{-- Llave por rondas --}}
+                    @if ($stage->mode === \App\Enums\StageMode::Matches && $stage->matches->isNotEmpty())
+                        @php($thirdPlace = \App\Enums\RoundType::ThirdPlace)
+                        <div class="mt-4 flex gap-4 overflow-x-auto pb-2">
+                            @foreach ($stage->matches->where('round_type', '!=', $thirdPlace)->groupBy('bracket_round') as $roundMatches)
+                                <div class="min-w-[14rem] flex-1 space-y-3">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $roundMatches->first()->round_type->label() }}</p>
+                                    @foreach ($roundMatches as $match)
+                                        @include('livewire.season-stages.partials.bracket-match', ['match' => $match])
+                                    @endforeach
+                                </div>
+                            @endforeach
+                            @if ($third = $stage->matches->firstWhere('round_type', $thirdPlace))
+                                <div class="min-w-[14rem] flex-1 space-y-3">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $thirdPlace->label() }}</p>
+                                    @include('livewire.season-stages.partials.bracket-match', ['match' => $third])
+                                </div>
+                            @endif
+                        </div>
+                        <p class="mt-1 text-xs text-gray-400">Fecha, hora y sede se ponen en Partidos; el marcador, en Resultados. El ganador pasa solo a la ronda siguiente.</p>
+                    @endif
 
                     @if ($stage->mode === \App\Enums\StageMode::DirectPodium)
                         <div class="mt-4 grid gap-3 sm:grid-cols-3">
@@ -176,6 +211,61 @@
                     <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
                         <span wire:loading.remove wire:target="save">Guardar</span>
                         <span wire:loading wire:target="save"><i class="fa-solid fa-spinner fa-spin"></i> Guardando...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Modal generar llave --}}
+    <div x-data="{ show: @entangle('showBracket') }" x-show="show" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div x-show="show" x-transition.opacity @click="$wire.closeModal()" class="fixed inset-0 bg-gray-900/50"></div>
+
+        <div x-show="show" x-transition class="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+            <h2 class="text-lg font-semibold text-gray-900">Generar llave</h2>
+            <p class="text-sm text-gray-500">
+                El orden decide los cruces: el 1.º juega con el último, el 2.º con el penúltimo.
+                Si el número no es 2, 4, 8 o 16, los primeros de la lista descansan en la primera ronda.
+            </p>
+
+            <form wire:submit="generateBracket" class="mt-4 space-y-4">
+                @error('bracket') <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ $message }}</p> @enderror
+
+                <ol class="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                    @forelse ($seeds as $i => $seedId)
+                        <li wire:key="seed-{{ $seedId }}" class="flex items-center gap-3 px-3 py-2 text-sm">
+                            <span class="w-6 text-right font-semibold text-gray-400">{{ $i + 1 }}</span>
+                            <span class="flex-1 font-medium text-gray-900">{{ $entrantNames[$seedId] ?? '¿?' }}</span>
+                            <button type="button" wire:click="moveSeed({{ $i }}, -1)" @disabled($i === 0) class="text-gray-400 hover:text-indigo-600 disabled:opacity-30" title="Subir"><i class="fa-solid fa-arrow-up"></i></button>
+                            <button type="button" wire:click="moveSeed({{ $i }}, 1)" @disabled($i === count($seeds) - 1) class="text-gray-400 hover:text-indigo-600 disabled:opacity-30" title="Bajar"><i class="fa-solid fa-arrow-down"></i></button>
+                            <button type="button" wire:click="removeSeed({{ $i }})" class="text-gray-400 hover:text-red-600" title="Quitar"><i class="fa-solid fa-xmark"></i></button>
+                        </li>
+                    @empty
+                        <li class="px-3 py-6 text-center text-sm text-gray-400">
+                            Sin participantes. Solo aparecen las delegaciones que ya tienen plantel en esta competencia.
+                        </li>
+                    @endforelse
+                </ol>
+
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <select wire:model="seedToAdd" class="flex-1 rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">Agregar delegación…</option>
+                        @foreach ($showBracket ? $this->entrantOptions() : [] as $id => $name)
+                            <option value="{{ $id }}">{{ $name }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" wire:click="addSeed" class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Agregar</button>
+                    <button type="button" wire:click="shuffleSeeds" class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <i class="fa-solid fa-shuffle"></i> Sortear
+                    </button>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" wire:click="closeModal" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">Cancelar</button>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                        <span wire:loading.remove wire:target="generateBracket">Generar llave</span>
+                        <span wire:loading wire:target="generateBracket"><i class="fa-solid fa-spinner fa-spin"></i> Generando...</span>
                     </button>
                 </div>
             </form>

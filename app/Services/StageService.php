@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\MatchStatus;
+use App\Enums\RoundType;
 use App\Enums\SportFormatType;
 use App\Enums\StageMode;
 use App\Models\GamesEditionGroup;
@@ -133,6 +135,35 @@ class StageService
         });
     }
 
+    /**
+     * Clasificados de una fase de partidos ya definida: el ganador de su
+     * final y, si la fase clasifica a 2 o mas, tambien el finalista.
+     * Vacio mientras la final no tenga resultado.
+     *
+     * @return Collection<int, \App\Models\SeasonTeam>
+     */
+    public function winners(SeasonStage $stage): Collection
+    {
+        $final = $stage->matches()
+            ->where('round_type', RoundType::Final->value)
+            ->whereIn('status', [MatchStatus::Played->value, MatchStatus::Walkover->value])
+            ->with('participants.participant')
+            ->first();
+
+        if ($final === null) {
+            return collect();
+        }
+
+        $places = ($stage->qualifiers ?? 1) >= 2 ? [1, 2] : [1];
+
+        return $final->participants
+            ->whereIn('position', $places)
+            ->sortBy('position')
+            ->map(fn ($p) => $p->participant)
+            ->filter()
+            ->values();
+    }
+
     private function ensureManages(User $actor, Season $season): void
     {
         if (! SeasonAccess::manages($actor, $season)) {
@@ -145,10 +176,9 @@ class StageService
         return $stage->results()->exists() || $this->hasMatches($stage);
     }
 
-    /** matches.season_stage_id llega con las llaves: hasta entonces una fase no tiene partidos. */
     private function hasMatches(SeasonStage $stage): bool
     {
-        return method_exists($stage, 'matches') && $stage->matches()->exists();
+        return $stage->matches()->exists();
     }
 
     /**
