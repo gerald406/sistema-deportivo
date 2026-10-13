@@ -61,7 +61,7 @@
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Planteles</h1>
             <p class="text-sm text-gray-500">
-                {{ $cardMode ? 'Modo carnets: marca los participantes y genera sus fotochecks en un solo PDF.' : 'Participantes convocados por cada equipo inscrito en una competencia.' }}
+                {{ $cardMode ? 'Modo carnets: marca los participantes y genera sus fotochecks en un solo PDF.' : 'Participantes de cada delegación en cada competencia. Elige la competencia y agrega a tus participantes.' }}
             </p>
         </div>
 
@@ -107,7 +107,7 @@
 
         <select wire:model.live="seasonTeamFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todos los equipos inscritos</option>
+            <option value="">Todos los planteles</option>
             @foreach ($filterSeasonTeams as $st)
                 <option value="{{ $st->id }}">{{ $st->team->name }} — {{ $st->season->name }}</option>
             @endforeach
@@ -145,7 +145,7 @@
                         @endif
                         <x-sortable-th field="shirt_number" label="N°" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="player_last_name" label="Participante" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Equipo / Competencia</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Delegación / Competencia</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Posición</th>
                         <x-sortable-th field="status" label="Estado" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="enrolled_at" label="Alta" :sort-field="$sortField" :sort-direction="$sortDirection" />
@@ -179,13 +179,27 @@
                                                 <span class="ml-1 rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white" title="Capitán">C</span>
                                             @endif
                                         </p>
-                                        <p class="text-xs text-gray-400">DNI {{ $entry->player->dni }}</p>
+                                        <p class="text-xs text-gray-400">
+                                            DNI {{ $entry->player->dni }}
+                                            @if ($entry->player->documents_verified_at)
+                                                <span class="ml-1 text-emerald-600" title="Documentos verificados"><i class="fa-solid fa-circle-check"></i></span>
+                                            @endif
+                                        </p>
+                                        {{-- Reglas de reglamento que no cumple (RosterRuleService) --}}
+                                        @foreach ($notices[$entry->id] ?? [] as $notice)
+                                            <p class="mt-0.5 text-xs text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ $notice }}</p>
+                                        @endforeach
                                     </div>
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-gray-600">
                                 <p>{{ $entry->seasonTeam->team->name }}</p>
                                 <p class="text-xs text-gray-400">{{ $entry->seasonTeam->season->name }}</p>
+                                @if (($missing[$entry->season_team_id] ?? 0) > 0)
+                                    <p class="mt-0.5 text-xs text-amber-700">
+                                        <i class="fa-solid fa-user-group mr-1"></i>{{ $missing[$entry->season_team_id] === 1 ? 'Falta 1' : 'Faltan '.$missing[$entry->season_team_id] }} para el mínimo
+                                    </p>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $entry->position?->name ?? '—' }}</td>
                             <td class="px-4 py-3">
@@ -248,16 +262,37 @@
                         <p class="text-gray-500">DNI {{ $player?->dni }}</p>
                     </div>
                 @else
+                    @php($competitions = $this->competitionOptions())
+                    @php($delegations = $this->delegationOptions())
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Equipo inscrito</label>
-                        <select wire:model.live="form.season_team_id"
+                        <label class="block text-sm font-medium text-gray-700">Competencia</label>
+                        <select wire:model.live="form.season_id"
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Selecciona un equipo</option>
-                            @foreach ($this->manageableSeasonTeams() as $st)
-                                <option value="{{ $st->id }}">{{ $st->team->name }} — {{ $st->season->gamesEdition->name }} / {{ $st->season->name }}</option>
+                            <option value="">Selecciona una competencia</option>
+                            @foreach ($competitions->groupBy(fn ($c) => $c->gamesEdition->name) as $editionName => $group)
+                                <optgroup label="{{ $editionName }}">
+                                    @foreach ($group as $competition)
+                                        <option value="{{ $competition->id }}">{{ $competition->name }}</option>
+                                    @endforeach
+                                </optgroup>
                             @endforeach
                         </select>
-                        @error('form.season_team_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        @error('form.season_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        @if ($competitions->isEmpty())
+                            <p class="mt-1 text-xs text-amber-700">No hay competencias abiertas para tus delegaciones. El organizador debe generarlas e inscribir tu delegación en la olimpiada.</p>
+                        @endif
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Delegación</label>
+                        <select wire:model.live="form.team_id" @disabled($form['season_id'] === '')
+                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100">
+                            <option value="">{{ $form['season_id'] === '' ? 'Primero elige la competencia' : 'Selecciona una delegación' }}</option>
+                            @foreach ($delegations as $delegation)
+                                <option value="{{ $delegation->id }}">{{ $delegation->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('form.team_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
@@ -287,6 +322,15 @@
                             @endif
                         @endif
                         @error('form.player_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+
+                        {{-- Aviso previo: reglas que incumple en esta competencia --}}
+                        @php($check = $this->selectionCheck())
+                        @foreach ($check['errors'] as $message)
+                            <p class="mt-1 text-xs text-red-600"><i class="fa-solid fa-ban mr-1"></i>{{ $message }} No se podrá inscribir.</p>
+                        @endforeach
+                        @foreach ($check['warnings'] as $message)
+                            <p class="mt-1 text-xs text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ $message }}</p>
+                        @endforeach
                     </div>
                 @endif
 

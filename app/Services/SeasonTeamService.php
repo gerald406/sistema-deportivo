@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\EditionTeamStatus;
 use App\Enums\SeasonStatus;
 use App\Models\EventParticipant;
+use App\Models\GamesEditionTeam;
 use App\Models\Season;
 use App\Models\SeasonTeam;
 use App\Models\Team;
@@ -62,6 +64,33 @@ class SeasonTeamService
             'category_id' => $data['category_id'] ?? null,
             'is_active' => $data['is_active'] ?? true,
         ]);
+    }
+
+    /**
+     * Inscripcion de la delegacion en la competencia, creada si no existe
+     * (S3: nace sola al registrar el primer participante). Exige que la
+     * delegacion este inscrita en la olimpiada y no retirada ni
+     * descalificada. No autoriza: quien llama ya decidio que el actor
+     * puede (SeasonTeamPlayerService::registerInCompetition()).
+     */
+    public function ensureFor(Season $season, Team $team): SeasonTeam
+    {
+        $entry = GamesEditionTeam::where('games_edition_id', $season->games_edition_id)
+            ->where('team_id', $team->id)
+            ->first();
+
+        if ($entry === null) {
+            throw ValidationException::withMessages(['form.team_id' => 'La delegación no está inscrita en la olimpiada.']);
+        }
+
+        if ($entry->status !== EditionTeamStatus::Registered) {
+            throw ValidationException::withMessages(['form.team_id' => 'La delegación está retirada o descalificada: no puede inscribir participantes.']);
+        }
+
+        return SeasonTeam::firstOrCreate(
+            ['season_id' => $season->id, 'team_id' => $team->id],
+            ['category_id' => $season->category_id, 'is_active' => true],
+        );
     }
 
     /**

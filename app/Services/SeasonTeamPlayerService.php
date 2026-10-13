@@ -4,41 +4,157 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\EditionTeamStatus;
 use App\Enums\SeasonStatus;
 use App\Enums\SeasonTeamPlayerStatus;
 use App\Models\EventParticipant;
+use App\Models\GamesEditionTeam;
 use App\Models\Player;
+use App\Models\Season;
 use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use App\Models\SportPosition;
+use App\Models\Team;
 use App\Models\User;
 use App\Policies\SeasonTeamPlayerPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Plantel (roster) de un equipo inscrito. Reglas confirmadas (Fase 5):
- *   - Un participante no puede estar en dos equipos de la misma competencia.
- *   - Edad del participante a la fecha de inicio de la competencia dentro del
- *     rango min/max de la categoria de la inscripcion (si lo tiene).
- *     players no tiene genero: la categoria solo se valida por edad.
- *   - Numero de camiseta unico dentro del equipo; un solo capitan.
+ * Plantel de una delegacion en una competencia.
+ *
+ * Bloqueos fijos, por integridad de los datos:
+ *   - Un participante no esta dos veces en la misma competencia.
+ *   - Numero de camiseta unico dentro del plantel; un solo capitan.
  *   - La posicion debe ser del deporte de la competencia (no hay trigger).
- * Decisiones propias: una competencia Cerrada no admite cambios de plantel;
- * si ya hay capitan se rechaza (no se reasigna en silencio).
+ *   - Una competencia Cerrada no admite cambios de plantel.
+ *
+ * Reglas de reglamento (genero, edad por anio, tope, una sola delegacion
+ * por olimpiada): son datos y las evalua RosterRuleService. Advierten por
+ * defecto y solo bloquean si la fila del cuadro lo pide (D11).
+ *
+ * La inscripcion de la delegacion en la competencia (SeasonTeam) nace sola
+ * al registrar su primer participante: registerInCompetition() (S3).
  */
 class SeasonTeamPlayerService
 {
+    public function __construct(private RosterRuleService $rules, private GamesEditionService $editions)
+    {
+    }
+
+    /**
+     * Agrega un participante al plantel de $team en $season, creando la
+     * inscripcion de la delegacion si aun no existe. Es la entrada del
+     * delegado: elige competencia y delegacion, no una inscripcion previa.
+     *
+     * @param array{player_id: int, shirt_number?: int|null, position_id?: int|null, is_captain?: bool, status?: string, enrolled_at?: string, observations?: string|null} $data
+     */
+    public function registerInCompetition(Season $season, Team $team, array $data, User $actor): SeasonTeamPlayer
+    {
+        if (! $this->canRegisterFor($actor, $season, $team)) {
+            throw new AuthorizationException('Solo los delegados de la delegación o el organizador de la olimpiada gestionan este plantel.');
+        }
+
+        if ($season->status === SeasonStatus::Closed) {
+            throw ValidationException::withMessages(['form.season_id' => 'La competencia está cerrada: el plantel ya no se modifica.']);
+        }
+
+        // Transaccion: si el participante es rechazado, la inscripcion de
+        // la delegacion recien creada no queda vacia.
+        return DB::transaction(function () use ($season, $team, $data, $actor) {
+            $seasonTeam = app(SeasonTeamService::class)->ensureFor($season, $team);
+
+            return $this->register(['season_team_id' => $seasonTeam->id] + $data, $actor);
+        });
+    }
+
+    /**
+     * Quien puede armar el plantel de $team en $season: el admin, quien
+     * gestiona la olimpiada, o el delegado titular o suplente de ESA
+     * delegacion en ESA olimpiada. Misma regla que
+     * SeasonTeamPlayerPolicy::managesSeasonTeam(), pero sin necesitar que
+     * la inscripcion a la competencia exista todavia.
+     */
+    public function canRegisterFor(User $actor, Season $season, Team $team): bool
+    {
+        $season->loadMissing('gamesEdition');
+
+        if ($season->gamesEdition && $this->editions->manages($actor, $season->gamesEdition)) {
+            return true;
+        }
+
+        return $actor->hasRole('delegado')
+            && $actor->can('players.manage')
+            && GamesEditionTeam::where('games_edition_id', $season->games_edition_id)
+                ->where('team_id', $team->id)
+                ->where(fn ($q) => $q->where('delegate_id', $actor->id)->orWhere('substitute_delegate_id', $actor->id))
+                ->exists();
+    }
+
+    /**
+     * Competencias abiertas en las que $actor puede armar planteles
+     * (union si tiene varios roles): admin, todas; organizador, las de sus
+     * olimpiadas; delegado, las de las olimpiadas donde tiene una
+     * delegacion inscrita.
+     */
+    public function competitionsFor(User $actor): Collection
+    {
+        return Season::query()
+            ->where('status', '!=', SeasonStatus::Closed->value)
+            ->where('is_active', true)
+            ->unless($actor->hasRole('admin'), fn ($q) => $q->whereHas('gamesEdition', function ($edition) use ($actor) {
+                $edition->where(function ($w) use ($actor) {
+                    $w->whereRaw('1 = 0');
+
+                    if ($actor->hasRole('organizador') && $actor->can('editions.manage')) {
+                        $w->orWhere('organizer_id', $actor->id);
+                    }
+
+                    if ($actor->hasRole('delegado') && $actor->can('players.manage')) {
+                        $w->orWhereHas('editionTeams', fn ($t) => $t
+                            ->where('status', EditionTeamStatus::Registered->value)
+                            ->where(fn ($d) => $d->where('delegate_id', $actor->id)->orWhere('substitute_delegate_id', $actor->id)));
+                    }
+                });
+            }))
+            ->with(['gamesEdition:id,name,organizer_id,start_date', 'event:id,min_players,max_players,rules_blocking'])
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Delegaciones para las que $actor puede armar plantel en $season:
+     * quien gestiona la olimpiada, todas las inscritas; el delegado, las
+     * suyas. Vacio si no le corresponde ninguna.
+     */
+    public function delegationsFor(User $actor, Season $season): Collection
+    {
+        $season->loadMissing('gamesEdition');
+        $manages = $season->gamesEdition && $this->editions->manages($actor, $season->gamesEdition);
+
+        if (! $manages && ! ($actor->hasRole('delegado') && $actor->can('players.manage'))) {
+            return collect();
+        }
+
+        return Team::query()
+            ->whereHas('editionTeams', fn ($t) => $t
+                ->where('games_edition_id', $season->games_edition_id)
+                ->where('status', EditionTeamStatus::Registered->value)
+                ->unless($manages, fn ($q) => $q->where(fn ($d) => $d->where('delegate_id', $actor->id)->orWhere('substitute_delegate_id', $actor->id))))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
     /**
      * @param array{season_team_id: int, player_id: int, shirt_number: int|null, position_id: int|null, is_captain: bool, status: string, enrolled_at: string, observations: string|null} $data
      */
     public function register(array $data, User $actor): SeasonTeamPlayer
     {
-        $seasonTeam = SeasonTeam::with('season.gamesEdition', 'category', 'team')->findOrFail($data['season_team_id']);
+        $seasonTeam = SeasonTeam::with('season.gamesEdition', 'season.event', 'season.category', 'team')->findOrFail($data['season_team_id']);
 
         if (! SeasonTeamPlayerPolicy::managesSeasonTeam($actor, $seasonTeam)) {
             throw new AuthorizationException('Solo el delegado del equipo o el organizador de la olimpiada gestionan este plantel.');
@@ -65,7 +181,14 @@ class SeasonTeamPlayerService
             ]);
         }
 
-        $this->ensureAgeFitsCategory($player, $seasonTeam);
+        // Reglas de reglamento: solo llegan como errores si la fila del
+        // cuadro es bloqueante; si no, son advertencias y se inscribe.
+        $rules = $this->rules->evaluate($seasonTeam->season, $seasonTeam->team, $player);
+
+        if ($rules['errors'] !== []) {
+            throw ValidationException::withMessages(['form.player_id' => $rules['errors']]);
+        }
+
         $this->ensureRosterRules($seasonTeam, $data);
 
         return SeasonTeamPlayer::create([
@@ -158,30 +281,6 @@ class SeasonTeamPlayerService
         return $this->scopeVisibleTo(SeasonTeamPlayer::query(), $actor)->whereKey($entry->id)->exists();
     }
 
-    /** Inscripciones cuyo plantel puede gestionar $actor (competencias no cerradas). */
-    public function seasonTeamsFor(User $actor): Collection
-    {
-        return SeasonTeam::query()
-            ->with(['team:id,name', 'season:id,name,status,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id'])
-            ->whereHas('season', fn ($q) => $q->where('status', '!=', SeasonStatus::Closed->value))
-            ->get()
-            ->filter(fn (SeasonTeam $st) => SeasonTeamPlayerPolicy::managesSeasonTeam($actor, $st))
-            ->sortBy(fn (SeasonTeam $st) => $st->team->name)
-            ->values();
-    }
-
-    /** Edad cumplida a la fecha de referencia de la competencia. */
-    public function ageAtSeason(Player $player, SeasonTeam $seasonTeam): ?int
-    {
-        if (! $player->birth_date) {
-            return null;
-        }
-
-        $reference = $seasonTeam->season->start_date ?? Carbon::today();
-
-        return (int) $player->birth_date->diffInYears($reference);
-    }
-
     private function ensureSeasonOpen(SeasonTeam $seasonTeam): void
     {
         if ($seasonTeam->season->status === SeasonStatus::Closed) {
@@ -201,28 +300,6 @@ class SeasonTeamPlayerService
             && $entry->suspensions()->where('is_served', false)->exists()) {
             throw ValidationException::withMessages([
                 'form.status' => 'El participante tiene sanciones pendientes: no se puede habilitar hasta que se marquen como cumplidas en Sanciones.',
-            ]);
-        }
-    }
-
-    private function ensureAgeFitsCategory(Player $player, SeasonTeam $seasonTeam): void
-    {
-        $category = $seasonTeam->category;
-
-        if (! $category || ($category->min_age === null && $category->max_age === null)) {
-            return;
-        }
-
-        $age = $this->ageAtSeason($player, $seasonTeam);
-
-        if ($age === null) {
-            throw ValidationException::withMessages(['form.player_id' => 'El participante no tiene fecha de nacimiento: no se puede validar la categoría.']);
-        }
-
-        if (($category->min_age !== null && $age < $category->min_age) || ($category->max_age !== null && $age > $category->max_age)) {
-            $range = ($category->min_age ?? '—') . ' a ' . ($category->max_age ?? '—');
-            throw ValidationException::withMessages([
-                'form.player_id' => "El participante tiene {$age} años al inicio de la competencia; la categoría {$category->name} admite de {$range}.",
             ]);
         }
     }
