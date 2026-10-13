@@ -21,7 +21,7 @@
     {{-- min-h-0 es necesario para que un hijo flex con overflow-y-auto
          realmente haga scroll en vez de estirar el <aside>: sin esto el
          navegador ignora el overflow del <nav> dentro de un contenedor flex. --}}
-    <nav class="min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
+    <nav class="scrollbar-dark min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
         @foreach (\App\Support\Menu\AdminMenu::forUser(auth()->user()) as $item)
             @if (empty($item['children']))
                 @php $hasRoute = Route::has($item['route']); @endphp
