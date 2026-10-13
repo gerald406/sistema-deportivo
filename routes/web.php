@@ -18,6 +18,7 @@ use App\Livewire\Matchdays\Index as MatchdaysIndex;
 use App\Livewire\Matches\Index as MatchesIndex;
 use App\Livewire\Periods\Index as PeriodsIndex;
 use App\Livewire\PlayerRegistrationSelector;
+use App\Livewire\Public\PublicResults;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Relays\Index as RelaysIndex;
 use App\Livewire\ReopenLogs\Index as ReopenLogsIndex;
@@ -33,17 +34,14 @@ use App\Livewire\Seasons\Index as SeasonsIndex;
 use App\Livewire\Suspensions\Index as SuspensionsIndex;
 use App\Livewire\Teams\Index as TeamsIndex;
 use App\Livewire\Venues\Index as VenuesIndex;
-use App\Services\PublicResultsService;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function (PublicResultsService $public) {
-    return view('welcome', ['stats' => $public->landingStats()]);
-})->name('home');
+// Publica (sin login): SOLO la programacion de partidos y los resultados de las
+// competencias visibles (PublicResultsService). /resultados es el modulo interno.
+Route::get('/', PublicResults::class)->name('home');
 
-// Publica (sin login): posiciones, resultados, programacion y estadisticas de las
-// temporadas visibles (PublicResultsService). /resultados ya es el modulo interno.
-Route::view('/resultados-publicos', 'public.results')
-    ->name('public.results');
+// Direccion anterior de la pagina publica: se conserva para los enlaces ya compartidos.
+Route::redirect('/resultados-publicos', '/')->name('public.results');
 
 // Publica (sin login): destino del QR del carnet. URL firmada, sin datos sensibles.
 Route::get('/verificar-carnet/{seasonTeamPlayer}', [PlayerCardController::class, 'verify'])

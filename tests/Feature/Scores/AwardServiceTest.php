@@ -6,7 +6,6 @@ namespace Tests\Feature\Scores;
 
 use App\Enums\RoundType;
 use App\Enums\StageMode;
-use App\Livewire\Public\PublicResults;
 use App\Livewire\Reports\GeneralScore;
 use App\Models\Category;
 use App\Models\EditionAward;
@@ -480,23 +479,13 @@ class AwardServiceTest extends TestCase
             ->assertSee('10 pts');
     }
 
-    public function test_public_page_shows_general_score(): void
+    /** La pagina publica solo trae programacion y resultados: el puntaje general vive en el panel. */
+    public function test_public_page_does_not_publish_the_general_score(): void
     {
         $a = $this->competition('Ciclismo Libre Varones', [20, 16, 12], 'individual_ranked');
         $this->podium($a, [1 => $this->teams[3], 2 => $this->teams[0]]);
 
-        $component = Livewire::test(PublicResults::class)
-            ->call('setTab', 'general')
-            ->assertSet('activeTab', 'general')
-            ->assertSee('Puntaje general');
-
-        // La lider y su total, sin datos personales: solo delegaciones y puntos.
-        $rows = $component->viewData('generalScore');
-        $this->assertSame(['Delegación 4', 20], [$rows[0]->team->name, $rows[0]->total_points]);
-        $this->assertSame(['Delegación 1', 16], [$rows[1]->team->name, $rows[1]->total_points]);
-        $this->assertStringContainsString('>20<', $component->html());
-
-        $this->get(route('public.results'))->assertOk();
+        $this->get(route('home'))->assertOk()->assertDontSee('Puntaje general');
     }
 
     public function test_only_manager_can_recalculate(): void

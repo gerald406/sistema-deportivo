@@ -121,8 +121,8 @@ class RoutesSmokeTest extends TestCase
     {
         $data = $this->buildCompetition();
 
-        $this->get(route('home'))->assertOk();
-        $this->get(route('public.results'))->assertOk()->assertSee($data->edition->name);
+        $this->get(route('home'))->assertOk()->assertSee($data->edition->name);
+        $this->get(route('public.results'))->assertRedirect(route('home'));
         $this->get(URL::signedRoute('cards.verify', $data->homeEntry))->assertOk()->assertSee($data->edition->name);
     }
 

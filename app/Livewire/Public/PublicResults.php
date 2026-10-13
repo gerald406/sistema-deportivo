@@ -4,144 +4,154 @@ declare(strict_types=1);
 
 namespace App\Livewire\Public;
 
-use App\Models\Season;
-use App\Services\AwardService;
+use App\Models\GamesEdition;
 use App\Services\PublicResultsService;
 use App\Services\SeasonOverviewService;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * Resultados publicos (sin login). Adaptado de pichanga/Public/PublicResults
- * SIN la rama futbol/voley: se elige Olimpiada -> Competencia y cada competencia
- * ya sabe su deporte/disciplina.
+ * Pagina publica (sin login, ruta "/"): SOLO la programacion de partidos y
+ * los resultados de una olimpiada, de todas sus competencias a la vez,
+ * agrupados por dia. Posiciones, goleadores, sanciones y puntaje general
+ * no se publican: viven en el panel.
  *
- * Todas las propiedades publicas vienen del navegador: la competencia se
- * resuelve SOLO entre las visibles (PublicResultsService) y las pestañas
- * solo entre las que esa competencia soporta (SeasonOverviewService::sections,
- * el mismo criterio que el Reporte Gerencial).
+ * Todas las propiedades publicas vienen del navegador (y de la URL): la
+ * olimpiada, el deporte y la competencia se resuelven SOLO entre lo
+ * visible (PublicResultsService) y un valor ajeno se ignora.
  */
+#[Layout('layouts.public')]
 class PublicResults extends Component
 {
-    public const TABS = ['standings', 'results', 'schedule', 'scorers', 'suspended', 'yellows', 'general'];
+    public const VIEWS = ['programacion', 'resultados'];
 
+    private const PAGE = 40;
+
+    /** Tope de filas: limit es publico, sin tope se podria pedir la olimpiada entera en un clic. */
+    private const MAX = 400;
+
+    #[Url(as: 'vista')]
+    public string $view = 'programacion';
+
+    #[Url(as: 'olimpiada')]
     public string $gamesEditionId = '';
 
+    #[Url(as: 'deporte')]
+    public string $sportId = '';
+
+    #[Url(as: 'competencia')]
     public string $seasonId = '';
 
-    public string $activeTab = 'standings';
+    #[Url(as: 'q')]
+    public string $search = '';
 
-    /** Jornada elegida en el select de Resultados ('' = la ultima completada). */
-    public string $selectedResultMatchdayId = '';
+    public int $limit = self::PAGE;
 
-    public function mount(PublicResultsService $public): void
+    public function setView(string $view): void
     {
-        $first = $public->visibleGamesEditions()->first();
-        $this->gamesEditionId = $first ? (string) $first->id : '';
-        $this->selectFirstSeason($public);
+        $this->view = in_array($view, self::VIEWS, true) ? $view : self::VIEWS[0];
+        $this->limit = self::PAGE;
     }
 
-    public function updatedGamesEditionId(PublicResultsService $public): void
+    public function updatedGamesEditionId(): void
     {
-        $this->selectFirstSeason($public);
+        $this->reset('sportId', 'seasonId', 'search', 'limit');
+    }
+
+    /** La competencia elegida puede no ser del nuevo deporte. */
+    public function updatedSportId(): void
+    {
+        $this->reset('seasonId', 'limit');
     }
 
     public function updatedSeasonId(): void
     {
-        $this->activeTab = 'standings';
-        $this->selectedResultMatchdayId = '';
+        $this->reset('limit');
     }
 
-    public function setTab(string $tab): void
+    public function updatedSearch(): void
     {
-        $this->activeTab = in_array($tab, self::TABS, true) ? $tab : 'standings';
+        $this->reset('limit');
+    }
+
+    public function clearFilters(): void
+    {
+        $this->reset('sportId', 'seasonId', 'search', 'limit');
+    }
+
+    public function more(): void
+    {
+        $this->limit = min($this->limit + self::PAGE, self::MAX);
     }
 
     public function render(PublicResultsService $public, SeasonOverviewService $overview)
     {
-        $gamesEditions = $public->visibleGamesEditions();
-        $seasons = ctype_digit($this->gamesEditionId) ? $public->seasonsOf((int) $this->gamesEditionId) : collect();
-        $season = ctype_digit($this->seasonId) && $seasons->contains('id', (int) $this->seasonId)
-            ? $public->findVisibleSeason((int) $this->seasonId)
-            : null;
+        $editions = $public->visibleGamesEditions();
+        /** @var ?GamesEdition $edition */
+        $edition = $editions->firstWhere('id', (int) $this->gamesEditionId) ?? $editions->first();
+        $played = $this->view === 'resultados';
 
-        $data = ['gamesEditions' => $gamesEditions, 'seasons' => $seasons, 'season' => $season, 'tabs' => []];
+        $seasons = $edition ? $public->seasonsOf($edition->id) : collect();
+        $sports = $seasons->pluck('sport')->unique('id')->sortBy('name')->values();
+        $sport = $sports->firstWhere('id', (int) $this->sportId);
+        $seasonOptions = $sport ? $seasons->where('sport_id', $sport->id)->values() : $seasons;
+        $season = $seasonOptions->firstWhere('id', (int) $this->seasonId);
 
-        if ($season) {
-            $sections = $overview->sections($season);
-            $tabs = array_keys(array_filter([
-                'standings' => $sections['standings'],
-                'results' => true,
-                'schedule' => true,
-                'scorers' => $sections['scorers'],
-                'suspended' => $sections['suspensions'],
-                'yellows' => $sections['yellows'],
-                // Puntaje general de la olimpiada: solo delegaciones y puntos, sin datos personales.
-                'general' => true,
-            ]));
+        $filters = [
+            'sportId' => $sport?->id,
+            'seasonId' => $season?->id,
+            'search' => mb_substr(trim($this->search), 0, 60),
+        ];
 
-            // Pestaña no soportada por esta competencia (o manipulada): la primera valida.
-            if (! in_array($this->activeTab, $tabs, true)) {
-                $this->activeTab = $tabs[0];
-            }
+        $total = 0;
+        $days = collect();
+        $limit = max(self::PAGE, min($this->limit, self::MAX));
 
-            $data['tabs'] = $tabs;
-            $data += $this->tabData($season, $overview);
+        if ($edition) {
+            $query = $public->matchesOf($edition->id, $played, $filters);
+            $total = (clone $query)->count();
+            $days = $this->groupByDay(
+                $query->with($overview->matchRowRelations())->limit($limit)->get()
+                    ->map(fn ($match) => $overview->matchRow($match)),
+            );
         }
 
-        return view('livewire.public.public-results', $data);
+        return view('livewire.public.public-results', [
+            'editions' => $editions,
+            'edition' => $edition,
+            'sports' => $sports,
+            'seasonOptions' => $seasonOptions,
+            'played' => $played,
+            'days' => $days,
+            'shown' => $days->sum(fn (array $day) => $day['rows']->count()),
+            'total' => $total,
+            'canLoadMore' => $limit < min($total, self::MAX),
+            // Totales de cada pestaña sin filtros: dicen cuanto hay, no cuanto coincide.
+            'counts' => [
+                'programacion' => $edition ? $public->matchesOf($edition->id, false)->count() : 0,
+                'resultados' => $edition ? $public->matchesOf($edition->id, true)->count() : 0,
+            ],
+            'hasFilters' => $sport !== null || $season !== null || $filters['search'] !== '',
+        ])->title(($played ? 'Resultados' : 'Programación').' — '.($edition?->name ?? config('app.name')));
     }
 
-    /** Solo se consulta lo que muestra la pestaña activa. */
-    private function tabData(Season $season, SeasonOverviewService $overview): array
+    /**
+     * Las filas ya vienen ordenadas; aqui solo se cortan por dia. Lo que no
+     * tiene fecha va en un grupo propio al final.
+     *
+     * @return Collection<int, array{key: string, date: ?\Illuminate\Support\Carbon, rows: Collection}>
+     */
+    private function groupByDay(Collection $rows): Collection
     {
-        switch ($this->activeTab) {
-            case 'standings':
-                $table = $overview->standings($season);
-
-                return ['standings' => $table, 'standingColumns' => $overview->standingColumns($season, $table)];
-
-            case 'results':
-                $completed = $overview->completedMatchdays($season);
-                // Respeta la jornada elegida solo si es de ESTA competencia; si no, la mas reciente.
-                $matchday = ctype_digit($this->selectedResultMatchdayId)
-                    ? $completed->firstWhere('id', (int) $this->selectedResultMatchdayId)
-                    : null;
-                $matchday ??= $completed->first();
-
-                return [
-                    'completedMatchdays' => $completed,
-                    'lastMatchday' => $matchday,
-                    'lastResults' => $matchday ? $overview->matchRows($matchday, onlyDecided: true) : collect(),
-                ];
-
-            case 'schedule':
-                $next = $overview->nextMatchday($season);
-
-                return ['nextMatchday' => $next, 'nextGames' => $next ? $overview->matchRows($next, onlyDecided: false) : collect()];
-
-            case 'scorers':
-                return ['topScorers' => $overview->topScorers($season, 10)];
-
-            case 'suspended':
-                return ['suspensions' => $overview->activeSuspensions($season)];
-
-            case 'yellows':
-                return ['yellowCardRisks' => $overview->playersWithTwoYellows($season)];
-
-            case 'general':
-                return ['generalScore' => app(AwardService::class)->table($season->gamesEdition)];
-        }
-
-        return [];
-    }
-
-    private function selectFirstSeason(PublicResultsService $public): void
-    {
-        /** @var Collection<int, Season> $seasons */
-        $seasons = ctype_digit($this->gamesEditionId) ? $public->seasonsOf((int) $this->gamesEditionId) : collect();
-        $this->seasonId = $seasons->isNotEmpty() ? (string) $seasons->first()->id : '';
-        $this->activeTab = 'standings';
-        $this->selectedResultMatchdayId = '';
+        return $rows
+            ->groupBy(fn (array $row) => $row['scheduledAt']?->format('Y-m-d') ?? 'sin-fecha')
+            ->map(fn (Collection $group, string $key) => [
+                'key' => $key,
+                'date' => $group->first()['scheduledAt']?->copy()->startOfDay(),
+                'rows' => $group,
+            ])
+            ->values();
     }
 }

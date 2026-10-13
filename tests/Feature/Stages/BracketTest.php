@@ -347,7 +347,7 @@ class BracketTest extends TestCase
             }
         }
 
-        $this->get(route('public.results'))->assertOk();
+        $this->get(route('home'))->assertOk();
     }
 
     public function test_medals_come_only_from_the_final_stage(): void
