@@ -510,7 +510,7 @@
                     <td class="text-bold">{{ $risk['entry']->player->last_name }}, {{ $risk['entry']->player->first_name }}</td>
                     <td>{{ $risk['entry']->seasonTeam->team->name }}</td>
                     <td class="text-center"><span class="yellow-badge">{{ $risk['total'] }} amarillas</span></td>
-                    {{-- Las amarillas no se acumulan: "Suspendido" solo si ya tiene una sanción pendiente. --}}
+                    {{-- "Suspendido" solo si ya tiene una sanción pendiente (por roja o por acumulación de amarillas). --}}
                     <td class="text-center">@if($risk['suspended']) <span class="red-badge">Suspendido</span> @else <span class="yellow-badge">En riesgo</span> @endif</td>
                 </tr>
                 @endforeach

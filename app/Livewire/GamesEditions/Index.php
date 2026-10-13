@@ -46,6 +46,8 @@ class Index extends Component
         'end_date' => '',
         'host_venue_id' => '',
         'is_active' => true,
+        'yellow_cards_limit' => '',
+        'captain_red_matches' => '',
     ];
 
     /** Logo nuevo pendiente de subir (Livewire\WithFileUploads). */
@@ -119,6 +121,8 @@ class Index extends Component
             'end_date' => $edition->end_date?->format('Y-m-d') ?? '',
             'host_venue_id' => $edition->host_venue_id ?? '',
             'is_active' => $edition->is_active,
+            'yellow_cards_limit' => $edition->yellow_cards_limit ?? '',
+            'captain_red_matches' => $edition->captain_red_matches ?? '',
         ];
         $this->existingLogoUrl = $edition->logo ? Storage::disk('public')->url($edition->logo) : null;
         $this->showModal = true;
@@ -127,6 +131,11 @@ class Index extends Component
     public function save(GamesEditionService $service): void
     {
         $data = $this->validate($this->rules())['form'];
+
+        // Vacio = la regla no se aplica.
+        foreach (['yellow_cards_limit', 'captain_red_matches'] as $rule) {
+            $data[$rule] = in_array($data[$rule] ?? '', ['', null], true) ? null : (int) $data[$rule];
+        }
         $actor = auth()->user();
 
         foreach (['start_date', 'end_date', 'host_venue_id'] as $field) {
@@ -238,6 +247,8 @@ class Index extends Component
             'end_date' => '',
             'host_venue_id' => '',
             'is_active' => true,
+            'yellow_cards_limit' => '',
+            'captain_red_matches' => '',
         ];
         $this->newLogo = null;
         $this->existingLogoUrl = null;
@@ -263,6 +274,8 @@ class Index extends Component
             'form.end_date' => array_filter(['nullable', 'date', $hasStart ? 'after_or_equal:form.start_date' : null]),
             'form.host_venue_id' => ['nullable', 'integer', Rule::exists('venues', 'id')],
             'form.is_active' => ['boolean'],
+            'form.yellow_cards_limit' => ['nullable', 'integer', 'between:1,20'],
+            'form.captain_red_matches' => ['nullable', 'integer', 'between:1,20'],
             'newLogo' => ['nullable', 'image', 'max:2048'],
         ];
     }
@@ -275,6 +288,8 @@ class Index extends Component
             'form.start_date' => 'fecha de inicio',
             'form.end_date' => 'fecha de fin',
             'form.host_venue_id' => 'sede principal',
+            'form.yellow_cards_limit' => 'amarillas para suspensión',
+            'form.captain_red_matches' => 'partidos de sanción al capitán',
             'newLogo' => 'logo',
         ];
     }

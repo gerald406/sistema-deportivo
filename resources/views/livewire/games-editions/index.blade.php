@@ -192,6 +192,26 @@
                     <p class="mt-1 text-xs text-gray-400">JPG, PNG o GIF. Máx 2MB.</p>
                 </div>
 
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <p class="text-sm font-semibold text-gray-700">Reglas disciplinarias</p>
+                    <p class="text-xs text-gray-500">Vacío = la regla no se aplica. Una tarjeta roja da siempre 1 partido de sanción.</p>
+                    <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Amarillas para suspensión</label>
+                            <input type="number" min="1" max="20" wire:model="form.yellow_cards_limit" placeholder="No se acumulan"
+                                   class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <p class="mt-1 text-xs text-gray-400">Acumuladas en una misma competencia: 1 partido de sanción.</p>
+                            @error('form.yellow_cards_limit') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Partidos de sanción al capitán expulsado</label>
+                            <input type="number" min="1" max="20" wire:model="form.captain_red_matches" placeholder="Igual que los demás (1)"
+                                   class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            @error('form.captain_red_matches') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                </div>
+
                 <label class="flex items-center gap-2">
                     <input type="checkbox" wire:model="form.is_active" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                     <span class="text-sm text-gray-700">Activa</span>

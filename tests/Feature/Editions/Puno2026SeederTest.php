@@ -99,6 +99,7 @@ class Puno2026SeederTest extends TestCase
         $this->assertSame('2026-10-28', $edition->start_date->toDateString());
         $this->assertSame('2026-10-30', $edition->end_date->toDateString());
         $this->assertNotNull($edition->organizer_id);
+        $this->assertSame([2, 2], [$edition->yellow_cards_limit, $edition->captain_red_matches]); // Art. 15 y 14
 
         $perGroup = $edition->groups()->withCount('editionTeams')->get()->pluck('edition_teams_count', 'name')->all();
         $this->assertSame(['Serie A' => 5, 'Serie B' => 4, 'Serie C' => 5, 'Serie D' => 4], $perGroup);

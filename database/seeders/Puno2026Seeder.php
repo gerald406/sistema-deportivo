@@ -118,6 +118,9 @@ class Puno2026Seeder extends Seeder
                 'start_date' => '2026-10-28',
                 'end_date' => '2026-10-30',
                 'is_active' => true,
+                // Art. 15: dos amarillas acumuladas, un partido. Art. 14: capitan expulsado, dos.
+                'yellow_cards_limit' => 2,
+                'captain_red_matches' => 2,
             ]
         );
 

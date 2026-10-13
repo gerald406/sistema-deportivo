@@ -351,8 +351,8 @@
                 <div class="border-b border-yellow-600 bg-yellow-500 px-6 py-5">
                     <h3 class="font-display text-xl font-bold text-white"><i class="fa-regular fa-square mr-2 text-yellow-100"></i> Alerta de Amarillas</h3>
                     {{-- La referencia decia "la sancion se activa al acumular 3": en este sistema las
-                         amarillas no se acumulan (la doble amarilla en un partido es una roja). --}}
-                    <p class="mt-1 text-xs text-yellow-50">Participantes con 2 o más amarillas en la competencia. Las amarillas no se acumulan: la doble amarilla en un mismo partido es roja.</p>
+                         amarillas solo suspenden si la olimpiada define un limite (games_editions.yellow_cards_limit). --}}
+                    <p class="mt-1 text-xs text-yellow-50">Participantes con 2 o más amarillas en la competencia. La suspensión por acumulación depende del reglamento de la olimpiada.</p>
                 </div>
                 @if ($yellowCardRisks->count() > 0)
                     <div class="divide-y divide-slate-100">
