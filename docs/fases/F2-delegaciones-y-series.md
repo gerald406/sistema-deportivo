@@ -39,14 +39,17 @@ de la tarea 2.3 cada archivo tocado. Ninguna referencia a `teams.delegate_id`,
 - `GamesEditionTeam`: `edition()`, `team()`, `group()`, `delegate()`, `substituteDelegate()`; cast `status` → `EditionTeamStatus`; `hasDelegate(User $user): bool` (verdadero si es titular o suplente).
 - `SeasonTeam::editionTeam(): ?GamesEditionTeam` (por `season.games_edition_id` + `team_id`); `SeasonTeam::delegates(): Collection` (titular y suplente, sin nulos); `SeasonTeam::hasDelegate(User $user): bool`.
 - `EditionGroupService`, `EditionTeamService`, `DelegateAccountService` con las firmas del plan maestro.
+- `SeasonTeamPolicy::delegateConstraint(User $user): Closure` — versión SQL de `SeasonTeam::hasDelegate()`; reemplaza a `effectiveDelegateConstraint()`.
+- `EditionTeamService::assignableTeams(User $actor): Builder` — el organizador solo inscribe delegaciones a su cargo (decisión tomada al implementar: el catálogo de delegaciones es global y, sin esto, un organizador veía e inscribía las de otro).
+- `Tests\Concerns\BuildsCompetition::registerDelegation(GamesEdition, Team, ?User $delegate, ?User $substitute, array $attributes = []): GamesEditionTeam`.
 - `EditionTeamService::scopeDelegatedTo(Builder $teams, User $actor): Builder`: delegaciones donde el usuario es titular o suplente en alguna olimpiada.
 - Trait `SelectsEdition`: `public string $editionId = ''` con `#[Url(as: 'olimpiada')]`; `mountSelectsEdition(): void` preselecciona la olimpiada activa más reciente que el usuario gestiona; `edition(): ?GamesEdition` la busca con `scopeManagedBy()`; `editionOptions(): Collection`.
 - Rutas `/series` → `edition-groups.index`, `/delegaciones-inscritas` → `edition-teams.index`.
 
 ## Tarea 2.1 — Series
 
-- [ ] **Paso 1.** Migración M4 y modelo `GamesEditionGroup` con su factory.
-- [ ] **Paso 2.** Escribir `EditionGroupTest`:
+- [x] **Paso 1.** Migración M4 y modelo `GamesEditionGroup` con su factory.
+- [x] **Paso 2.** Escribir `EditionGroupTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -56,15 +59,15 @@ de la tarea 2.3 cada archivo tocado. Ninguna referencia a `teams.delegate_id`,
 | `test_group_with_delegations_is_not_deleted` | `delete()` devuelve un string si hay delegaciones en la serie (esta prueba se completa en la tarea 2.2) |
 | `test_empty_group_is_deleted` | `delete()` devuelve `true` |
 
-- [ ] **Paso 3.** Ejecutar: falla. Implementar `EditionGroupService`. Ejecutar: en verde (salvo la que depende de 2.2).
-- [ ] **Paso 4.** Trait `SelectsEdition`, componente `EditionGroups\Index` (patrón de CRUD del proyecto: listado ordenable por `sort_order` y `name`, modal crear/editar, borrado con `confirmDelete`), vista, ruta y entrada de menú "Series".
-- [ ] **Paso 5.** Agregar `edition-groups.index` a `RoutesSmokeTest::adminRoutes()`.
-- [ ] **Paso 6.** `php artisan migrate`; `php artisan test`. Commit: `F2: Series de la olimpiada`.
+- [x] **Paso 3.** Ejecutar: falla. Implementar `EditionGroupService`. Ejecutar: en verde (salvo la que depende de 2.2).
+- [x] **Paso 4.** Trait `SelectsEdition`, componente `EditionGroups\Index` (patrón de CRUD del proyecto: listado ordenable por `sort_order` y `name`, modal crear/editar, borrado con `confirmDelete`), vista, ruta y entrada de menú "Series".
+- [x] **Paso 5.** Agregar `edition-groups.index` a `RoutesSmokeTest::adminRoutes()`.
+- [x] **Paso 6.** `php artisan migrate`; `php artisan test`. Commit: `F2: Series de la olimpiada`.
 
 ## Tarea 2.2 — Delegaciones inscritas con titular y suplente
 
-- [ ] **Paso 1.** Migración M5, enum `EditionTeamStatus`, modelo `GamesEditionTeam` y factory.
-- [ ] **Paso 2.** Escribir `EditionTeamTest`:
+- [x] **Paso 1.** Migración M5, enum `EditionTeamStatus`, modelo `GamesEditionTeam` y factory.
+- [x] **Paso 2.** Escribir `EditionTeamTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -77,13 +80,13 @@ de la tarea 2.3 cada archivo tocado. Ninguna referencia a `teams.delegate_id`,
 | `test_delegation_with_rosters_is_not_deleted` | Con algún `SeasonTeam` de esa delegación en la olimpiada, `delete()` devuelve un string |
 | `test_delegation_can_be_disqualified` | `update()` con estado `disqualified` lo guarda |
 
-- [ ] **Paso 3.** Ejecutar: falla. Implementar `EditionTeamService`. Ejecutar: en verde. Completar `test_group_with_delegations_is_not_deleted`.
-- [ ] **Paso 4.** Componente `EditionTeams\Index`: listado con filtros por serie y estado; modal con delegación (búsqueda), serie, titular, suplente (búsqueda por nombre o correo con `delegateCandidates()`), estado, "pago registrado" y observaciones. Vista, ruta y menú "Delegaciones inscritas".
-- [ ] **Paso 5.** Agregar `edition-teams.index` a la prueba de humo. `php artisan migrate`; `php artisan test`. Commit: `F2: Delegaciones inscritas con delegado titular y suplente`.
+- [x] **Paso 3.** Ejecutar: falla. Implementar `EditionTeamService`. Ejecutar: en verde. Completar `test_group_with_delegations_is_not_deleted`.
+- [x] **Paso 4.** Componente `EditionTeams\Index`: listado con filtros por serie y estado; modal con delegación (selector de `assignableTeams()`), serie, titular y suplente (selectores de `delegateOptions()`), estado, "pago registrado" y observaciones. Vista, ruta y menú "Delegaciones inscritas".
+- [x] **Paso 5.** Agregar `edition-teams.index` a la prueba de humo. `php artisan migrate`; `php artisan test`. Commit: `F2: Delegaciones inscritas con delegado titular y suplente`.
 
 ## Tarea 2.3 — El delegado en un solo lugar
 
-- [ ] **Paso 1.** Escribir `DelegateScopeTest`:
+- [x] **Paso 1.** Escribir `DelegateScopeTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -95,18 +98,18 @@ de la tarea 2.3 cada archivo tocado. Ninguna referencia a `teams.delegate_id`,
 | `test_user_with_both_roles_gets_the_union` | Un usuario organizador de la olimpiada X y delegado en la olimpiada Y ve en `/planteles` los planteles de ambas |
 | `test_delegate_sees_only_his_delegation_rosters` | En `rosters.index`, el delegado ve su plantel y no el de otra delegación |
 
-- [ ] **Paso 2.** Ejecutar: falla.
-- [ ] **Paso 3.** Implementar `SeasonTeam::editionTeam()`, `delegates()`, `hasDelegate()`. Reemplazar cada uso de `effectiveDelegate()`, `team.delegate`, `teams.delegate_id` y `season_team.delegate_id` por ellos o por `EditionTeamService::scopeDelegatedTo()`. Los PDF (carnet, ficha, padrón) muestran al titular.
-- [ ] **Paso 4.** `Teams\Index` y su vista: quitar el selector de delegado y el alta rápida (se mueve a `EditionTeams\Index`); título "Delegaciones". `SeasonTeams\Index`: quitar el delegado de temporada.
-- [ ] **Paso 5.** `TeamPolicy`: `update` solo para organizador con `teams.manage` que gestiona la delegación. `SeasonTeamPlayerPolicy`: la rama del delegado exige `players.manage` y `SeasonTeam::hasDelegate()`.
-- [ ] **Paso 6.** Migraciones M6 y M7; `RolePermissionSeeder` con la matriz final; `TeamFactory` sin `delegate_id`.
-- [ ] **Paso 7.** `php artisan migrate`; `php artisan test`. Esperado: todo en verde, incluida la prueba de humo.
-- [ ] **Paso 8.** `grep -rnE "effectiveDelegate|delegate_id" app resources/views | grep -v "substitute_delegate_id\|games_edition_teams\|GamesEditionTeam\|EditionTeam"`: 0 coincidencias fuera de la inscripción de la delegación.
-- [ ] **Paso 9.** Commit: `F2: Delegado titular y suplente como única fuente; el delegado solo registra participantes`.
+- [x] **Paso 2.** Ejecutar: falla.
+- [x] **Paso 3.** Implementar `SeasonTeam::editionTeam()`, `delegates()`, `hasDelegate()`. Reemplazar cada uso de `effectiveDelegate()`, `team.delegate`, `teams.delegate_id` y `season_team.delegate_id` por ellos o por `EditionTeamService::scopeDelegatedTo()`. Los PDF (carnet, ficha, padrón) muestran al titular.
+- [x] **Paso 4.** `Teams\Index` y su vista: quitar el selector de delegado y el alta rápida (se mueve a `EditionTeams\Index`); título "Delegaciones". `SeasonTeams\Index`: quitar el delegado de temporada.
+- [x] **Paso 5.** `TeamPolicy`: `update` solo para organizador con `teams.manage` que gestiona la delegación. `SeasonTeamPlayerPolicy`: la rama del delegado exige `players.manage` y `SeasonTeam::hasDelegate()`.
+- [x] **Paso 6.** Migraciones M6 y M7; `RolePermissionSeeder` con la matriz final; `TeamFactory` sin `delegate_id`.
+- [x] **Paso 7.** `php artisan migrate`; `php artisan test`. Esperado: todo en verde, incluida la prueba de humo.
+- [x] **Paso 8.** `grep -rnE "effectiveDelegate|delegate_id" app resources/views | grep -v "substitute_delegate_id\|games_edition_teams\|GamesEditionTeam\|EditionTeam"`: 0 coincidencias fuera de la inscripción de la delegación.
+- [x] **Paso 9.** Commit: `F2: Delegado titular y suplente como única fuente; el delegado solo registra participantes`.
 
 ## Tarea 2.4 — El organizador crea cuentas de delegado
 
-- [ ] **Paso 1.** Escribir `DelegateAccountTest`:
+- [x] **Paso 1.** Escribir `DelegateAccountTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -117,12 +120,12 @@ de la tarea 2.3 cada archivo tocado. Ninguna referencia a `teams.delegate_id`,
 | `test_role_cannot_be_injected` | Enviando `role => admin` en `$data`, el usuario creado solo tiene `delegado` |
 | `test_organizer_cannot_use_the_users_crud` | `admin.users.index` devuelve 403 al organizador; `UserAccountService::register()` con el organizador como actor lanza `AuthorizationException` |
 
-- [ ] **Paso 2.** Ejecutar: falla. Modificar `DelegateAccountService::createQuickAccount()`. Conectar el alta rápida en el modal de `EditionTeams\Index` (nombre, correo, contraseña), visible para admin y organizador.
-- [ ] **Paso 3.** `php artisan test`: en verde. Commit: `F2: El organizador crea cuentas solo de delegado`.
+- [x] **Paso 2.** Ejecutar: falla. Modificar `DelegateAccountService::createQuickAccount()`. Conectar el alta rápida en el modal de `EditionTeams\Index` (nombre, correo, contraseña), visible para admin y organizador.
+- [x] **Paso 3.** `php artisan test`: en verde. Commit: `F2: El organizador crea cuentas solo de delegado`.
 
 ## Tarea 2.5 — Documentación
 
-- [ ] `CLAUDE.md`: regla 3 (el organizador crea cuentas de delegado), regla 5 (titular y suplente de la delegación inscrita), puntos 3 a 5 del "Flujo de permisos", modelos nuevos. Commit: `Docs: reglas de delegados y series`.
+- [x] `CLAUDE.md`: regla 3 (el organizador crea cuentas de delegado), regla 5 (titular y suplente de la delegación inscrita), puntos 3 a 5 del "Flujo de permisos", modelos nuevos. Commit: `Docs: reglas de delegados y series`.
 
 ## Reglas que cumple
 

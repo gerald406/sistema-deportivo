@@ -16,15 +16,21 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
 1. Exactamente 3 roles: `admin`, `organizador`, `delegado`. No existe rol "jugador" ni login
    de jugadores.
 2. Un usuario puede tener varios roles a la vez.
-3. **Solo el admin crea cuentas de usuario.** Cualquier feature que cree un `User` (alta rápida
-   de delegado desde el modal de Team, CRUD de Usuarios) debe revalidar `hasRole('admin')`
-   **en el Service**, nunca confiar solo en que el botón esté oculto en el Blade — cualquier
-   método público de un componente Livewire es invocable desde la consola del navegador.
+3. **Cuentas de usuario.** El admin crea cuentas de cualquier rol (CRUD de Usuarios,
+   `UserAccountService`). El organizador que tiene una olimpiada a cargo crea cuentas **solo con
+   rol `delegado`** (alta rápida en /delegaciones-inscritas, `DelegateAccountService`, que fuerza
+   el rol y nunca lo lee del formulario). Nadie más crea cuentas. Todo se revalida **en el
+   Service**, nunca confiar solo en que el botón esté oculto en el Blade — cualquier método
+   público de un componente Livewire es invocable desde la consola del navegador.
 4. **Sin soft deletes en ningún lado.** Se usa `is_active` boolean. Los borrados físicos deben
    verificar antes si el registro tiene historial dependiente (FKs con `restrictOnDelete()`) y
    devolver un error claro en vez de dejar que MySQL truene con un 1451.
-5. `SeasonTeam::effectiveDelegate()`: el delegado de la temporada (si existe) tiene precedencia
-   sobre el delegado general del club (`Team.delegate_id`).
+5. **Delegados: una sola fuente.** El delegado titular y el suplente de una delegación viven en
+   su inscripción en la olimpiada (`games_edition_teams.delegate_id` y
+   `substitute_delegate_id`) y tienen los mismos permisos. `teams.delegate_id` y
+   `season_team.delegate_id` ya NO existen. Para preguntar "¿es delegado?" se usa
+   `SeasonTeam::hasDelegate()` / `delegates()` y, en SQL, `SeasonTeamPolicy::delegateConstraint()`;
+   ningún Service reimplementa la regla.
 6. `Player` es un catálogo global (no pertenece a un solo Team hasta que se inscribe vía
    `season_team_player`, que es Fase 5). Por eso `players.created_by` existe: reconoce
    propiedad de un jugador recién creado antes de tener roster.
@@ -41,20 +47,25 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
 2. **Competencias (`Season`)**: las crea el ORGANIZADOR, pero solo dentro de una olimpiada que le
    fue asignada (`gamesEdition.organizer_id === auth()->id()`) (`SeasonPolicy`,
    `SeasonService::ensureCanUseEdition()`). `seasons.games_edition_id` es obligatorio.
-3. **Equipos (`Team`) y su delegado (`delegate_id`)**: los crea el ORGANIZADOR o el ADMIN. El
-   delegado NUNCA crea ni borra equipos; conserva la edición de nombre/logo de SU equipo sin
-   poder reasignar `delegate_id` (`TeamPolicy`, `TeamRegistrationService`). El organizador tiene
-   el permiso `teams.manage` para esto. Crear la *cuenta* de un delegado sigue siendo solo del
-   admin (regla 3 de arriba). En /equipos el organizador solo ve y gestiona los equipos **a su
-   cargo**: con al menos una inscripción en una temporada de un torneo suyo, o creados por él
-   (`teams.created_by`) — ver `TeamRegistrationService::scopeManagedBy()`.
-4. **Inscripciones (`SeasonTeam`)**: las crean, editan y retiran solo el ORGANIZADOR del torneo o
-   el ADMIN, en Borrador o En curso (nadie en Cerrada). El delegado NUNCA crea ni edita
-   `SeasonTeam` en ningún estado; solo las ve (`SeasonTeamPolicy`, `SeasonTeamService`).
-   *Reemplaza la regla obsoleta de Fase 5 "el delegado inscribe sus equipos en Borrador".*
-5. **Jugadores en el plantel (`SeasonTeamPlayer`)**: los inscribe el DELEGADO en los equipos que
-   tiene asignados (`SeasonTeam::effectiveDelegate()`), y nunca en equipos ajenos. El organizador
-   del torneo y el admin conservan acceso de supervisión (`SeasonTeamPlayerPolicy::managesSeasonTeam()`).
+3. **Delegaciones (`Team`)**: las crea, edita y borra el ORGANIZADOR o el ADMIN (`teams.manage`).
+   El delegado NO entra a /equipos ni edita su delegación: solo registra participantes
+   (`TeamPolicy`, `TeamRegistrationService`). El organizador solo ve y gestiona las delegaciones
+   **a su cargo**: inscritas en una olimpiada suya o creadas por él (`teams.created_by`) — ver
+   `TeamRegistrationService::scopeManagedBy()`.
+3b. **Series y delegaciones inscritas (`GamesEditionGroup`, `GamesEditionTeam`)**: las gestiona
+   quien gestiona la olimpiada. Ahí se asignan la serie, el delegado titular y el suplente, el
+   estado (inscrita / retirada / descalificada) y el pago. El organizador solo inscribe
+   delegaciones a su cargo (`EditionGroupService`, `EditionTeamService`). Las pantallas usan el
+   trait `App\Livewire\Concerns\SelectsEdition` (olimpiada en `?olimpiada=`, siempre buscada
+   dentro de las que el usuario gestiona).
+4. **Inscripciones a una competencia (`SeasonTeam`)**: las crean, editan y retiran solo el
+   ORGANIZADOR de la olimpiada o el ADMIN, en Borrador o En curso (nadie en Cerrada). El delegado
+   NUNCA crea ni edita `SeasonTeam` en ningún estado; solo las ve (`SeasonTeamPolicy`,
+   `SeasonTeamService`).
+5. **Participantes en el plantel (`SeasonTeamPlayer`)**: los inscribe el DELEGADO (titular o
+   suplente) de la delegación (`SeasonTeam::hasDelegate()`, permiso `players.manage`), y nunca en
+   delegaciones ajenas. El organizador de la olimpiada y el admin conservan acceso de supervisión
+   (`SeasonTeamPlayerPolicy::managesSeasonTeam()`).
 
 ## Arquitectura (no negociable sin pasar por diseño primero)
 
@@ -203,7 +214,7 @@ Policy, pantalla) y esperar aprobación.
 - `event_participants` es polimórfica **sin FK real** hacia `season_team`/`season_team_player`:
   antes de borrar una inscripción, revisar `eventParticipants()` en el Service.
 - Modelos: `app/Models/` (Sport, Discipline, SportPosition, EventType, Category, Venue,
-  GamesEdition, Season, ScoringConfig, Team, Player, Matchday, GameMatch,
+  GamesEdition, GamesEditionGroup, GamesEditionTeam, Season, ScoringConfig, Team, Player, Matchday, GameMatch,
   EventParticipant, EventLineup, MatchPeriod, MatchEvent, Suspension, MatchReopenLog,
   SeasonStanding, GamesEditionMedal, SeasonTeam, SeasonTeamPlayer)
 - Enums: `app/Enums/`

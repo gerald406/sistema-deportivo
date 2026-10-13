@@ -43,7 +43,7 @@ Actualizar esta tabla al cerrar cada fase. `Puerta` = resultado de la puerta de 
 |---|---|---|---|---|
 | F0 Base de pruebas | `F0-base-de-pruebas.md` | 12/10 | ✅ | 2026-10-12 · 26 pruebas, 0 fallos (10 omitidas por funciones de Jetstream desactivadas); G1–G4 aprobadas |
 | F1 Olimpiada como eje | `F1-olimpiada-como-eje.md` | 13–14/10 | ✅ | 2026-10-12 · 45 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
-| F2 Delegaciones y series | `F2-delegaciones-y-series.md` | 14–16/10 | ⬜ | — |
+| F2 Delegaciones y series | `F2-delegaciones-y-series.md` | 14–16/10 | ✅ | 2026-10-12 · 90 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
 | F3 Catálogo y cuadro de puntaje | `F3-catalogo-y-puntajes.md` | 16–17/10 | ⬜ | — |
 | F4 Competencias y plantel | `F4-competencias-y-plantel.md` | 17–19/10 | ⬜ | — |
 | F5 Fases, llaves y podios | `F5-fases-llaves-podios.md` | 20–24/10 | ⬜ | — |
@@ -135,8 +135,8 @@ Todos con `label(): string` en español.
 | `GamesEdition` | `games_editions` | F1 | + `organizer()`, `groups()`, `editionTeams()`, `events()` |
 | `Season` | `seasons` | F1, F4 | − `tournament()`; + `event()`, `category()`, `discipline()`, `stages()` |
 | `GamesEditionGroup` | `games_edition_groups` | F2 | Nuevo |
-| `GamesEditionTeam` | `games_edition_teams` | F2 | Nuevo; `hasDelegate(User): bool` |
-| `Team`, `SeasonTeam` | — | F2 | − `delegate()`; `SeasonTeam::effectiveDelegate()` se reemplaza por `delegates(): Collection` y `hasDelegate(User): bool` |
+| `GamesEditionTeam` | `games_edition_teams` | F2 | Nuevo; `delegates(): Collection`, `hasDelegate(User): bool` |
+| `Team`, `SeasonTeam` | — | F2 | − `delegate()`; + `Team::editionTeams()`; `SeasonTeam::effectiveDelegate()` se reemplaza por `editionTeam()`, `delegates(): Collection` y `hasDelegate(User): bool`. Versión SQL: `SeasonTeamPolicy::delegateConstraint(User)` |
 | `GamesEditionEvent` | `games_edition_events` | F3 | Nuevo |
 | `SeasonStage` | `season_stages` | F5 | Nuevo |
 | `SeasonStageResult` | `season_stage_results` | F5 | Nuevo |
@@ -158,7 +158,7 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | | `scopeVisibleTo(Builder $query, User $actor): Builder` (ya existe) | F1 |
 | `SeasonService` | `editionsFor(User $actor): Collection` (antes `tournamentsFor`) | F1 |
 | `EditionGroupService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionGroup`; `update(GamesEditionGroup $group, array $data, User $actor): GamesEditionGroup`; `delete(GamesEditionGroup $group, User $actor): bool\|string` | F2 |
-| `EditionTeamService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionTeam`; `update(GamesEditionTeam $entry, array $data, User $actor): GamesEditionTeam`; `delete(GamesEditionTeam $entry, User $actor): bool\|string`; `delegateCandidates(string $term): Collection`; `scopeDelegatedTo(Builder $teams, User $actor): Builder` | F2 |
+| `EditionTeamService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionTeam`; `update(GamesEditionTeam $entry, array $data, User $actor): GamesEditionTeam`; `delete(GamesEditionTeam $entry, User $actor): bool\|string`; `delegateOptions(): Collection`; `assignableTeams(User $actor): Builder`; `scopeDelegatedTo(Builder $teams, User $actor): Builder` | F2 |
 | `DelegateAccountService` | `createQuickAccount(array $data, User $actor): User` (admin u organizador con olimpiada; rol forzado `delegado`) | F2 |
 | `EditionEventService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionEvent`; `update(GamesEditionEvent $event, array $data, User $actor): GamesEditionEvent`; `delete(GamesEditionEvent $event, User $actor): bool\|string` (solo admin) | F3 |
 | `CompetitionGeneratorService` | `generate(GamesEdition $edition, User $actor): array{created: int, existing: int}` | F4 |
@@ -241,6 +241,7 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | Archivo | Fase |
 |---|---|
 | `tests/Concerns/CreatesActors.php` (trait: `admin()`, `organizer()`, `delegate()`) | F0 |
+| `tests/Concerns/BuildsCompetition.php` (trait: `buildCompetition()`, `registerDelegation()`, `rosterEntry()`) | F1, F2 |
 | `tests/Feature/Smoke/RoutesSmokeTest.php` | F0, se amplía en cada fase |
 | `tests/Feature/Editions/GamesEditionAuthorizationTest.php` | F1 |
 | `tests/Feature/Editions/SeasonBelongsToEditionTest.php` | F1 |
@@ -248,6 +249,7 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | `tests/Feature/Editions/EditionTeamTest.php` | F2 |
 | `tests/Feature/Editions/DelegateAccountTest.php` | F2 |
 | `tests/Feature/Editions/DelegateScopeTest.php` | F2 |
+| `tests/Feature/Editions/EditionScreensTest.php` (acciones Livewire de series y delegaciones) | F2 |
 | `tests/Feature/Editions/EditionEventTest.php` | F3 |
 | `tests/Feature/Editions/Puno2026SeederTest.php` | F3 |
 | `tests/Feature/Competitions/CompetitionGeneratorTest.php` | F4 |
