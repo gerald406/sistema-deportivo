@@ -202,4 +202,18 @@ class Puno2026SeederTest extends TestCase
         $this->assertSame($before, $counts());
         $this->assertSame(15, $this->points(26)[0]);
     }
+
+    /** La prueba con el nombre anterior se renombra; no queda duplicada. */
+    public function test_old_discipline_name_is_renamed_instead_of_duplicated(): void
+    {
+        $atletismo = Sport::where('slug', 'atletismo')->firstOrFail();
+        $discipline = Discipline::where('sport_id', $atletismo->id)->where('name', '100 metros')->firstOrFail();
+        $discipline->update(['name' => '100 metros llanos']);
+        $total = Discipline::count();
+
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertSame('100 metros', $discipline->fresh()->name);
+        $this->assertSame($total, Discipline::count());
+    }
 }

@@ -18,10 +18,13 @@ class DisciplineSeeder extends Seeder
     {
         $atletismo = Sport::where('slug', 'atletismo')->firstOrFail();
 
-        // Nombre anterior de la prueba: se renombra en vez de duplicarla.
-        Discipline::where('sport_id', $atletismo->id)->where('name', '100 metros llanos')
-            ->whereNotExists(fn ($q) => $q->from('disciplines as d')->where('d.sport_id', $atletismo->id)->where('d.name', '100 metros'))
-            ->update(['name' => '100 metros']);
+        // Nombre anterior de la prueba: se renombra en vez de duplicarla. La
+        // comprobacion va en una consulta aparte: MySQL no acepta un UPDATE
+        // con una subconsulta sobre la misma tabla (error 1093), aunque
+        // MariaDB si.
+        if (! Discipline::where('sport_id', $atletismo->id)->where('name', '100 metros')->exists()) {
+            Discipline::where('sport_id', $atletismo->id)->where('name', '100 metros llanos')->update(['name' => '100 metros']);
+        }
 
         $time = [UnitOfMeasure::Time, BetterDirection::Ascending];       // menor tiempo = mejor
         $distance = [UnitOfMeasure::Distance, BetterDirection::Descending]; // mayor distancia = mejor
