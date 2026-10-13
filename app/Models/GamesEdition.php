@@ -60,6 +60,12 @@ class GamesEdition extends Model
         return $this->hasMany(GamesEditionTeam::class);
     }
 
+    /** Cuadro de puntaje (filas en el orden de las bases). */
+    public function events(): HasMany
+    {
+        return $this->hasMany(GamesEditionEvent::class)->orderBy('sort_order')->orderBy('label');
+    }
+
     public function medals(): HasMany
     {
         return $this->hasMany(GamesEditionMedal::class);

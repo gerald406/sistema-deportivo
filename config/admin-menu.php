@@ -30,6 +30,7 @@ return [
                 ['label' => 'Olimpiadas', 'route' => 'games-editions.index', 'permission' => 'editions.manage'],
                 ['label' => 'Series', 'route' => 'edition-groups.index', 'permission' => 'editions.manage'],
                 ['label' => 'Delegaciones inscritas', 'route' => 'edition-teams.index', 'permission' => 'editions.manage'],
+                ['label' => 'Cuadro de puntaje', 'route' => 'edition-events.index', 'permission' => 'editions.manage'],
                 ['label' => 'Temporadas', 'route' => 'seasons.index', 'permission' => 'seasons.manage'],
             ],
         ],

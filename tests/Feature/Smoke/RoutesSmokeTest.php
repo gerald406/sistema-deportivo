@@ -48,6 +48,7 @@ class RoutesSmokeTest extends TestCase
             'games-editions.index',
             'edition-groups.index',
             'edition-teams.index',
+            'edition-events.index',
         ];
     }
 

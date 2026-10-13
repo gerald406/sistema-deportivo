@@ -7,6 +7,7 @@ namespace Tests\Concerns;
 use App\Models\EventParticipant;
 use App\Models\GameMatch;
 use App\Models\GamesEdition;
+use App\Models\GamesEditionEvent;
 use App\Models\GamesEditionTeam;
 use App\Models\Matchday;
 use App\Models\Player;
@@ -42,6 +43,7 @@ trait BuildsCompetition
             'start_date' => '2026-10-28',
         ]);
         ScoringConfig::create(['season_id' => $season->id, 'phase_name' => 'Fase única']);
+        GamesEditionEvent::factory()->create(['games_edition_id' => $edition->id, 'label' => 'Fila de prueba', 'pts_first' => 10, 'pts_second' => 6, 'pts_third' => 2]);
 
         $homeTeam = Team::factory()->create();
         $awayTeam = Team::factory()->create();

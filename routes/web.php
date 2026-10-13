@@ -9,6 +9,7 @@ use App\Livewire\Admin\Sports\Index as AdminSportsIndex;
 use App\Livewire\Admin\Users\Index as AdminUsersIndex;
 use App\Livewire\Categories\Index as CategoriesIndex;
 use App\Livewire\Dashboard;
+use App\Livewire\EditionEvents\Index as EditionEventsIndex;
 use App\Livewire\EditionGroups\Index as EditionGroupsIndex;
 use App\Livewire\EditionTeams\Index as EditionTeamsIndex;
 use App\Livewire\GamesEditions\Index as GamesEditionsIndex;
@@ -70,6 +71,10 @@ Route::middleware([
         ->name('edition-groups.index');
     Route::get('/delegaciones-inscritas', EditionTeamsIndex::class)
         ->name('edition-teams.index');
+
+    // Cuadro de puntaje: lo ven admin y organizador de la olimpiada; lo edita solo el admin.
+    Route::get('/puntajes', EditionEventsIndex::class)
+        ->name('edition-events.index');
 
     Route::get('/temporadas', SeasonsIndex::class)
         ->name('seasons.index');
