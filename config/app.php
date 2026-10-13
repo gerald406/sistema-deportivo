@@ -65,7 +65,17 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Hora del Peru: las fechas de alta y la programacion se muestran y
+    // comparan en hora local (con UTC, despues de las 19:00 "hoy" ya era manana).
+    'timezone' => env('APP_TIMEZONE', 'America/Lima'),
+
+    /*
+    | Proxies de confianza. Si el hosting pone un proxy o balanceador delante
+    | (Cloudflare, cPanel con nginx), poner TRUSTED_PROXIES=* para que la
+    | peticion HTTPS se reconozca como tal; sin esto, los enlaces firmados
+    | (QR de los carnets) se rechazan con 403.
+    */
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
 
     /*
     |--------------------------------------------------------------------------
@@ -78,7 +88,7 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'es'),
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
