@@ -13,9 +13,11 @@ use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use App\Models\SportPosition;
 use App\Models\Team;
+use App\Services\PlayerRegistrationService;
 use App\Services\RosterRuleService;
 use App\Services\SeasonTeamPlayerService;
 use App\Services\SeasonTeamService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -62,7 +64,7 @@ class Index extends Component
     #[Url(as: 'carnets')]
     public bool $cardMode = false;
 
-    /** Buscador de participantes dentro del modal (catalogo global). */
+    /** Buscador de participantes dentro del modal (solo los de sus delegaciones). */
     public string $playerSearch = '';
 
     public array $form = [
@@ -119,7 +121,11 @@ class Index extends Component
             : collect();
     }
 
-    /** Participantes activos del catalogo global que coinciden con la busqueda. */
+    /**
+     * Participantes activos que coinciden con la busqueda, solo dentro del
+     * alcance del usuario (PlayerRegistrationService::scopeVisibleTo()): los
+     * de sus delegaciones, nunca los de otra.
+     */
     public function playerOptions(): Collection
     {
         if (mb_strlen(trim($this->playerSearch)) < 2) {
@@ -128,7 +134,7 @@ class Index extends Component
 
         $term = trim($this->playerSearch);
 
-        return Player::where('is_active', true)
+        return $this->reachablePlayers()
             ->where(fn ($q) => $q->where('first_name', 'like', "%{$term}%")
                 ->orWhere('last_name', 'like', "%{$term}%")
                 ->orWhere('dni', 'like', "%{$term}%"))
@@ -139,12 +145,12 @@ class Index extends Component
 
     public function selectedPlayer(): ?Player
     {
-        return ctype_digit((string) $this->form['player_id']) ? Player::find($this->form['player_id']) : null;
+        return ctype_digit((string) $this->form['player_id']) ? $this->reachablePlayers(activeOnly: false)->find($this->form['player_id']) : null;
     }
 
     public function selectPlayer(int $id): void
     {
-        $this->form['player_id'] = Player::where('is_active', true)->findOrFail($id)->id;
+        $this->form['player_id'] = $this->reachablePlayers()->findOrFail($id)->id;
         $this->playerSearch = '';
     }
 
@@ -338,6 +344,13 @@ class Index extends Component
     protected function sortableFields(): array
     {
         return ['shirt_number', 'player_last_name', 'status', 'enrolled_at'];
+    }
+
+    private function reachablePlayers(bool $activeOnly = true): Builder
+    {
+        return app(PlayerRegistrationService::class)
+            ->scopeVisibleTo(Player::query(), auth()->user())
+            ->when($activeOnly, fn ($q) => $q->where('is_active', true));
     }
 
     /**

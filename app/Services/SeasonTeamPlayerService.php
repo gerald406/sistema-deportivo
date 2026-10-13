@@ -162,6 +162,12 @@ class SeasonTeamPlayerService
 
         $player = Player::findOrFail($data['player_id']);
 
+        // Mismo alcance que el buscador del formulario: el id llega del
+        // navegador y nadie agrega a un participante de otra delegacion.
+        if (! app(PlayerRegistrationService::class)->isVisibleTo($actor, $player)) {
+            throw ValidationException::withMessages(['form.player_id' => 'Ese participante no pertenece a tus delegaciones.']);
+        }
+
         $this->ensureSeasonOpen($seasonTeam);
 
         if (! $player->is_active) {

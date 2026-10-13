@@ -58,7 +58,7 @@ class DelegateScopeTest extends TestCase
         $this->assertTrue(SeasonTeamPlayerPolicy::managesSeasonTeam($titular, $data->home->fresh()));
         $this->assertTrue($titular->can('update', $data->homeEntry->fresh()));
 
-        $entry = app(SeasonTeamPlayerService::class)->register($this->rosterPayload($data->home, Player::factory()->create()), $titular);
+        $entry = app(SeasonTeamPlayerService::class)->register($this->rosterPayload($data->home, Player::factory()->create(['created_by' => $titular->id])), $titular);
         $this->assertSame($data->home->id, $entry->season_team_id);
     }
 
@@ -73,7 +73,7 @@ class DelegateScopeTest extends TestCase
         $this->assertTrue($substitute->can('printCard', $data->homeEntry->fresh()));
         $this->assertTrue($substitute->can('printRoster', $data->home->fresh()));
 
-        $entry = app(SeasonTeamPlayerService::class)->register($this->rosterPayload($data->home, Player::factory()->create()), $substitute);
+        $entry = app(SeasonTeamPlayerService::class)->register($this->rosterPayload($data->home, Player::factory()->create(['created_by' => $substitute->id])), $substitute);
         $this->assertNotNull($entry->id);
     }
 

@@ -89,7 +89,9 @@ class RosterRuleTest extends TestCase
 
     private function player(string $birthDate = '1990-05-10', ?string $gender = 'M', array $attributes = []): Player
     {
-        return Player::factory()->create($attributes + ['birth_date' => $birthDate, 'gender' => $gender]);
+        // Registrado por el delegado de la delegacion: asi esta al alcance de
+        // el, de su suplente y del organizador de la olimpiada.
+        return Player::factory()->create($attributes + ['birth_date' => $birthDate, 'gender' => $gender, 'created_by' => $this->delegate->id]);
     }
 
     /** @return list<string> */
@@ -231,7 +233,7 @@ class RosterRuleTest extends TestCase
     {
         $season = $this->competition('Libre', 'M');
 
-        $noBirth = Player::factory()->create(['birth_date' => null, 'gender' => 'M']);
+        $noBirth = Player::factory()->create(['birth_date' => null, 'gender' => 'M', 'created_by' => $this->delegate->id]);
         $this->assertCount(1, $this->violations($season, $noBirth));
         $this->assertStringContainsString('fecha de nacimiento', $this->violations($season, $noBirth)[0]);
 
@@ -451,6 +453,52 @@ class RosterRuleTest extends TestCase
             ->assertOk()
             ->assertSee('Máster exige 40')
             ->assertSee('Faltan 2 para el mínimo');
+    }
+
+    public function test_picker_only_offers_participants_of_own_delegations(): void
+    {
+        $season = $this->competition();
+        $substitute = $this->delegate();
+        $this->registerDelegation($this->edition, $this->team, $this->delegate, $substitute);
+
+        $otherTeam = Team::factory()->create();
+        $otherDelegate = $this->delegate();
+        $this->registerDelegation($this->edition, $otherTeam, $otherDelegate);
+
+        $mine = $this->player(attributes: ['last_name' => 'Zapana']);
+        $bySubstitute = Player::factory()->create(['last_name' => 'Zapata', 'created_by' => $substitute->id]);
+        $foreign = Player::factory()->create(['last_name' => 'Zapater', 'dni' => '70000001', 'created_by' => $otherDelegate->id]);
+
+        $names = fn (User $actor, string $term) => Livewire::actingAs($actor)->test(RostersIndex::class)
+            ->set('playerSearch', $term)->instance()->playerOptions()->pluck('id')->all();
+
+        // Titular y suplente comparten sus participantes; el ajeno no aparece
+        // ni por apellido ni por DNI.
+        $this->assertEqualsCanonicalizing([$mine->id, $bySubstitute->id], $names($this->delegate, 'Zapa'));
+        $this->assertEqualsCanonicalizing([$mine->id, $bySubstitute->id], $names($substitute, 'Zapa'));
+        $this->assertSame([], $names($this->delegate, '70000001'));
+        $this->assertSame([$foreign->id], $names($otherDelegate, 'Zapa'));
+
+        // El organizador ve los de todas las delegaciones de su olimpiada; otro organizador, ninguno.
+        $this->assertCount(3, $names($this->organizer, 'Zapa'));
+        $this->assertSame([], $names($this->organizer(), 'Zapa'));
+
+        // Forzar el id ajeno desde el navegador tampoco funciona.
+        try {
+            Livewire::actingAs($this->delegate)->test(RostersIndex::class)->call('selectPlayer', $foreign->id)->assertNotFound();
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $this->addToAssertionCount(1);
+        }
+
+        try {
+            $this->enroll($season, $foreign, actor: $this->delegate);
+            $this->fail('Un delegado agregó a un participante de otra delegación.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('form.player_id', $e->errors());
+        }
+
+        $this->assertSame(0, SeasonTeamPlayer::count());
+        $this->assertNotNull($this->enroll($season, $bySubstitute, actor: $this->delegate));
     }
 
     public function test_delegate_only_sees_competitions_and_delegations_of_his_editions(): void

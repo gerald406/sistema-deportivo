@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\GamesEditionTeam;
 use App\Models\Player;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -120,7 +121,14 @@ class PlayerRegistrationService
      *     (players.created_by) y aun no tienen roster; sin esto el delegado
      *     perderia de vista (y no podria corregir) un participante recien creado
      *     antes de inscribirlo en /planteles.
+     *   - Tambien los que registraron sus companeros de delegacion
+     *     (delegationMateIds()): el titular y el suplente comparten los
+     *     participantes aunque aun no esten en un plantel, y el organizador
+     *     ve los que registraron los delegados de su olimpiada.
      *   - Cualquier otro: ninguno.
+     *
+     * Es tambien el alcance del buscador al armar un plantel: nadie
+     * encuentra ni agrega participantes de otra delegacion.
      */
     public function scopeVisibleTo(Builder $query, User $actor): Builder
     {
@@ -133,8 +141,37 @@ class PlayerRegistrationService
         }
 
         return $query->where(fn ($q) => $q
-            ->where('players.created_by', $actor->id)
+            ->whereIn('players.created_by', [$actor->id, ...$this->delegationMateIds($actor)])
             ->orWhereHas('seasonTeamPlayers', fn ($roster) => app(SeasonTeamPlayerService::class)->scopeVisibleTo($roster, $actor)));
+    }
+
+    /**
+     * Delegados (titular y suplente) de las delegaciones de las que $actor
+     * es delegado y, si es organizador, de todas las inscritas en sus
+     * olimpiadas.
+     *
+     * @return list<int>
+     */
+    private function delegationMateIds(User $actor): array
+    {
+        $isDelegate = $actor->hasRole('delegado');
+        $isOrganizer = $actor->hasRole('organizador');
+
+        return GamesEditionTeam::query()
+            ->where(function ($w) use ($actor, $isDelegate, $isOrganizer) {
+                $w->whereRaw('1 = 0');
+
+                if ($isDelegate) {
+                    $w->orWhere('delegate_id', $actor->id)->orWhere('substitute_delegate_id', $actor->id);
+                }
+
+                if ($isOrganizer) {
+                    $w->orWhereHas('edition', fn ($e) => $e->where('organizer_id', $actor->id));
+                }
+            })
+            ->get(['delegate_id', 'substitute_delegate_id'])
+            ->flatMap(fn (GamesEditionTeam $entry) => [$entry->delegate_id, $entry->substitute_delegate_id])
+            ->filter()->unique()->values()->all();
     }
 
     /**

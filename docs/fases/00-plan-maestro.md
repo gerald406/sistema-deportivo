@@ -45,7 +45,7 @@ Actualizar esta tabla al cerrar cada fase. `Puerta` = resultado de la puerta de 
 | F1 Olimpiada como eje | `F1-olimpiada-como-eje.md` | 13–14/10 | ✅ | 2026-10-12 · 45 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
 | F2 Delegaciones y series | `F2-delegaciones-y-series.md` | 14–16/10 | ✅ | 2026-10-12 · 90 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
 | F3 Catálogo y cuadro de puntaje | `F3-catalogo-y-puntajes.md` | 16–17/10 | ✅ | 2026-10-13 · 109 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S1, S2 y S6 confirmados por el cliente |
-| F4 Competencias y plantel | `F4-competencias-y-plantel.md` | 17–19/10 | ✅ | 2026-10-13 · 145 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S3 pendiente de confirmar |
+| F4 Competencias y plantel | `F4-competencias-y-plantel.md` | 17–19/10 | ✅ | 2026-10-13 · 145 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S3 confirmado el 13/10 |
 | F5 Fases, llaves y podios | `F5-fases-llaves-podios.md` | 20–24/10 | ⬜ | — |
 | F6 Puntaje general | `F6-puntaje-general.md` | 24–26/10 | ⬜ | — |
 | F7 Producción | `F7-produccion.md` | desde el 17/10, cierre 27/10 | ⬜ | — |
