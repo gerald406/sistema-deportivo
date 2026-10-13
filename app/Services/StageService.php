@@ -45,7 +45,10 @@ class StageService
     {
         $this->ensureManages($actor, $season);
 
-        return $season->stages()->create($this->validated($season, $data));
+        $stage = $season->stages()->create($this->validated($season, $data));
+        $this->refreshAwards($season);
+
+        return $stage;
     }
 
     /**
@@ -63,6 +66,7 @@ class StageService
         }
 
         $stage->update($values);
+        $this->refreshAwards($stage->season);
 
         return $stage;
     }
@@ -88,6 +92,8 @@ class StageService
         } catch (QueryException) {
             return 'No se puede eliminar: la fase tiene historial asociado.';
         }
+
+        $this->refreshAwards($stage->season);
 
         return true;
     }
@@ -169,6 +175,16 @@ class StageService
         if (! SeasonAccess::manages($actor, $season)) {
             throw new AuthorizationException('Solo el organizador de la olimpiada o el administrador gestionan las fases de esta competencia.');
         }
+    }
+
+    /**
+     * El podio de una competencia sale de su ULTIMA fase: crear, reordenar
+     * o borrar una fase puede cambiar el puntaje general.
+     */
+    private function refreshAwards(Season $season): void
+    {
+        $season->loadMissing('gamesEdition');
+        app(AwardService::class)->rebuild($season->gamesEdition);
     }
 
     private function hasHistory(SeasonStage $stage): bool

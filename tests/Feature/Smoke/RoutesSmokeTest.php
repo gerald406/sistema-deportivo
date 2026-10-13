@@ -50,6 +50,7 @@ class RoutesSmokeTest extends TestCase
             'edition-teams.index',
             'edition-events.index',
             'season-stages.index',
+            'reports.general-score',
         ];
     }
 

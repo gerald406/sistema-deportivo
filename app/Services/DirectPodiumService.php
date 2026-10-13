@@ -54,6 +54,9 @@ class DirectPodiumService
             foreach ($rows as $row) {
                 SeasonStageResult::create($row + ['season_stage_id' => $stage->id, 'recorded_by' => $actor->id]);
             }
+
+            // El podio alimenta el puntaje general.
+            app(AwardService::class)->rebuild($stage->season->gamesEdition);
         });
     }
 

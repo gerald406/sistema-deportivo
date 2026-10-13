@@ -57,6 +57,7 @@
                 'scorers' => ['Goleadores', 'fa-solid fa-futbol', 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-105'],
                 'suspended' => ['Suspendidos', 'fa-solid fa-ban', 'bg-red-500 text-white shadow-lg shadow-red-500/30 scale-105'],
                 'yellows' => ['Amarillas', 'fa-regular fa-square', 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/30 scale-105'],
+                'general' => ['Puntaje general', 'fa-solid fa-trophy', 'bg-amber-500 text-white shadow-lg shadow-amber-500/30 scale-105'],
             ];
         @endphp
         <div class="mb-10 flex flex-wrap justify-center gap-3">
@@ -68,6 +69,51 @@
                 </button>
             @endforeach
         </div>
+
+        {{-- TAB: PUNTAJE GENERAL de la olimpiada (AwardService::table) --}}
+        @if ($activeTab === 'general')
+            <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
+                <div class="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4">
+                    <h3 class="flex items-center gap-3 font-display text-xl font-bold text-white">
+                        <i class="fa-solid fa-trophy text-white/80"></i> Puntaje general
+                    </h3>
+                    <p class="mt-1 text-xs text-amber-50">{{ $season->gamesEdition->name }} · cada podio suma los puntos de su competencia.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full table-auto">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
+                                <th class="w-12 px-3 py-3 text-center">Pos</th>
+                                <th class="px-3 py-3 text-left">Delegación</th>
+                                <th class="px-2 py-3 text-center" title="Primeros puestos">1.º</th>
+                                <th class="px-2 py-3 text-center" title="Segundos puestos">2.º</th>
+                                <th class="px-2 py-3 text-center" title="Terceros puestos">3.º</th>
+                                <th class="px-3 py-3 text-center font-black text-amber-600">PTS</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse ($generalScore as $row)
+                                <tr wire:key="general-{{ $row->team->id }}" class="{{ $row->disqualified ? 'bg-slate-50 text-slate-400' : 'hover:bg-slate-50' }}">
+                                    <td class="px-3 py-3 text-center font-bold text-slate-500">{{ $row->position ?? '—' }}</td>
+                                    <td class="px-3 py-3 text-left text-sm font-bold text-slate-800 md:text-base">
+                                        {{ $row->team->name }}
+                                        @if ($row->disqualified)
+                                            <span class="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-700">Descalificada</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-2 py-3 text-center text-slate-600">{{ $row->gold }}</td>
+                                    <td class="px-2 py-3 text-center text-slate-600">{{ $row->silver }}</td>
+                                    <td class="px-2 py-3 text-center text-slate-600">{{ $row->bronze }}</td>
+                                    <td class="px-3 py-3 text-center text-lg font-black text-slate-900">{{ $row->total_points }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="py-16 text-center text-slate-500">Aún no hay delegaciones inscritas.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
 
         {{-- (1) TAB: POSICIONES --}}
         @if ($activeTab === 'standings')

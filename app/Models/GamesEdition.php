@@ -71,6 +71,12 @@ class GamesEdition extends Model
         return $this->hasMany(GamesEditionEvent::class)->orderBy('sort_order')->orderBy('label');
     }
 
+    /** Podios con puntos (derivado: AwardService::rebuild()). */
+    public function awards(): HasMany
+    {
+        return $this->hasMany(EditionAward::class);
+    }
+
     public function medals(): HasMany
     {
         return $this->hasMany(GamesEditionMedal::class);

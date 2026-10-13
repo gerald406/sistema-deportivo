@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div>
         <h1 class="text-2xl font-semibold text-gray-900">Reportes</h1>
-        <p class="text-sm text-gray-500">Tabla de posiciones y medallero. Se actualizan solos al cerrar o reabrir un resultado.</p>
+        <p class="text-sm text-gray-500">Tabla de posiciones de cada competencia. Se actualiza sola al cerrar o reabrir un resultado.</p>
     </div>
 
     {{-- Tabla de posiciones --}}
@@ -67,51 +67,15 @@
         </div>
     </section>
 
-    {{-- Medallero --}}
-    <section class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
-        <div class="flex flex-col gap-3 border-b border-gray-100 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="text-base font-semibold text-gray-900">Medallero</h2>
-                <p class="text-xs text-gray-500">Orden olímpico: oros, luego platas, luego bronces.</p>
-            </div>
-            <select wire:model.live="editionId"
-                    class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                @forelse ($this->editionOptions() as $option)
-                    <option value="{{ $option->id }}">{{ $option->name }}</option>
-                @empty
-                    <option value="">Sin ediciones</option>
-                @endforelse
-            </select>
+    {{-- El medallero ahora es el puntaje general de la olimpiada --}}
+    <section class="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-900/5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h2 class="text-base font-semibold text-gray-900">Puntaje general</h2>
+            <p class="text-xs text-gray-500">Clasificación de las delegaciones: cada podio suma los puntos de su fila del cuadro.</p>
         </div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    <tr>
-                        <th class="px-4 py-2 text-left">#</th>
-                        <th class="px-4 py-2 text-left">Equipo</th>
-                        {{-- La medalla se nombra en texto; el icono de color es solo apoyo. --}}
-                        <th class="px-3 py-2 text-right"><i class="fa-solid fa-medal text-amber-500"></i> Oro</th>
-                        <th class="px-3 py-2 text-right"><i class="fa-solid fa-medal text-gray-400"></i> Plata</th>
-                        <th class="px-3 py-2 text-right"><i class="fa-solid fa-medal text-orange-700"></i> Bronce</th>
-                        <th class="px-4 py-2 text-right">Total</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 tabular-nums">
-                    @forelse ($medalTable as $i => $row)
-                        <tr wire:key="medal-{{ $row->id }}">
-                            <td class="px-4 py-2 text-gray-500">{{ $i + 1 }}</td>
-                            <td class="px-4 py-2 font-medium text-gray-900">{{ $row->team->name }}</td>
-                            <td class="px-3 py-2 text-right text-gray-700">{{ $row->gold }}</td>
-                            <td class="px-3 py-2 text-right text-gray-700">{{ $row->silver }}</td>
-                            <td class="px-3 py-2 text-right text-gray-700">{{ $row->bronze }}</td>
-                            <td class="px-4 py-2 text-right font-semibold text-gray-900">{{ $row->gold + $row->silver + $row->bronze }}</td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="6" class="px-4 py-10 text-center text-gray-400">{{ $edition ? 'Esta edición aún no tiene medallas.' : 'No hay ediciones registradas.' }}</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+        <a href="{{ route('reports.general-score') }}"
+           class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+            <i class="fa-solid fa-ranking-star"></i> Ver puntaje general
+        </a>
     </section>
 </div>

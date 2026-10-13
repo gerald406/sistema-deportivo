@@ -59,7 +59,7 @@ class ResultService
         private MatchPeriodService $periods,
         private SuspensionService $suspensions,
         private StandingService $standings,
-        private MedalService $medals,
+        private AwardService $awards,
         private BracketService $brackets,
     ) {
     }
@@ -200,7 +200,7 @@ class ResultService
         $this->standings->recalculateSeason($match->season);
 
         if ($match->season->games_edition_id) {
-            $this->medals->recalculateEdition($match->season->gamesEdition);
+            $this->awards->rebuild($match->season->gamesEdition);
         }
     }
 

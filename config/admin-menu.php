@@ -78,7 +78,8 @@ return [
             'label' => 'Reportes',
             'icon' => 'fa-solid fa-chart-line',
             'children' => [
-                ['label' => 'Posiciones y medallero', 'route' => 'reports.index', 'permission' => 'reports.view'],
+                ['label' => 'Puntaje general', 'route' => 'reports.general-score', 'permission' => 'reports.view'],
+                ['label' => 'Posiciones', 'route' => 'reports.index', 'permission' => 'reports.view'],
                 // PDFs por competencia: admin y organizador (SeasonPolicy::printReports).
                 // Padron: tambien el delegado, solo de su equipo (SeasonTeamPolicy::printRoster).
                 ['label' => 'Padrón de participantes', 'route' => 'reports.roster', 'role' => ['admin', 'organizador', 'delegado']],

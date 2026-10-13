@@ -18,7 +18,18 @@ class GamesEditionMedal extends Model
         'gold',
         'silver',
         'bronze',
+        'total_points',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'gold' => 'integer',
+            'silver' => 'integer',
+            'bronze' => 'integer',
+            'total_points' => 'integer',
+        ];
+    }
 
     public function gamesEdition(): BelongsTo
     {

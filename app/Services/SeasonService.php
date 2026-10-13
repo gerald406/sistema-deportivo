@@ -66,6 +66,10 @@ class SeasonService
             $season->update($data);
             $this->syncPhases($season, $phases);
 
+            // Activar/desactivar la competencia o cambiar su fila del
+            // cuadro cambia el puntaje general.
+            app(AwardService::class)->rebuild($season->gamesEdition()->first());
+
             return $season;
         });
     }
@@ -87,11 +91,16 @@ class SeasonService
             return 'No se puede eliminar: la competencia tiene jornadas o partidos. Ciérrala o desactívala en su lugar.';
         }
 
+        $edition = $season->gamesEdition()->first();
+
         try {
             $season->delete();
         } catch (QueryException) {
             return 'No se puede eliminar: la competencia tiene historial asociado. Ciérrala o desactívala en su lugar.';
         }
+
+        // Sus fases y podio directo se fueron en CASCADE: el puntaje general se recalcula.
+        app(AwardService::class)->rebuild($edition);
 
         return true;
     }

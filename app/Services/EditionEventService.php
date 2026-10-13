@@ -47,6 +47,9 @@ class EditionEventService
 
         $event->update($this->validated($event->edition, $data, $event->id));
 
+        // Los puntos de la fila cambian el puntaje general.
+        app(AwardService::class)->rebuild($event->edition);
+
         return $event;
     }
 

@@ -129,9 +129,10 @@ class GamesEditionService
     }
 
     /**
-     * Olimpiadas que $actor ve en el medallero de /reportes: las que tienen
-     * alguna competencia visible para el (SeasonService::scopeVisibleTo()).
-     * El admin ve todas, incluso las que aun no tienen competencias.
+     * Olimpiadas que $actor ve en los reportes (puntaje general): las que
+     * gestiona, aquellas donde es delegado titular o suplente de una
+     * delegacion inscrita, y las que tienen alguna competencia visible
+     * para el (SeasonService::scopeVisibleTo()). El admin ve todas.
      */
     public function scopeVisibleTo(Builder $query, User $actor): Builder
     {
@@ -139,7 +140,11 @@ class GamesEditionService
             return $query;
         }
 
-        return $query->whereHas('seasons', fn ($s) => app(SeasonService::class)->scopeVisibleTo($s, $actor));
+        return $query->where(fn ($q) => $q
+            ->whereHas('seasons', fn ($s) => app(SeasonService::class)->scopeVisibleTo($s, $actor))
+            ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhere('organizer_id', $actor->id))
+            ->when($actor->hasRole('delegado'), fn ($q) => $q->orWhereHas('editionTeams', fn ($t) => $t
+                ->where(fn ($d) => $d->where('delegate_id', $actor->id)->orWhere('substitute_delegate_id', $actor->id)))));
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Public;
 
 use App\Models\Season;
+use App\Services\AwardService;
 use App\Services\PublicResultsService;
 use App\Services\SeasonOverviewService;
 use Illuminate\Support\Collection;
@@ -22,7 +23,7 @@ use Livewire\Component;
  */
 class PublicResults extends Component
 {
-    public const TABS = ['standings', 'results', 'schedule', 'scorers', 'suspended', 'yellows'];
+    public const TABS = ['standings', 'results', 'schedule', 'scorers', 'suspended', 'yellows', 'general'];
 
     public string $gamesEditionId = '';
 
@@ -75,6 +76,8 @@ class PublicResults extends Component
                 'scorers' => $sections['scorers'],
                 'suspended' => $sections['suspensions'],
                 'yellows' => $sections['yellows'],
+                // Puntaje general de la olimpiada: solo delegaciones y puntos, sin datos personales.
+                'general' => true,
             ]));
 
             // Pestaña no soportada por esta competencia (o manipulada): la primera valida.
@@ -125,6 +128,9 @@ class PublicResults extends Component
 
             case 'yellows':
                 return ['yellowCardRisks' => $overview->playersWithTwoYellows($season)];
+
+            case 'general':
+                return ['generalScore' => app(AwardService::class)->table($season->gamesEdition)];
         }
 
         return [];
