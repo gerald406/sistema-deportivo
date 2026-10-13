@@ -16,7 +16,6 @@ class TeamFactory extends Factory
         return [
             'name' => $this->faker->unique()->city().' FC',
             'logo_path' => null,
-            'delegate_id' => null,
             'is_active' => true,
         ];
     }

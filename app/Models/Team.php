@@ -16,7 +16,6 @@ class Team extends Model
     protected $fillable = [
         'name',
         'logo_path',
-        'delegate_id',
         'is_active',
         'created_by',
     ];
@@ -29,14 +28,12 @@ class Team extends Model
     }
 
     /**
-     * Delegado general del club. Cuando el equipo esta inscrito en una
-     * temporada con su propio delegado (season_team.delegate_id), ese
-     * delegado especifico tiene precedencia sobre este para esa
-     * temporada: ver SeasonTeam::effectiveDelegate().
+     * Inscripciones de la delegacion en olimpiadas. Ahi viven su serie y
+     * sus delegados titular y suplente (games_edition_teams).
      */
-    public function delegate(): BelongsTo
+    public function editionTeams(): HasMany
     {
-        return $this->belongsTo(User::class, 'delegate_id');
+        return $this->hasMany(GamesEditionTeam::class);
     }
 
     public function seasonTeams(): HasMany

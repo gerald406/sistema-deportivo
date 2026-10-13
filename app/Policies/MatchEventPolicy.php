@@ -12,7 +12,7 @@ class MatchEventPolicy
 {
     /**
      * Incidencias (goles, tarjetas...): permiso matches.manage; el
-     * organizador solo en partidos de sus torneos.
+     * organizador solo en partidos de sus olimpiadas.
      */
     public function viewAny(User $user): bool
     {

@@ -14,12 +14,13 @@ class PlayerPolicy
     /**
      * Player es global (no pertenece a un solo Team). La pertenencia se
      * verifica de dos formas, cualquiera basta:
-     *   1) Roster vigente: Player -> SeasonTeamPlayer -> SeasonTeam -> Team.delegate_id.
-     *   2) created_by: el delegado que registro el jugador en el catalogo,
-     *      necesario porque un jugador recien creado puede no tener
+     *   1) Roster vigente: Player -> SeasonTeamPlayer -> SeasonTeam -> delegados de la
+     *      delegacion en la olimpiada (SeasonTeamPolicy::delegateConstraint()).
+     *   2) created_by: el delegado que registro el participante en el catalogo,
+     *      necesario porque un participante recien creado puede no tener
      *      todavia ninguna inscripcion (la inscripcion es Fase 5).
-     * Esto evita el IDOR de "cualquier delegado edita cualquier jugador"
-     * y respeta que un jugador puede estar en el roster de varios
+     * Esto evita el IDOR de "cualquier delegado edita cualquier participante"
+     * y respeta que un participante puede estar en el roster de varios
      * equipos historicamente.
      */
     public function viewAny(User $user): bool
@@ -28,7 +29,7 @@ class PlayerPolicy
     }
 
     /**
-     * Mismo alcance que el listado de /jugadores (una sola fuente de
+     * Mismo alcance que el listado de /participantes (una sola fuente de
      * verdad): PlayerRegistrationService::scopeVisibleTo(). El admin pasa
      * por Gate::before.
      */
@@ -57,9 +58,20 @@ class PlayerPolicy
     }
 
     /**
-     * Restriccion sobre season_team_player: inscripciones cuyo delegado
-     * EFECTIVO es $user (SeasonTeamPolicy::effectiveDelegateConstraint(),
-     * la unica version SQL de SeasonTeam::effectiveDelegate()).
+     * Marcar los documentos como verificados: el organizador de la
+     * olimpiada (admin por Gate::before); nunca el delegado. Misma regla
+     * que revalida PlayerRegistrationService::setDocumentsVerified().
+     */
+    public function verifyDocuments(User $user, Player $player): bool
+    {
+        return app(PlayerRegistrationService::class)->canVerifyDocuments($user, $player);
+    }
+
+    /**
+     * Restriccion sobre season_team_player: planteles de una delegacion de
+     * la que $user es delegado titular o suplente
+     * (SeasonTeamPolicy::delegateConstraint(), la unica version SQL de
+     * SeasonTeam::hasDelegate()).
      *
      * Publica y estatica para que un listado pueda precargarla con
      * withExists() (ver managedAttribute()) y evitar una consulta por
@@ -67,7 +79,7 @@ class PlayerPolicy
      */
     public static function managedRosterConstraint(User $user): Closure
     {
-        return fn ($roster) => $roster->whereHas('seasonTeam', SeasonTeamPolicy::effectiveDelegateConstraint($user));
+        return fn ($roster) => $roster->whereHas('seasonTeam', SeasonTeamPolicy::delegateConstraint($user));
     }
 
     /**

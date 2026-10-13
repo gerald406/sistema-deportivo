@@ -114,7 +114,7 @@ class EventLineupService
 
     private function ensureEditable(EventParticipant $participant, User $actor): void
     {
-        $participant->load('match.season.tournament', 'match.season.sport', 'match.discipline', 'participant');
+        $participant->load('match.season.gamesEdition', 'match.season.sport', 'match.discipline', 'participant');
         $match = $participant->match;
 
         if ($participant->participant_type !== 'season_team'
@@ -123,7 +123,7 @@ class EventLineupService
         }
 
         if (! EventLineupPolicy::managesParticipant($actor, $participant)) {
-            throw new AuthorizationException('Solo el delegado del equipo o el organizador del torneo cargan estos relevos.');
+            throw new AuthorizationException('Solo el delegado del equipo o el organizador de la olimpiada cargan estos relevos.');
         }
 
         if ($match->status !== MatchStatus::Pending) {

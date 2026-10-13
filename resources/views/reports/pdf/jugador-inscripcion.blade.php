@@ -5,8 +5,8 @@
 <title>Ficha de Inscripción</title>
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   FICHA DE INSCRIPCIÓN — A4, 1 jugador por página, B/N
-   Versión compacta: garantiza 1 sola hoja por jugador.
+   FICHA DE INSCRIPCIÓN — A4, 1 participante por página, B/N
+   Versión compacta: garantiza 1 sola hoja por participante.
    ═══════════════════════════════════════════════════════════════ */
 
 @page { size: 210mm 297mm; margin: 10mm 14mm; }
@@ -286,22 +286,22 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
     </table>
 
     {{-- ══════════════════════════════════════
-         CABECERA: LOGO DEL TORNEO (IZQ) · TORNEO/TEMPORADA · LOGO DEL EQUIPO (DER)
+         CABECERA: LOGO DE LA OLIMPIADA (IZQ) · OLIMPIADA/COMPETENCIA · LOGO DEL EQUIPO (DER)
     ══════════════════════════════════════ --}}
     <div class="hdr-main">
         <table class="hdr-main-tbl">
             <tr>
                 <td class="logo-cell">
                     <div class="logo-box">
-                        @if(!empty($card['tournamentLogoBase64']))
-                            <img src="{{ $card['tournamentLogoBase64'] }}" alt="Logo del torneo">
+                        @if(!empty($card['gamesEditionLogoBase64']))
+                            <img src="{{ $card['gamesEditionLogoBase64'] }}" alt="Logo de la olimpiada">
                         @else
-                            <div class="logo-placeholder">Torneo</div>
+                            <div class="logo-placeholder">Olimpiada</div>
                         @endif
                     </div>
                 </td>
                 <td class="hdr-title-cell">
-                    <div class="hdr-champ">{{ $card['tournament']->name }}</div>
+                    <div class="hdr-champ">{{ $card['gamesEdition']->name }}</div>
                     <div class="hdr-champ-org">{{ $card['season']->name }} &middot; {{ $card['season']->sport->name }}</div>
                     <div class="hdr-champ-slogan">Organiza: {{ $card['organizer']->name }}</div>
                 </td>
@@ -327,7 +327,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
     <table class="section-title-tbl">
         <tr>
             <td class="section-num">1</td>
-            <td class="section-title-text">Datos del Equipo y del Jugador</td>
+            <td class="section-title-text">Datos del Equipo y del Participante</td>
         </tr>
     </table>
 
@@ -340,7 +340,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
                         <td class="info-value">{{ $card['team']->name }}</td>
                     </tr>
                     <tr>
-                        <td class="info-label">Código del Jugador</td>
+                        <td class="info-label">Código del Participante</td>
                         <td class="info-value info-code">{{ $card['cardNumber'] }}</td>
                     </tr>
                     <tr>
@@ -361,36 +361,36 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
             <td class="photo-cell">
                 <div class="photo-box">
                     @if(!empty($card['playerPhotoBase64']))
-                        <img src="{{ $card['playerPhotoBase64'] }}" alt="Foto del jugador">
+                        <img src="{{ $card['playerPhotoBase64'] }}" alt="Foto del participante">
                     @else
                         <div class="photo-placeholder">SIN<br>FOTOGRAFÍA</div>
                     @endif
                 </div>
-                <div class="photo-caption">Foto del jugador</div>
+                <div class="photo-caption">Foto del participante</div>
             </td>
         </tr>
     </table>
 
     {{-- ══════════════════════════════════════
-         SECCIÓN 2: COMPROMISO DEL JUGADOR
+         SECCIÓN 2: COMPROMISO DEL PARTICIPANTE
     ══════════════════════════════════════ --}}
     <table class="section-title-tbl">
         <tr>
             <td class="section-num">2</td>
-            <td class="section-title-text">Compromiso del Jugador</td>
+            <td class="section-title-text">Compromiso del Participante</td>
         </tr>
     </table>
 
     <div class="commitment-box">
         <p class="commitment-intro">
-            Declaro haber leído, comprendido y aceptado en su totalidad las Bases Específicas del torneo "{{ $card['tournament']->name }}". En ese sentido, me comprometo a:
+            Declaro haber leído, comprendido y aceptado en su totalidad las Bases Específicas de la olimpiada "{{ $card['gamesEdition']->name }}". En ese sentido, me comprometo a:
         </p>
         <table class="commitment-list">
-            <tr><td class="bullet-num">01</td><td>Cumplir todas las disposiciones establecidas en las Bases del Torneo.</td></tr>
-            <tr><td class="bullet-num">02</td><td>Respetar las decisiones de la Comisión Organizadora, de la comisión de justicia y de los árbitros durante el desarrollo del torneo.</td></tr>
+            <tr><td class="bullet-num">01</td><td>Cumplir todas las disposiciones establecidas en las Bases de la Olimpiada.</td></tr>
+            <tr><td class="bullet-num">02</td><td>Respetar las decisiones de la Comisión Organizadora, de la comisión de justicia y de los árbitros durante el desarrollo de la olimpiada.</td></tr>
             <tr><td class="bullet-num">03</td><td>Promover el juego limpio, el respeto mutuo, la disciplina y la sana competencia entre todos los participantes.</td></tr>
             <tr><td class="bullet-num">04</td><td>Asumir la responsabilidad por mi conducta dentro y fuera del campo de juego.</td></tr>
-            <tr><td class="bullet-num">05</td><td>Acatar las sanciones que correspondan en caso de incumplimiento de las Bases del Torneo.</td></tr>
+            <tr><td class="bullet-num">05</td><td>Acatar las sanciones que correspondan en caso de incumplimiento de las Bases de la Olimpiada.</td></tr>
         </table>
         <p class="commitment-final">En señal de conformidad, suscribo el presente compromiso de manera voluntaria.</p>
     </div>
@@ -401,7 +401,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
                 <div class="sign-space"></div>
                 <div class="sign-line">
                     <div class="sign-name">{{ mb_strtoupper($card['player']->fullName()) }}</div>
-                    <div class="sign-role">Firma del Jugador</div>
+                    <div class="sign-role">Firma del Participante</div>
                 </div>
             </td>
         </tr>
@@ -418,7 +418,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
     </table>
 
     <p class="guarantee-note">
-        La promoción y su Presidente y/o Delegado se hacen responsables de la identidad del jugador firmante en esta ficha de inscripción y lo autorizan a registrarse oficialmente como su jugador.
+        La promoción y su Presidente y/o Delegado se hacen responsables de la identidad del participante firmante en esta ficha de inscripción y lo autorizan a registrarse oficialmente como su participante.
     </p>
 
     <table class="data-tbl" style="margin-top:2mm;">
@@ -466,16 +466,16 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
     </table>
 
     <p class="guarantee-note">
-        El jugador firmante de esta Ficha de Inscripción queda registrado oficialmente en el "{{ $card['tournament']->name }}".
+        El participante firmante de esta Ficha de Inscripción queda registrado oficialmente en el "{{ $card['gamesEdition']->name }}".
     </p>
 
     <table class="sign-tbl single">
         <tr>
             <td>
-                <div class="seal-box" style="margin-bottom: 1.5mm;">Sello del<br>Torneo</div>
+                <div class="seal-box" style="margin-bottom: 1.5mm;">Sello de la<br>Olimpiada</div>
                 <div class="sign-line">
                     <div class="sign-name">{{ $card['organizer']->name }}</div>
-                    <div class="sign-role">Organizador del Torneo</div>
+                    <div class="sign-role">Organizador de la Olimpiada</div>
                 </div>
             </td>
         </tr>

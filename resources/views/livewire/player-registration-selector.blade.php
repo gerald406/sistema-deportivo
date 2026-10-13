@@ -5,23 +5,23 @@
             <i class="fa-solid fa-file-signature text-indigo-600"></i>
             Fichas de Inscripción
         </h1>
-        <p class="mt-1 text-sm text-gray-500">Selecciona jugadores del plantel de una temporada para generar sus fichas de inscripción en PDF.</p>
+        <p class="mt-1 text-sm text-gray-500">Selecciona participantes del plantel de una competencia para generar sus fichas de inscripción en PDF.</p>
     </div>
 
     <div class="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-md sm:p-6">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Torneo</label>
-                <select wire:model.live="tournamentId" class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm">
+                <label class="mb-1 block text-sm font-medium text-gray-700">Olimpiada</label>
+                <select wire:model.live="gamesEditionId" class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm">
                     <option value="">-- Seleccione --</option>
-                    @foreach ($this->tournaments() as $tournament)
-                        <option value="{{ $tournament->id }}">{{ $tournament->name }}</option>
+                    @foreach ($this->gamesEditions() as $gamesEdition)
+                        <option value="{{ $gamesEdition->id }}">{{ $gamesEdition->name }}</option>
                     @endforeach
                 </select>
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Temporada</label>
-                <select wire:model.live="seasonId" class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm disabled:bg-gray-100" @disabled($tournamentId === '')>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Competencia</label>
+                <select wire:model.live="seasonId" class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm disabled:bg-gray-100" @disabled($gamesEditionId === '')>
                     <option value="">-- Seleccione --</option>
                     @foreach ($this->seasons() as $season)
                         <option value="{{ $season->id }}">{{ $season->name }} ({{ $season->status->label() }})</option>
@@ -38,7 +38,7 @@
                 </select>
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Buscar jugador</label>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Buscar participante</label>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Nombre, apellido o documento"
                        class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm">
             </div>
@@ -95,7 +95,7 @@
                             </a>
                         </label>
                     @empty
-                        <p class="py-8 text-center text-sm text-gray-500">No hay jugadores para los filtros seleccionados.</p>
+                        <p class="py-8 text-center text-sm text-gray-500">No hay participantes para los filtros seleccionados.</p>
                     @endforelse
                 </div>
             </div>
@@ -103,7 +103,7 @@
     @else
         <div class="rounded-xl border border-gray-200 bg-white p-10 text-center text-gray-400 shadow-md">
             <i class="fa-solid fa-trophy mb-3 text-3xl"></i>
-            <p>Selecciona un torneo y una temporada para ver los jugadores.</p>
+            <p>Selecciona una olimpiada y una competencia para ver los participantes.</p>
         </div>
     @endif
 

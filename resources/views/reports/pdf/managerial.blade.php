@@ -5,17 +5,17 @@
 
     SECCIONES:
     1. Resultados de la última jornada completada + sus observaciones
-    2. Tabla de posiciones (solo si la temporada tiene enfrentamientos: $showStandings)
+    2. Tabla de posiciones (solo si la competencia tiene enfrentamientos: $showStandings)
     3. Programación de la próxima jornada + sus observaciones
     4. Tabla de goleadores (Top 20) (solo si $showScorers)
-    5. Jugadores con sanciones pendientes
-    6. Jugadores con 2+ tarjetas amarillas
+    5. Participantes con sanciones pendientes
+    6. Participantes con 2+ tarjetas amarillas
 
     Lo que en la referencia era un if por deporte (sport === 'volley') aquí lo deciden los
     datos (ManagerialReportService): el formato efectivo de los partidos
     (discipline.format_type ?? sport.format_type) y si se juega por sets.
 
-    Variables: $tournament, $season, $organizer, $scoring, $generatedAt,
+    Variables: $gamesEdition, $season, $organizer, $scoring, $generatedAt,
     $lastMatchday, $lastResults, $nextMatchday, $nextGames, $showStandings,
     $standings, $standingColumns, $showScorers, $topScorers, $showSuspensions, $suspensions, $showYellows,
     $yellowCardRisks.
@@ -24,7 +24,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Reporte Gerencial - {{ $tournament->name }} - {{ $season->name }}</title>
+    <title>Reporte Gerencial - {{ $gamesEdition->name }} - {{ $season->name }}</title>
     <style>
         @page {
             margin-top: 1.5cm;
@@ -207,22 +207,22 @@
 <body>
 
     <div class="footer">
-        {{ mb_strtoupper(config('app.name')) }} &bull; Reporte Gerencial &bull; {{ $tournament->name }} &bull; {{ $season->name }} &bull;
+        {{ mb_strtoupper(config('app.name')) }} &bull; Reporte Gerencial &bull; {{ $gamesEdition->name }} &bull; {{ $season->name }} &bull;
         Generado: {{ $generatedAt }} &bull; Página <span class="page-number"></span>
     </div>
 
     {{-- ENCABEZADO --}}
     <div class="header">
         <h1>{{ config('app.name') }}</h1>
-        <h2>Reporte Gerencial de la Temporada</h2>
+        <h2>Reporte Gerencial de la Competencia</h2>
         <div class="subtitle">Documento generado automáticamente</div>
     </div>
 
     <div class="info-bar">
         <table>
             <tr>
-                <td class="label" style="width: 120px;">Torneo:</td>
-                <td>{{ $tournament->name }} &mdash; {{ $season->name }} ({{ $season->sport->name }})</td>
+                <td class="label" style="width: 120px;">Olimpiada:</td>
+                <td>{{ $gamesEdition->name }} &mdash; {{ $season->name }} ({{ $season->sport->name }})</td>
                 <td class="label" style="text-align:right; width: 120px;">Fecha emisión:</td>
                 <td style="text-align:right;">{{ $generatedAt }}</td>
             </tr>
@@ -419,7 +419,7 @@
                     <tr>
                         <th style="width: 30px;" class="text-center">Pos</th>
                         <th style="width: 50px; text-align: center;">Dorsal</th>
-                        <th>Jugador</th>
+                        <th>Participante</th>
                         <th>Equipo</th>
                         <th style="width: 60px; text-align: center;">Goles</th>
                     </tr>
@@ -437,23 +437,23 @@
                 </tbody>
             </table>
         @else
-            <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay goles registrados en esta temporada.</div>
+            <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay goles registrados en esta competencia.</div>
         @endif
     @endif
 
 
     {{-- ============================================ --}}
-    {{-- SECCIÓN 5: SANCIONES PENDIENTES (si el deporte genera sanciones o la temporada ya tiene) --}}
+    {{-- SECCIÓN 5: SANCIONES PENDIENTES (si el deporte genera sanciones o la competencia ya tiene) --}}
     {{-- ============================================ --}}
     @if($showSuspensions)
-    <div class="section-title">Jugadores Suspendidos (Sanciones Activas)</div>
+    <div class="section-title">Participantes Suspendidos (Sanciones Activas)</div>
 
     @if($suspensions->count() > 0)
         <table class="data-table">
             <thead>
                 <tr>
                     <th style="width: 30px;" class="text-center">#</th>
-                    <th>Jugador</th>
+                    <th>Participante</th>
                     <th>Equipo</th>
                     <th>Motivo</th>
                     <th style="width: 100px;">Partido Origen</th>
@@ -476,17 +476,17 @@
             </tbody>
         </table>
     @else
-        <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay jugadores suspendidos actualmente.</div>
+        <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay participantes suspendidos actualmente.</div>
     @endif
     @endif
 
 
     {{-- ============================================ --}}
-    {{-- SECCIÓN 6: JUGADORES CON 2+ AMARILLAS (si el deporte registra amarillas) --}}
+    {{-- SECCIÓN 6: PARTICIPANTES CON 2+ AMARILLAS (si el deporte registra amarillas) --}}
     {{-- ============================================ --}}
     @if($showYellows)
     <div class="section-title mt-10">
-        Jugadores con Acumulación de Tarjetas Amarillas (2+)
+        Participantes con Acumulación de Tarjetas Amarillas (2+)
         <span class="section-subtitle">&mdash; En observación</span>
     </div>
 
@@ -496,7 +496,7 @@
                 <tr>
                     <th style="width: 30px;" class="text-center">#</th>
                     <th style="width: 50px; text-align: center;">Dorsal</th>
-                    <th>Jugador</th>
+                    <th>Participante</th>
                     <th>Equipo</th>
                     <th style="width: 100px; text-align: center;">Total Amarillas</th>
                     <th style="width: 100px; text-align: center;">Estado</th>
@@ -510,14 +510,14 @@
                     <td class="text-bold">{{ $risk['entry']->player->last_name }}, {{ $risk['entry']->player->first_name }}</td>
                     <td>{{ $risk['entry']->seasonTeam->team->name }}</td>
                     <td class="text-center"><span class="yellow-badge">{{ $risk['total'] }} amarillas</span></td>
-                    {{-- Las amarillas no se acumulan: "Suspendido" solo si ya tiene una sanción pendiente. --}}
+                    {{-- "Suspendido" solo si ya tiene una sanción pendiente (por roja o por acumulación de amarillas). --}}
                     <td class="text-center">@if($risk['suspended']) <span class="red-badge">Suspendido</span> @else <span class="yellow-badge">En riesgo</span> @endif</td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
     @else
-        <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay jugadores con acumulación de tarjetas amarillas.</div>
+        <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay participantes con acumulación de tarjetas amarillas.</div>
     @endif
     @endif
 
@@ -527,8 +527,8 @@
         <div class="signature-box">
             <div class="signature-line">
                 <div class="signature-name">{{ $organizer->name }}</div>
-                <div class="signature-role">Organizador del Torneo</div>
-                <div class="signature-role">{{ $tournament->name }}</div>
+                <div class="signature-role">Organizador de la Olimpiada</div>
+                <div class="signature-role">{{ $gamesEdition->name }}</div>
             </div>
         </div>
     </div>

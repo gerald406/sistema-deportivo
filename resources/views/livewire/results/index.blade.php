@@ -14,15 +14,15 @@
         <div class="relative flex-1">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" wire:model.live.debounce.400ms="search"
-                   placeholder="Buscar equipo o jugador..."
+                   placeholder="Buscar equipo o participante..."
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
         <select wire:model.live="seasonFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todas las temporadas</option>
+            <option value="">Todas las competencias</option>
             @foreach ($filterSeasons as $season)
-                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }}</option>
+                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
         </select>
 
@@ -172,7 +172,44 @@
                                     @endforeach
                                 </div>
                             @endif
+
+                            {{-- Desempate: solo en partidos de llave (no admiten empate) --}}
+                            @if ($editing->season_stage_id && ! app(\App\Services\ResultService::class)->isBestOf($editing))
+                                <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                                    <p class="text-sm font-semibold text-amber-900">Desempate</p>
+                                    <p class="text-xs text-amber-700">Partido de llave: si el marcador queda empatado, indica cómo se definió y quién ganó. Déjalo vacío si hubo ganador.</p>
+
+                                    <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <select wire:model.live="tiebreakType"
+                                                class="rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <option value="">Sin desempate</option>
+                                            @foreach (\App\Enums\TiebreakType::cases() as $option)
+                                                <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                                            @endforeach
+                                        </select>
+
+                                        @if ($tiebreakType !== '')
+                                            <select wire:model="tiebreakWinner"
+                                                    class="rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                                <option value="">¿Quién ganó el desempate?</option>
+                                                <option value="home">{{ $this->label($home) }}</option>
+                                                <option value="away">{{ $this->label($away) }}</option>
+                                            </select>
+                                        @endif
+                                    </div>
+
+                                    @if ($tiebreakType !== '' && $tiebreakType !== \App\Enums\TiebreakType::CoinToss->value)
+                                        <div class="mt-2 grid grid-cols-2 gap-3">
+                                            <input type="number" min="0" wire:model="tiebreakHome" placeholder="Desempate local (opcional)"
+                                                   class="rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <input type="number" min="0" wire:model="tiebreakAway" placeholder="Desempate visitante (opcional)"
+                                                   class="rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         @endif
+                        @error('tiebreak') <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ $message }}</p> @enderror
                     @else
                         @php($unit = $editing->discipline?->unit_of_measure?->value)
                         <p class="text-xs text-gray-500">

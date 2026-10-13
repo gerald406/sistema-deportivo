@@ -153,7 +153,7 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ③ FOTO DEL JUGADOR
+   ③ FOTO DEL PARTICIPANTE
    — Lógica SINCRONIZADA con individual:
      • DNI badge siempre visible debajo de la foto.
      • Se elimina el condicional de capitán (igual que individual).
@@ -211,7 +211,7 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ④ NOMBRE DEL JUGADOR
+   ④ NOMBRE DEL PARTICIPANTE
    — SINCRONIZADO con individual:
      • Solo muestra el nombre completo (p-name).
      • Se eliminó la sub-tabla de posición + DNI
@@ -360,7 +360,7 @@ body {
                 ══════════════════════════════════════ --}}
                 <div class="hdr">
                     <div class="hdr-app">{{ config('app.name') }}</div>
-                    <div class="hdr-champ">{{ $card['tournament']->name }} · {{ $card['season']->name }}</div>
+                    <div class="hdr-champ">{{ $card['gamesEdition']->name }} · {{ $card['season']->name }}</div>
                 </div>
                 <div class="bar-gold"></div>
                 <div class="bar-blue"></div>
@@ -375,7 +375,7 @@ body {
                 </div>
 
                 {{-- ══════════════════════════════════════
-                    ③ FOTO DEL JUGADOR
+                    ③ FOTO DEL PARTICIPANTE
                     SINCRONIZADO con individual:
                     • DNI badge siempre visible bajo la foto.
                     • Sin condicional de capitán (= individual).
@@ -394,7 +394,7 @@ body {
                 </div>
 
                 {{-- ══════════════════════════════════════
-                    ④ NOMBRE DEL JUGADOR
+                    ④ NOMBRE DEL PARTICIPANTE
                     SINCRONIZADO con individual:
                     • Solo nombre completo, sin sub-tabla.
                     • El DNI ya se muestra en el badge de la foto.

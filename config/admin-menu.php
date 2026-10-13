@@ -24,12 +24,15 @@ return [
             'route' => 'dashboard',
         ],
         [
-            'label' => 'Torneos',
+            'label' => 'Olimpiada',
             'icon' => 'fa-solid fa-trophy',
             'children' => [
-                ['label' => 'Torneos', 'route' => 'tournaments.index', 'permission' => 'tournaments.manage'],
-                ['label' => 'Temporadas', 'route' => 'seasons.index', 'permission' => 'seasons.manage'],
-                ['label' => 'Ediciones (Olimpiadas)', 'route' => 'games-editions.index', 'role' => 'admin'],
+                ['label' => 'Olimpiadas', 'route' => 'games-editions.index', 'permission' => 'editions.manage'],
+                ['label' => 'Series', 'route' => 'edition-groups.index', 'permission' => 'editions.manage'],
+                ['label' => 'Delegaciones inscritas', 'route' => 'edition-teams.index', 'permission' => 'editions.manage'],
+                ['label' => 'Cuadro de puntaje', 'route' => 'edition-events.index', 'permission' => 'editions.manage'],
+                ['label' => 'Competencias', 'route' => 'seasons.index', 'permission' => 'seasons.manage'],
+                ['label' => 'Fases y llaves', 'route' => 'season-stages.index', 'permission' => 'matches.manage'],
             ],
         ],
         [
@@ -41,11 +44,11 @@ return [
             ],
         ],
         [
-            'label' => 'Equipos',
+            'label' => 'Participantes',
             'icon' => 'fa-solid fa-people-group',
             'children' => [
-                ['label' => 'Equipos', 'route' => 'teams.index', 'permission' => 'teams.manage'],
-                ['label' => 'Jugadores', 'route' => 'players.index', 'permission' => 'players.manage'],
+                ['label' => 'Delegaciones', 'route' => 'teams.index', 'permission' => 'teams.manage'],
+                ['label' => 'Participantes', 'route' => 'players.index', 'permission' => 'players.manage'],
                 // Sin permission: los 3 roles ven inscripciones (SeasonTeamPolicy::viewAny).
                 ['label' => 'Inscripciones', 'route' => 'season-teams.index'],
                 ['label' => 'Planteles', 'route' => 'rosters.index'],
@@ -75,10 +78,11 @@ return [
             'label' => 'Reportes',
             'icon' => 'fa-solid fa-chart-line',
             'children' => [
-                ['label' => 'Posiciones y medallero', 'route' => 'reports.index', 'permission' => 'reports.view'],
-                // PDFs por temporada: admin y organizador (SeasonPolicy::printReports).
+                ['label' => 'Puntaje general', 'route' => 'reports.general-score', 'permission' => 'reports.view'],
+                ['label' => 'Posiciones', 'route' => 'reports.index', 'permission' => 'reports.view'],
+                // PDFs por competencia: admin y organizador (SeasonPolicy::printReports).
                 // Padron: tambien el delegado, solo de su equipo (SeasonTeamPolicy::printRoster).
-                ['label' => 'Padrón de jugadores', 'route' => 'reports.roster', 'role' => ['admin', 'organizador', 'delegado']],
+                ['label' => 'Padrón de participantes', 'route' => 'reports.roster', 'role' => ['admin', 'organizador', 'delegado']],
                 ['label' => 'Reporte gerencial', 'route' => 'reports.managerial', 'role' => ['admin', 'organizador']],
             ],
         ],

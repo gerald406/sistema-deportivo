@@ -12,7 +12,7 @@ class SuspensionPolicy
 {
     /**
      * Sanciones: permiso matches.manage; el organizador solo en
-     * temporadas de sus torneos.
+     * competencias de sus olimpiadas.
      */
     public function viewAny(User $user): bool
     {

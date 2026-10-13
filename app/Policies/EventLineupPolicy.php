@@ -12,13 +12,13 @@ use App\Support\SeasonAccess;
 class EventLineupPolicy
 {
     /**
-     * Orden de relevos de una posta: lo cargan el organizador del torneo,
+     * Orden de relevos de una posta: lo cargan el organizador de la olimpiada,
      * el admin y el delegado EFECTIVO del equipo (mismo criterio que el
      * plantel, SeasonTeamPlayerPolicy).
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('matches.manage') || ($user->hasRole('delegado') && $user->can('teams.manage'));
+        return $user->can('matches.manage') || ($user->hasRole('delegado') && $user->can('players.manage'));
     }
 
     /**
@@ -37,7 +37,7 @@ class EventLineupPolicy
 
         return $seasonTeam instanceof SeasonTeam
             && $user->hasRole('delegado')
-            && $user->can('teams.manage')
-            && $seasonTeam->effectiveDelegate()?->id === $user->id;
+            && $user->can('players.manage')
+            && $seasonTeam->hasDelegate($user);
     }
 }

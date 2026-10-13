@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Policies\SeasonTeamPolicy;
 use App\Enums\MatchStatus;
 use App\Enums\SeasonStatus;
 use App\Models\GameMatch;
@@ -12,7 +13,7 @@ use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use App\Models\Suspension;
 use App\Models\Team;
-use App\Models\Tournament;
+use App\Models\GamesEdition;
 use App\Models\User;
 use App\Support\ParticipantLabel;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,9 +24,9 @@ use Illuminate\Support\Collection;
  * Metricas del panel de control, SIEMPRE acotadas a lo que el usuario
  * gestiona:
  *   - admin: todo.
- *   - organizador: sus torneos (tournaments.organizer_id).
+ *   - organizador: sus olimpiadas (games_editions.organizer_id).
  *   - delegado: sus equipos, segun el delegado EFECTIVO de cada
- *     inscripcion (SeasonTeam::effectiveDelegate(), regla 5 de CLAUDE.md).
+ *     inscripcion (SeasonTeam::hasDelegate(), regla 5 de CLAUDE.md).
  * Un usuario con varios roles ve la union de sus ambitos.
  */
 class DashboardService
@@ -36,8 +37,8 @@ class DashboardService
         $manages = $user->can('matches.manage');
 
         return [
-            'activeTournaments' => $user->can('tournaments.manage')
-                ? Tournament::where('is_active', true)->when(! $user->hasRole('admin'), fn ($q) => $q->where('organizer_id', $user->id))->count()
+            'activeGamesEditions' => $user->can('editions.manage')
+                ? GamesEdition::where('is_active', true)->when(! $user->hasRole('admin'), fn ($q) => $q->where('organizer_id', $user->id))->count()
                 : null,
             'activeSeasons' => $this->seasonScope(Season::query(), $user)->where('status', SeasonStatus::Active->value)->count(),
             'todayMatches' => $this->matchScope(GameMatch::query(), $user)
@@ -47,7 +48,7 @@ class DashboardService
                 : null,
             'pendingSuspensions' => $this->suspensionScope(Suspension::query(), $user)->where('is_served', false)->count(),
             'activeTeams' => $user->can('teams.manage')
-                ? Team::where('is_active', true)->when(! $user->hasRole('admin'), fn ($q) => $q->where('delegate_id', $user->id))->count()
+                ? app(TeamRegistrationService::class)->scopeManagedBy(Team::query(), $user)->where('is_active', true)->count()
                 : null,
         ];
     }
@@ -81,12 +82,10 @@ class DashboardService
         ];
     }
 
-    /** Inscripciones de las que $user es delegado efectivo. */
-    private function effectiveDelegateSeasonTeams(User $user): Builder
+    /** Inscripciones de delegaciones de las que $user es delegado titular o suplente. */
+    private function delegateSeasonTeams(User $user): Builder
     {
-        return SeasonTeam::query()->select('season_team.id')->where(fn ($q) => $q
-            ->where('delegate_id', $user->id)
-            ->orWhere(fn ($q) => $q->whereNull('delegate_id')->whereHas('team', fn ($t) => $t->where('delegate_id', $user->id))));
+        return SeasonTeam::query()->select('season_team.id')->where(SeasonTeamPolicy::delegateConstraint($user));
     }
 
     private function seasonScope(Builder $q, User $user): Builder
@@ -96,8 +95,8 @@ class DashboardService
         }
 
         return $q->where(fn ($q) => $q->whereRaw('1 = 0')
-            ->when($user->hasRole('organizador'), fn ($q) => $q->orWhereHas('tournament', fn ($t) => $t->where('organizer_id', $user->id)))
-            ->when($user->hasRole('delegado'), fn ($q) => $q->orWhereHas('seasonTeams', fn ($st) => $st->whereIn('season_team.id', $this->effectiveDelegateSeasonTeams($user)))));
+            ->when($user->hasRole('organizador'), fn ($q) => $q->orWhereHas('gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
+            ->when($user->hasRole('delegado'), fn ($q) => $q->orWhereHas('seasonTeams', fn ($st) => $st->whereIn('season_team.id', $this->delegateSeasonTeams($user)))));
     }
 
     private function matchScope(Builder $q, User $user): Builder
@@ -106,10 +105,10 @@ class DashboardService
             return $q;
         }
 
-        $mine = $this->effectiveDelegateSeasonTeams($user);
+        $mine = $this->delegateSeasonTeams($user);
 
         return $q->where(fn ($q) => $q->whereRaw('1 = 0')
-            ->when($user->hasRole('organizador'), fn ($q) => $q->orWhereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+            ->when($user->hasRole('organizador'), fn ($q) => $q->orWhereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->when($user->hasRole('delegado'), fn ($q) => $q->orWhereHas('participants', fn ($p) => $p->where(fn ($p) => $p
                 ->where(fn ($p) => $p->where('participant_type', 'season_team')->whereIn('participant_id', $mine))
                 ->orWhere(fn ($p) => $p->where('participant_type', 'season_team_player')
@@ -123,7 +122,7 @@ class DashboardService
         }
 
         return $q->where(fn ($q) => $q->whereRaw('1 = 0')
-            ->when($user->hasRole('organizador'), fn ($q) => $q->orWhereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
-            ->when($user->hasRole('delegado'), fn ($q) => $q->orWhereHas('seasonTeamPlayer', fn ($e) => $e->whereIn('season_team_id', $this->effectiveDelegateSeasonTeams($user)))));
+            ->when($user->hasRole('organizador'), fn ($q) => $q->orWhereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
+            ->when($user->hasRole('delegado'), fn ($q) => $q->orWhereHas('seasonTeamPlayer', fn ($e) => $e->whereIn('season_team_id', $this->delegateSeasonTeams($user)))));
     }
 }

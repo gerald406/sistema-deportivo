@@ -6,7 +6,7 @@ namespace App\Livewire;
 
 use App\Enums\SeasonTeamPlayerStatus;
 use App\Models\Season;
-use App\Models\Tournament;
+use App\Models\GamesEdition;
 use App\Services\PlayerCardService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -17,10 +17,10 @@ use Livewire\Component;
 /**
  * Selector de Fichas de Inscripcion. Adaptado de
  * pichanga/PlayerRegistrationSelector: alli Player tiene team_id y Team
- * tiene championship_id; aqui el filtro es Torneo -> Temporada -> Equipo
+ * tiene championship_id; aqui el filtro es Olimpiada -> Competencia -> Equipo
  * inscrito (season_team) y lo que se lista son fichas del plantel
- * (season_team_player), porque el mismo jugador puede estar en varias
- * temporadas con distinto equipo.
+ * (season_team_player), porque el mismo participante puede estar en varias
+ * competencias con distinto equipo.
  *
  * Alcance: PlayerCardService::printableSeasonTeams() = la misma regla que
  * SeasonTeamPlayerPolicy::printCard (el delegado ve donde es el delegado
@@ -33,7 +33,7 @@ class PlayerRegistrationSelector extends Component
     /** Tope por PDF (el Controller aplica el mismo). */
     public const MAX_SELECTION = 150;
 
-    public string $tournamentId = '';
+    public string $gamesEditionId = '';
 
     public string $seasonId = '';
 
@@ -49,7 +49,7 @@ class PlayerRegistrationSelector extends Component
         abort_unless(auth()->user()?->hasAnyRole(['admin', 'organizador', 'delegado']), 403);
     }
 
-    public function updatedTournamentId(): void
+    public function updatedGamesEditionId(): void
     {
         $this->seasonId = '';
         $this->seasonTeamId = '';
@@ -74,22 +74,22 @@ class PlayerRegistrationSelector extends Component
             : [];
     }
 
-    public function tournaments(): Collection
+    public function gamesEditions(): Collection
     {
-        $ids = $this->printableSeasonTeams()->join('seasons', 'seasons.id', '=', 'season_team.season_id')->distinct()->pluck('seasons.tournament_id');
+        $ids = $this->printableSeasonTeams()->join('seasons', 'seasons.id', '=', 'season_team.season_id')->distinct()->pluck('seasons.games_edition_id');
 
-        return Tournament::whereIn('id', $ids)->orderBy('name')->get(['id', 'name']);
+        return GamesEdition::whereIn('id', $ids)->orderBy('name')->get(['id', 'name']);
     }
 
     public function seasons(): Collection
     {
-        if (! ctype_digit($this->tournamentId)) {
+        if (! ctype_digit($this->gamesEditionId)) {
             return collect();
         }
 
         $ids = $this->scopedSeasonTeams()->distinct()->pluck('season_team.season_id');
 
-        return Season::whereIn('id', $ids)->where('tournament_id', (int) $this->tournamentId)
+        return Season::whereIn('id', $ids)->where('games_edition_id', (int) $this->gamesEditionId)
             ->orderByDesc('start_date')->orderBy('name')->get(['id', 'name', 'status']);
     }
 
@@ -117,11 +117,11 @@ class PlayerRegistrationSelector extends Component
         return app(PlayerCardService::class)->printableSeasonTeams(auth()->user());
     }
 
-    /** printableSeasonTeams() acotado al torneo elegido. */
+    /** printableSeasonTeams() acotado a la olimpiada elegida. */
     private function scopedSeasonTeams(): Builder
     {
         return $this->printableSeasonTeams()
-            ->when(ctype_digit($this->tournamentId), fn ($q) => $q->whereHas('season', fn ($s) => $s->where('tournament_id', (int) $this->tournamentId)));
+            ->when(ctype_digit($this->gamesEditionId), fn ($q) => $q->whereHas('season', fn ($s) => $s->where('games_edition_id', (int) $this->gamesEditionId)));
     }
 
     /** Fichas visibles con los filtros actuales (sin las dadas de baja, como la referencia con is_active). */

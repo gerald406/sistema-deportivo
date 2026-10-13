@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Public;
 
 use App\Models\Season;
+use App\Services\AwardService;
 use App\Services\PublicResultsService;
 use App\Services\SeasonOverviewService;
 use Illuminate\Support\Collection;
@@ -12,19 +13,19 @@ use Livewire\Component;
 
 /**
  * Resultados publicos (sin login). Adaptado de pichanga/Public/PublicResults
- * SIN la rama futbol/voley: se elige Torneo -> Temporada y cada temporada
+ * SIN la rama futbol/voley: se elige Olimpiada -> Competencia y cada competencia
  * ya sabe su deporte/disciplina.
  *
- * Todas las propiedades publicas vienen del navegador: la temporada se
+ * Todas las propiedades publicas vienen del navegador: la competencia se
  * resuelve SOLO entre las visibles (PublicResultsService) y las pestañas
- * solo entre las que esa temporada soporta (SeasonOverviewService::sections,
+ * solo entre las que esa competencia soporta (SeasonOverviewService::sections,
  * el mismo criterio que el Reporte Gerencial).
  */
 class PublicResults extends Component
 {
-    public const TABS = ['standings', 'results', 'schedule', 'scorers', 'suspended', 'yellows'];
+    public const TABS = ['standings', 'results', 'schedule', 'scorers', 'suspended', 'yellows', 'general'];
 
-    public string $tournamentId = '';
+    public string $gamesEditionId = '';
 
     public string $seasonId = '';
 
@@ -35,12 +36,12 @@ class PublicResults extends Component
 
     public function mount(PublicResultsService $public): void
     {
-        $first = $public->visibleTournaments()->first();
-        $this->tournamentId = $first ? (string) $first->id : '';
+        $first = $public->visibleGamesEditions()->first();
+        $this->gamesEditionId = $first ? (string) $first->id : '';
         $this->selectFirstSeason($public);
     }
 
-    public function updatedTournamentId(PublicResultsService $public): void
+    public function updatedGamesEditionId(PublicResultsService $public): void
     {
         $this->selectFirstSeason($public);
     }
@@ -58,13 +59,13 @@ class PublicResults extends Component
 
     public function render(PublicResultsService $public, SeasonOverviewService $overview)
     {
-        $tournaments = $public->visibleTournaments();
-        $seasons = ctype_digit($this->tournamentId) ? $public->seasonsOf((int) $this->tournamentId) : collect();
+        $gamesEditions = $public->visibleGamesEditions();
+        $seasons = ctype_digit($this->gamesEditionId) ? $public->seasonsOf((int) $this->gamesEditionId) : collect();
         $season = ctype_digit($this->seasonId) && $seasons->contains('id', (int) $this->seasonId)
             ? $public->findVisibleSeason((int) $this->seasonId)
             : null;
 
-        $data = ['tournaments' => $tournaments, 'seasons' => $seasons, 'season' => $season, 'tabs' => []];
+        $data = ['gamesEditions' => $gamesEditions, 'seasons' => $seasons, 'season' => $season, 'tabs' => []];
 
         if ($season) {
             $sections = $overview->sections($season);
@@ -75,9 +76,11 @@ class PublicResults extends Component
                 'scorers' => $sections['scorers'],
                 'suspended' => $sections['suspensions'],
                 'yellows' => $sections['yellows'],
+                // Puntaje general de la olimpiada: solo delegaciones y puntos, sin datos personales.
+                'general' => true,
             ]));
 
-            // Pestaña no soportada por esta temporada (o manipulada): la primera valida.
+            // Pestaña no soportada por esta competencia (o manipulada): la primera valida.
             if (! in_array($this->activeTab, $tabs, true)) {
                 $this->activeTab = $tabs[0];
             }
@@ -100,7 +103,7 @@ class PublicResults extends Component
 
             case 'results':
                 $completed = $overview->completedMatchdays($season);
-                // Respeta la jornada elegida solo si es de ESTA temporada; si no, la mas reciente.
+                // Respeta la jornada elegida solo si es de ESTA competencia; si no, la mas reciente.
                 $matchday = ctype_digit($this->selectedResultMatchdayId)
                     ? $completed->firstWhere('id', (int) $this->selectedResultMatchdayId)
                     : null;
@@ -125,6 +128,9 @@ class PublicResults extends Component
 
             case 'yellows':
                 return ['yellowCardRisks' => $overview->playersWithTwoYellows($season)];
+
+            case 'general':
+                return ['generalScore' => app(AwardService::class)->table($season->gamesEdition)];
         }
 
         return [];
@@ -133,7 +139,7 @@ class PublicResults extends Component
     private function selectFirstSeason(PublicResultsService $public): void
     {
         /** @var Collection<int, Season> $seasons */
-        $seasons = ctype_digit($this->tournamentId) ? $public->seasonsOf((int) $this->tournamentId) : collect();
+        $seasons = ctype_digit($this->gamesEditionId) ? $public->seasonsOf((int) $this->gamesEditionId) : collect();
         $this->seasonId = $seasons->isNotEmpty() ? (string) $seasons->first()->id : '';
         $this->activeTab = 'standings';
         $this->selectedResultMatchdayId = '';

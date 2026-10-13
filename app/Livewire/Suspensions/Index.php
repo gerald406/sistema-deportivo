@@ -89,7 +89,7 @@ class Index extends Component
         return SeasonAccess::manageableSeasons(auth()->user(), includeClosed: true);
     }
 
-    /** Partidos no cancelados de la temporada elegida (origen de la sancion). */
+    /** Partidos no cancelados de la competencia elegida (origen de la sancion). */
     public function matchOptions(): Collection
     {
         return ctype_digit((string) $this->form['season_id'])
@@ -101,7 +101,7 @@ class Index extends Component
             : collect();
     }
 
-    /** Planteles de la temporada elegida. */
+    /** Planteles de la competencia elegida. */
     public function playerOptions(): Collection
     {
         return ctype_digit((string) $this->form['season_id'])
@@ -202,13 +202,13 @@ class Index extends Component
             ->addSelect(['player_last_name' => Player::select('players.last_name')
                 ->join('season_team_player', 'season_team_player.player_id', '=', 'players.id')
                 ->whereColumn('season_team_player.id', 'suspensions.season_team_player_id')])
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->when($term !== '', fn ($q) => $q->whereHas('seasonTeamPlayer.player', fn ($p) => $p->where('last_name', 'like', "%{$term}%")->orWhere('first_name', 'like', "%{$term}%")))
             ->when(ctype_digit($this->seasonFilter), fn ($q) => $q->where('season_id', (int) $this->seasonFilter))
             ->when($this->servedFilter === 'pending', fn ($q) => $q->where('is_served', false))
             ->when($this->servedFilter === 'served', fn ($q) => $q->where('is_served', true))
             ->with([
-                'season:id,name,tournament_id', 'season.tournament:id,name,organizer_id',
+                'season:id,name,games_edition_id', 'season.gamesEdition:id,name,organizer_id',
                 'seasonTeamPlayer:id,season_team_id,player_id,status', 'seasonTeamPlayer.player:id,first_name,last_name', 'seasonTeamPlayer.seasonTeam.team:id,name',
                 'match:id,matchday_id,scheduled_at', 'match.matchday:id,name',
             ])
@@ -232,7 +232,7 @@ class Index extends Component
         $this->resetErrorBag();
     }
 
-    /** Reglas de negocio (jugador de la temporada, partido no cancelado): SuspensionService. */
+    /** Reglas de negocio (participante de la competencia, partido no cancelado): SuspensionService. */
     private function rules(): array
     {
         return [
@@ -248,9 +248,9 @@ class Index extends Component
     protected function validationAttributes(): array
     {
         return [
-            'form.season_id' => 'temporada',
+            'form.season_id' => 'competencia',
             'form.match_id' => 'partido de origen',
-            'form.season_team_player_id' => 'jugador',
+            'form.season_team_player_id' => 'participante',
             'form.reason' => 'motivo',
             'form.matches_suspended' => 'partidos de sanción',
         ];

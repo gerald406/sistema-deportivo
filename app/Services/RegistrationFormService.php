@@ -10,18 +10,17 @@ use App\Models\SeasonTeamPlayer;
  * Datos de la Ficha de Inscripcion (reports.pdf.jugador-inscripcion).
  * Equivale a PlayerRegistrationController::prepareRegistrationData() de la
  * referencia, pero fuera del Controller y sobre la inscripcion
- * (season_team_player): equipo, temporada, torneo, organizador y delegado
- * EFECTIVO de esa temporada. Reusa el numero de carnet de PlayerCardService
+ * (season_team_player): equipo, competencia, olimpiada, organizador y delegado
+ * EFECTIVO de esa competencia. Reusa el numero de carnet de PlayerCardService
  * y las imagenes de PdfImageService (el helper imageToBase64 compartido).
  */
 class RegistrationFormService
 {
     public const RELATIONS = [
         'player',
-        'seasonTeam.team.delegate',
-        'seasonTeam.delegate',
+        'seasonTeam.team',
         'seasonTeam.season.sport',
-        'seasonTeam.season.tournament.organizer',
+        'seasonTeam.season.gamesEdition.organizer',
     ];
 
     public function __construct(
@@ -38,23 +37,24 @@ class RegistrationFormService
         $entry->loadMissing(self::RELATIONS);
 
         $seasonTeam = $entry->seasonTeam;
-        $tournament = $seasonTeam->season->tournament;
+        $gamesEdition = $seasonTeam->season->gamesEdition;
 
         return [
             'entry' => $entry,
             'player' => $entry->player,
             'team' => $seasonTeam->team,
             'season' => $seasonTeam->season,
-            'tournament' => $tournament,
-            'organizer' => $tournament->organizer,
-            'delegateName' => $seasonTeam->effectiveDelegate()?->name ?? '',
+            'gamesEdition' => $gamesEdition,
+            'organizer' => $gamesEdition->organizer,
+            // Firma el titular; si no hay, el suplente.
+            'delegateName' => $seasonTeam->delegates()->first()?->name ?? '',
             // User no tiene documento de identidad: la vista muestra "Sin registrar".
             'delegateDni' => '',
             'issueDate' => now()->format('d/m/Y'),
             'cardNumber' => $this->cards->cardNumber($entry),
             'playerPhotoBase64' => $this->images->toBase64($entry->player->photo_path),
             'teamLogoBase64' => $this->images->toBase64($seasonTeam->team->logo_path),
-            'tournamentLogoBase64' => $this->images->toBase64($tournament->logo),
+            'gamesEditionLogoBase64' => $this->images->toBase64($gamesEdition->logo),
             'organizerSignatureBase64' => null,
         ];
     }

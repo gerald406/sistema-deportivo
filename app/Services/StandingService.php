@@ -30,17 +30,17 @@ use App\Models\SeasonTeam;
  *   - Job en cola: QUEUE_CONNECTION=database requiere un `queue:work`
  *     corriendo, que en el entorno XAMPP no existe; la tabla quedaria
  *     desactualizada sin aviso.
- *   - Costo: reconstruir una temporada es O(partidos) con 2 consultas;
- *     con el volumen de un torneo es despreciable. Si en Fase 9 crece, se
- *     puede mover a un Job ShouldBeUnique por temporada sin tocar a los
+ *   - Costo: reconstruir una competencia es O(partidos) con 2 consultas;
+ *     con el volumen de una olimpiada es despreciable. Si en Fase 9 crece, se
+ *     puede mover a un Job ShouldBeUnique por competencia sin tocar a los
  *     llamadores (solo este metodo).
  *
  * Reglas confirmadas (regla 2A/3A/4A):
  *   - Solo cuentan enfrentamientos (formato efectivo head_to_head) de
  *     ronda "regular", Jugados o con Walkover, con la PRIMERA fase de
- *     puntaje de la temporada (scoring_configs de menor id).
+ *     puntaje de la competencia (scoring_configs de menor id).
  *   - Solo enfrentamientos entre EQUIPOS (season_team): las partidas
- *     individuales (ej. ajedrez en modo jugadores) no suman a una tabla
+ *     individuales (ej. ajedrez en modo participantes) no suman a una tabla
  *     de equipos. Individual/postas alimentan el medallero, no la tabla.
  *   - Walkover: el presente suma pts_win y una victoria; el ausente suma
  *     pts_walkover (ej. -1), una derrota y un walkover en contra.
@@ -132,7 +132,7 @@ class StandingService
         }
 
         // Filas de inscripciones que ya no existen (se van en CASCADE, pero
-        // por si acaso) o de temporadas sin enfrentamientos por equipos.
+        // por si acaso) o de competencias sin enfrentamientos por equipos.
         SeasonStanding::where('season_id', $season->id)->whereNotIn('season_team_id', array_keys($rows) ?: [0])->delete();
     }
 

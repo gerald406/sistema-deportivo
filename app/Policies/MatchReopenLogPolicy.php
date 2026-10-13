@@ -10,7 +10,7 @@ class MatchReopenLogPolicy
 {
     /**
      * Auditoria de reaperturas: solo lectura. La ven admin y organizador
-     * (matches.manage); el organizador solo las de sus torneos (filtro en
+     * (matches.manage); el organizador solo las de sus olimpiadas (filtro en
      * el componente). No hay create/update/delete: los registros los crea
      * ResultService::reopen() y son inmutables.
      */

@@ -12,9 +12,10 @@ use App\Services\SeasonTeamPlayerService;
 class SeasonTeamPlayerPolicy
 {
     /**
-     * El plantel de una inscripcion lo gestionan: su delegado EFECTIVO
-     * (SeasonTeam::effectiveDelegate(), regla 5 de CLAUDE.md), el
-     * organizador del torneo y el admin (Gate::before). Que la temporada
+     * El plantel de una inscripcion lo gestionan: los delegados titular y
+     * suplente de la delegacion en la olimpiada (SeasonTeam::hasDelegate(),
+     * regla 5 de CLAUDE.md), el
+     * organizador de la olimpiada y el admin (Gate::before). Que la competencia
      * no este cerrada lo valida SeasonTeamPlayerService.
      */
     public function viewAny(User $user): bool
@@ -35,7 +36,7 @@ class SeasonTeamPlayerPolicy
     public function create(User $user): bool
     {
         return ($user->hasRole('organizador') && $user->can('seasons.manage'))
-            || ($user->hasRole('delegado') && $user->can('teams.manage'));
+            || ($user->hasRole('delegado') && $user->can('players.manage'));
     }
 
     public function update(User $user, SeasonTeamPlayer $entry): bool
@@ -50,10 +51,10 @@ class SeasonTeamPlayerPolicy
 
     /**
      * Generar el carnet (fotocheck) o la ficha de inscripcion de ESTA
-     * inscripcion: admin siempre (Gate::before); el organizador si el torneo
-     * de la temporada es suyo; el delegado si es el delegado EFECTIVO del
-     * equipo en esa temporada (SeasonTeam::effectiveDelegate()).
-     * Es la unica regla para todos los PDFs por jugador: los Controllers
+     * inscripcion: admin siempre (Gate::before); el organizador si la olimpiada
+     * de la competencia es suyo; el delegado si es titular o suplente de la
+     * delegacion en esa olimpiada (SeasonTeam::hasDelegate()).
+     * Es la unica regla para todos los PDFs por participante: los Controllers
      * llaman a authorize('printCard', ...) en vez de tener cada uno su
      * propio authorizePlayer() privado como en el proyecto de referencia.
      */
@@ -64,7 +65,7 @@ class SeasonTeamPlayerPolicy
 
     /**
      * Publica y estatica: SeasonTeamPlayerService la reusa para validar
-     * el equipo destino al AGREGAR un jugador (create() no lo conoce).
+     * el equipo destino al AGREGAR un participante (create() no lo conoce).
      */
     public static function managesSeasonTeam(User $user, SeasonTeam $seasonTeam): bool
     {
@@ -73,12 +74,12 @@ class SeasonTeamPlayerPolicy
         }
 
         if ($user->hasRole('organizador') && $user->can('seasons.manage')
-            && $seasonTeam->season->tournament->organizer_id === $user->id) {
+            && $seasonTeam->season->gamesEdition->organizer_id === $user->id) {
             return true;
         }
 
         return $user->hasRole('delegado')
-            && $user->can('teams.manage')
-            && $seasonTeam->effectiveDelegate()?->id === $user->id;
+            && $user->can('players.manage')
+            && $seasonTeam->hasDelegate($user);
     }
 }

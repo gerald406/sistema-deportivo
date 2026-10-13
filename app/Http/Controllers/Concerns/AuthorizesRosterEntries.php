@@ -33,8 +33,8 @@ trait AuthorizesRosterEntries
             ->unique()
             ->values();
 
-        abort_if($ids->isEmpty(), 422, 'Selecciona al menos un jugador.');
-        abort_if($ids->count() > $this->maxEntriesPerPdf, 422, "Máximo {$this->maxEntriesPerPdf} jugadores por PDF.");
+        abort_if($ids->isEmpty(), 422, 'Selecciona al menos un participante.');
+        abort_if($ids->count() > $this->maxEntriesPerPdf, 422, "Máximo {$this->maxEntriesPerPdf} participantes por PDF.");
 
         $entries = SeasonTeamPlayer::with($with)
             ->whereIn('id', $ids)
@@ -42,7 +42,7 @@ trait AuthorizesRosterEntries
             ->sortBy(fn (SeasonTeamPlayer $e) => [$e->seasonTeam->team->name, $e->shirt_number ?? 999])
             ->values();
 
-        abort_if($entries->count() !== $ids->count(), 404, 'Alguno de los jugadores no existe.');
+        abort_if($entries->count() !== $ids->count(), 404, 'Alguno de los participantes no existe.');
 
         // Si una sola no corresponde, 403 para todo el lote (sin revelar las demas).
         $entries->each(fn (SeasonTeamPlayer $e) => Gate::authorize('printCard', $e));

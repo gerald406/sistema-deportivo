@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Fichas de Inscripcion en PDF (una hoja A4 por jugador). Misma
+ * Fichas de Inscripcion en PDF (una hoja A4 por participante). Misma
  * autorizacion que los carnets (SeasonTeamPlayerPolicy::printCard, sin
  * reescribirla); los datos los arma RegistrationFormService.
  */
@@ -45,7 +45,7 @@ class PlayerRegistrationController extends Controller
             ->orderByRaw('shirt_number IS NULL, shirt_number')
             ->get();
 
-        abort_if($entries->isEmpty(), 404, 'El equipo no tiene jugadores activos en su plantel.');
+        abort_if($entries->isEmpty(), 404, 'El equipo no tiene participantes activos en su plantel.');
 
         $entries->each(fn (SeasonTeamPlayer $e) => Gate::authorize('printCard', $e));
 

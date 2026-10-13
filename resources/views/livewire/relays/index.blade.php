@@ -142,7 +142,7 @@
                 @endif
 
                 @if ($runners->isEmpty())
-                    <p class="text-sm text-amber-600">El equipo no tiene jugadores habilitados en su plantel.</p>
+                    <p class="text-sm text-amber-600">El equipo no tiene participantes habilitados en su plantel.</p>
                 @endif
 
                 <div class="flex justify-end gap-3 pt-2">

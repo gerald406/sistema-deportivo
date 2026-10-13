@@ -12,6 +12,7 @@ use App\Models\EventLineup;
 use App\Models\EventParticipant;
 use App\Models\GameMatch;
 use App\Models\SeasonTeam;
+use App\Policies\SeasonTeamPolicy;
 use App\Models\SeasonTeamPlayer;
 use App\Models\Team;
 use App\Policies\EventLineupPolicy;
@@ -182,13 +183,11 @@ class Index extends Component
                 'team_name' => Team::select('teams.name')->join('season_team', 'season_team.team_id', '=', 'teams.id')
                     ->whereColumn('season_team.id', 'event_participants.participant_id'),
             ])
-            // Visibilidad: admin todo; organizador sus torneos; delegado sus equipos (delegado efectivo).
+            // Visibilidad: admin todo; organizador sus olimpiadas; delegado sus delegaciones (titular o suplente).
             ->unless($user->hasRole('admin'), fn ($q) => $q->where(function ($q) use ($user) {
                 $q->whereRaw('1 = 0')
-                    ->when($user->hasRole('organizador'), fn ($q) => $q->orWhereHas('match.season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
-                    ->when($user->hasRole('delegado'), fn ($q) => $q->orWhereHasMorph('participant', [SeasonTeam::class], fn ($st) => $st->where(fn ($st) => $st
-                        ->where('delegate_id', $user->id)
-                        ->orWhere(fn ($st) => $st->whereNull('delegate_id')->whereHas('team', fn ($t) => $t->where('delegate_id', $user->id))))));
+                    ->when($user->hasRole('organizador'), fn ($q) => $q->orWhereHas('match.season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
+                    ->when($user->hasRole('delegado'), fn ($q) => $q->orWhereHasMorph('participant', [SeasonTeam::class], SeasonTeamPolicy::delegateConstraint($user)));
             }))
             ->when($term !== '', fn ($q) => $q->whereHasMorph('participant', [SeasonTeam::class], fn ($st) => $st->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$term}%"))))
             ->when(MatchStatus::tryFrom($this->matchStatusFilter), fn ($q, $s) => $q->whereHas('match', fn ($m) => $m->where('status', $s->value)))
@@ -196,8 +195,8 @@ class Index extends Component
             ->when($this->lineupFilter === 'loaded', fn ($q) => $q->has('lineups'))
             ->with([
                 'match:id,season_id,matchday_id,discipline_id,scheduled_at,status', 'match.discipline:id,name,format_type',
-                'match.matchday:id,name', 'match.season:id,name,tournament_id,sport_id', 'match.season.tournament:id,name,organizer_id',
-                'match.season.sport:id,name,format_type', 'participant.team:id,name,delegate_id', 'participant.delegate:id',
+                'match.matchday:id,name', 'match.season:id,name,games_edition_id,sport_id', 'match.season.gamesEdition:id,name,organizer_id',
+                'match.season.sport:id,name,format_type', 'participant.team:id,name',
                 'lineups' => fn ($q) => $q->orderBy('leg_order')->with('seasonTeamPlayer.player:id,first_name,last_name'),
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder())

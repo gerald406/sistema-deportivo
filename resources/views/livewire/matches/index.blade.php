@@ -18,15 +18,15 @@
         <div class="relative flex-1">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" wire:model.live.debounce.400ms="search"
-                   placeholder="Buscar equipo o jugador..."
+                   placeholder="Buscar equipo o participante..."
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
         <select wire:model.live="seasonFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todas las temporadas</option>
+            <option value="">Todas las competencias</option>
             @foreach ($filterSeasons as $season)
-                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }}</option>
+                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
         </select>
 
@@ -63,7 +63,7 @@
                     <tr>
                         <x-sortable-th field="scheduled_at" label="Fecha" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="participants_count" label="Participantes" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Temporada / Jornada</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Competencia / Jornada</th>
                         <x-sortable-th field="round_type" label="Ronda" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Sede</th>
                         <x-sortable-th field="status" label="Estado" :sort-field="$sortField" :sort-direction="$sortDirection" />
@@ -94,7 +94,7 @@
                             </td>
                             <td class="px-4 py-3 text-gray-600">
                                 <p>{{ $match->season->name }} · {{ $match->matchday->name }}</p>
-                                <p class="text-xs text-gray-400">{{ $match->season->tournament->name }} · {{ $match->season->sport->name }}</p>
+                                <p class="text-xs text-gray-400">{{ $match->season->gamesEdition->name }} · {{ $match->season->sport->name }}</p>
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $match->round_type->label() }}</td>
                             <td class="px-4 py-3 text-gray-600">{{ $match->venue?->name ?? '—' }}</td>
@@ -149,15 +149,15 @@
             <form wire:submit="save" class="mt-4 space-y-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Temporada</label>
+                        <label class="block text-sm font-medium text-gray-700">Competencia</label>
                         @if ($editingId)
-                            <p class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">{{ $season?->tournament->name }} — {{ $season?->name }}</p>
+                            <p class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">{{ $season?->gamesEdition->name }} — {{ $season?->name }}</p>
                         @else
                             <select wire:model.live="form.season_id"
                                     class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Selecciona una temporada</option>
+                                <option value="">Selecciona una competencia</option>
                                 @foreach ($this->seasonOptions() as $option)
-                                    <option value="{{ $option->id }}">{{ $option->tournament->name }} — {{ $option->name }} ({{ $option->sport->name }})</option>
+                                    <option value="{{ $option->id }}">{{ $option->gamesEdition->name }} — {{ $option->name }} ({{ $option->sport->name }})</option>
                                 @endforeach
                             </select>
                         @endif
@@ -167,7 +167,7 @@
                         <label class="block text-sm font-medium text-gray-700">Jornada</label>
                         <select wire:model="form.matchday_id" @disabled(! $season)
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100">
-                            <option value="">{{ $season ? 'Selecciona una jornada' : 'Primero elige la temporada' }}</option>
+                            <option value="">{{ $season ? 'Selecciona una jornada' : 'Primero elige la competencia' }}</option>
                             @foreach ($this->matchdayOptions() as $option)
                                 <option value="{{ $option->id }}">{{ $option->name }}{{ $option->is_completed ? ' (completada)' : '' }}</option>
                             @endforeach
@@ -256,11 +256,11 @@
                     @error('participants') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
 
                     @if (! $format)
-                        <p class="mt-2 text-sm text-gray-400">Elige la temporada{{ $season && $this->disciplineOptions()->isNotEmpty() ? ' y la disciplina' : '' }} para asignar participantes.</p>
+                        <p class="mt-2 text-sm text-gray-400">Elige la competencia{{ $season && $this->disciplineOptions()->isNotEmpty() ? ' y la disciplina' : '' }} para asignar participantes.</p>
                     @elseif ($format === \App\Enums\SportFormatType::HeadToHead)
                         <div class="mt-3 flex gap-4 text-sm">
                             <label class="flex items-center gap-1.5"><input type="radio" wire:model.live="participantMode" value="teams" class="text-indigo-600"> Equipos</label>
-                            <label class="flex items-center gap-1.5"><input type="radio" wire:model.live="participantMode" value="players" class="text-indigo-600"> Jugadores</label>
+                            <label class="flex items-center gap-1.5"><input type="radio" wire:model.live="participantMode" value="players" class="text-indigo-600"> Participantes</label>
                         </div>
                         @php($options = $participantMode === 'players' ? $this->playerOptions() : $this->teamOptions())
                         <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -284,7 +284,7 @@
                                 <div wire:key="entry-{{ $i }}" class="flex items-center gap-2">
                                     <select wire:model="entries.{{ $i }}.id"
                                             class="flex-1 rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                        <option value="">{{ $format === \App\Enums\SportFormatType::TeamRelay ? 'Equipo...' : 'Jugador...' }}</option>
+                                        <option value="">{{ $format === \App\Enums\SportFormatType::TeamRelay ? 'Equipo...' : 'Participante...' }}</option>
                                         @foreach ($options as $option)
                                             <option value="{{ $option['id'] }}">{{ $option['label'] }}</option>
                                         @endforeach

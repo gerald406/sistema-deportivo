@@ -8,51 +8,47 @@ use App\Enums\SportFormatType;
 use App\Models\Sport;
 use Illuminate\Database\Seeder;
 
+/**
+ * Catalogo de las bases de Puno 2026 (docs/fases/00-especificacion.md §5.4):
+ * 9 deportes y 3 actividades. Las actividades (puntualidad, estudiantina,
+ * danza) se cargan como deporte de ranking para poder tener competencia y
+ * podio como cualquier otro (S6).
+ *
+ * El slug es la identidad: lo usan los demas seeders. `config` solo se
+ * escribe al crear, para no pisar lo que el admin haya ajustado.
+ */
 class SportSeeder extends Seeder
 {
     public function run(): void
     {
-        Sport::updateOrCreate(
-            ['slug' => 'futbol'],
-            [
-                'name' => 'Futbol',
-                'format_type' => SportFormatType::HeadToHead,
-                'config' => ['max_players_court' => 11, 'max_players_team' => 22],
-                'is_active' => true,
-            ]
-        );
+        $h2h = SportFormatType::HeadToHead;
+        $ranked = SportFormatType::IndividualRanked;
 
-        Sport::updateOrCreate(
-            ['slug' => 'voley'],
-            [
-                'name' => 'Voley',
-                'format_type' => SportFormatType::HeadToHead,
-                'config' => ['max_players_court' => 6, 'max_players_team' => 12, 'sets_to_win' => 3],
-                'is_active' => true,
-            ]
-        );
+        $sports = [
+            'futbol' => ['Fútbol', $h2h, ['max_players_court' => 11, 'max_players_team' => 18]],
+            'futsal' => ['Futsal', $h2h, ['max_players_court' => 5, 'max_players_team' => 10]],
+            'basquetbol' => ['Básquetbol', $h2h, ['max_players_court' => 5, 'max_players_team' => 10]],
+            'voley' => ['Voleibol', $h2h, ['max_players_court' => 6, 'max_players_team' => 12, 'sets_to_win' => 3]],
+            'ajedrez' => ['Ajedrez', $h2h, ['allows_draw' => true]],
+            'tenis-de-mesa' => ['Tenis de mesa', $h2h, null],
+            'tiro-al-sapo' => ['Tiro al sapo', $ranked, null],
+            'ciclismo' => ['Ciclismo', $ranked, null],
+            // Atletismo es individual_ranked; la Posta 4x100 (DisciplineSeeder)
+            // sobrescribe el formato a team_relay solo para esa prueba.
+            'atletismo' => ['Atletismo', $ranked, null],
+            'puntualidad' => ['Puntualidad y presentación', $ranked, null],
+            'estudiantina' => ['Estudiantina', $ranked, null],
+            'danza' => ['Danza', $ranked, null],
+        ];
 
-        // Atletismo es individual_ranked por defecto; la Posta 4x100 (ver
-        // DisciplineSeeder) sobrescribe ese formato a team_relay solo para
-        // esa disciplina.
-        Sport::updateOrCreate(
-            ['slug' => 'atletismo'],
-            [
-                'name' => 'Atletismo',
-                'format_type' => SportFormatType::IndividualRanked,
-                'config' => null,
-                'is_active' => true,
-            ]
-        );
+        foreach ($sports as $slug => [$name, $format, $config]) {
+            $sport = Sport::firstOrNew(['slug' => $slug]);
 
-        Sport::updateOrCreate(
-            ['slug' => 'ajedrez'],
-            [
-                'name' => 'Ajedrez',
-                'format_type' => SportFormatType::HeadToHead,
-                'config' => ['allows_draw' => true],
-                'is_active' => true,
-            ]
-        );
+            if (! $sport->exists) {
+                $sport->config = $config;
+            }
+
+            $sport->fill(['name' => $name, 'format_type' => $format, 'is_active' => true])->save();
+        }
     }
 }

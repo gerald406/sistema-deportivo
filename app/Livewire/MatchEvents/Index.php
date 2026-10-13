@@ -81,7 +81,7 @@ class Index extends Component
         $this->form['event_type_id'] = '';
     }
 
-    /** Partidos Programados, de temporadas que el usuario gestiona y cuyo deporte tiene tipos de incidencia. */
+    /** Partidos Programados, de competencias que el usuario gestiona y cuyo deporte tiene tipos de incidencia. */
     public function matchOptions(): Collection
     {
         $seasonIds = SeasonAccess::manageableSeasons(auth()->user())->pluck('id');
@@ -192,13 +192,13 @@ class Index extends Component
             ->addSelect(['player_last_name' => Player::select('players.last_name')
                 ->join('season_team_player', 'season_team_player.player_id', '=', 'players.id')
                 ->whereColumn('season_team_player.id', 'match_events.season_team_player_id')])
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('match.season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('match.season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->when($term !== '', fn ($q) => $q->whereHas('seasonTeamPlayer.player', fn ($p) => $p->where('last_name', 'like', "%{$term}%")->orWhere('first_name', 'like', "%{$term}%")))
             ->when(ctype_digit($this->seasonFilter), fn ($q) => $q->whereHas('match', fn ($m) => $m->where('season_id', (int) $this->seasonFilter)))
             ->when(ctype_digit($this->eventTypeFilter), fn ($q) => $q->where('event_type_id', (int) $this->eventTypeFilter))
             ->with([
                 'eventType:id,name,code', 'seasonTeamPlayer.player:id,first_name,last_name', 'seasonTeamPlayer.seasonTeam.team:id,name',
-                'match:id,season_id,matchday_id,status,scheduled_at', 'match.season:id,name,tournament_id', 'match.season.tournament:id,organizer_id',
+                'match:id,season_id,matchday_id,status,scheduled_at', 'match.season:id,name,games_edition_id', 'match.season.gamesEdition:id,organizer_id',
                 'match.matchday:id,name', 'match.participants' => ParticipantLabel::eagerLoad(),
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder())
@@ -223,7 +223,7 @@ class Index extends Component
         $this->resetErrorBag();
     }
 
-    /** Reglas de negocio (tipo del deporte, jugador participante): MatchEventService. */
+    /** Reglas de negocio (tipo del deporte, participante participante): MatchEventService. */
     private function rules(): array
     {
         return [
@@ -238,7 +238,7 @@ class Index extends Component
     {
         return [
             'form.match_id' => 'partido',
-            'form.season_team_player_id' => 'jugador',
+            'form.season_team_player_id' => 'participante',
             'form.event_type_id' => 'tipo de incidencia',
             'form.minute' => 'minuto',
         ];

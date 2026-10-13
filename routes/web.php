@@ -9,6 +9,9 @@ use App\Livewire\Admin\Sports\Index as AdminSportsIndex;
 use App\Livewire\Admin\Users\Index as AdminUsersIndex;
 use App\Livewire\Categories\Index as CategoriesIndex;
 use App\Livewire\Dashboard;
+use App\Livewire\EditionEvents\Index as EditionEventsIndex;
+use App\Livewire\EditionGroups\Index as EditionGroupsIndex;
+use App\Livewire\EditionTeams\Index as EditionTeamsIndex;
 use App\Livewire\GamesEditions\Index as GamesEditionsIndex;
 use App\Livewire\MatchEvents\Index as MatchEventsIndex;
 use App\Livewire\Matchdays\Index as MatchdaysIndex;
@@ -18,16 +21,17 @@ use App\Livewire\PlayerRegistrationSelector;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Relays\Index as RelaysIndex;
 use App\Livewire\ReopenLogs\Index as ReopenLogsIndex;
+use App\Livewire\Reports\GeneralScore;
 use App\Livewire\Reports\Index as ReportsIndex;
 use App\Livewire\Reports\ManagerialReport;
 use App\Livewire\Reports\RosterReport;
 use App\Livewire\Results\Index as ResultsIndex;
 use App\Livewire\Rosters\Index as RostersIndex;
+use App\Livewire\SeasonStages\Index as SeasonStagesIndex;
 use App\Livewire\SeasonTeams\Index as SeasonTeamsIndex;
 use App\Livewire\Seasons\Index as SeasonsIndex;
 use App\Livewire\Suspensions\Index as SuspensionsIndex;
 use App\Livewire\Teams\Index as TeamsIndex;
-use App\Livewire\Tournaments\Index as TournamentsIndex;
 use App\Livewire\Venues\Index as VenuesIndex;
 use App\Services\PublicResultsService;
 use Illuminate\Support\Facades\Route;
@@ -57,14 +61,29 @@ Route::middleware([
     Route::get('/equipos', TeamsIndex::class)
         ->name('teams.index');
 
-    Route::get('/jugadores', PlayersIndex::class)
+    Route::get('/participantes', PlayersIndex::class)
         ->name('players.index');
 
-    Route::get('/torneos', TournamentsIndex::class)
-        ->name('tournaments.index');
+    Route::get('/olimpiadas', GamesEditionsIndex::class)
+        ->name('games-editions.index');
 
-    Route::get('/temporadas', SeasonsIndex::class)
+    // Series y delegaciones inscritas de la olimpiada elegida (?olimpiada=ID,
+    // ver App\Livewire\Concerns\SelectsEdition). Solo quien gestiona la olimpiada.
+    Route::get('/series', EditionGroupsIndex::class)
+        ->name('edition-groups.index');
+    Route::get('/delegaciones-inscritas', EditionTeamsIndex::class)
+        ->name('edition-teams.index');
+
+    // Cuadro de puntaje: lo ven admin y organizador de la olimpiada; lo edita solo el admin.
+    Route::get('/puntajes', EditionEventsIndex::class)
+        ->name('edition-events.index');
+
+    Route::get('/competencias', SeasonsIndex::class)
         ->name('seasons.index');
+
+    // Fases de una competencia: series, fase final, llaves y podio directo.
+    Route::get('/fases', SeasonStagesIndex::class)
+        ->name('season-stages.index');
 
     Route::get('/inscripciones', SeasonTeamsIndex::class)
         ->name('season-teams.index');
@@ -117,6 +136,10 @@ Route::middleware([
     Route::get('/reportes', ReportsIndex::class)
         ->name('reports.index');
 
+    // Puntaje general por delegacion (reports.view; olimpiadas acotadas por rol).
+    Route::get('/reportes/puntaje-general', GeneralScore::class)
+        ->name('reports.general-score');
+
     // Padron de Jugadores: filtros acotados por rol (admin/organizador/delegado) y PDF
     // (un equipo: SeasonTeamPolicy::printRoster; todos: SeasonPolicy::printReports).
     Route::get('/reportes/padron', RosterReport::class)
@@ -140,6 +163,5 @@ Route::middleware([
         Route::get('/admin/deportes', AdminSportsIndex::class)->name('admin.sports.index');
         Route::get('/admin/usuarios', AdminUsersIndex::class)->name('admin.users.index');
         Route::get('/admin/roles', AdminRolesIndex::class)->name('admin.roles.index');
-        Route::get('/ediciones', GamesEditionsIndex::class)->name('games-editions.index');
     });
 });

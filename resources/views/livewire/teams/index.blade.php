@@ -1,14 +1,14 @@
 <div class="space-y-6">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Equipos</h1>
-            <p class="text-sm text-gray-500">Catálogo global de equipos/delegaciones.</p>
+            <h1 class="text-2xl font-semibold text-gray-900">Delegaciones</h1>
+            <p class="text-sm text-gray-500">Catálogo de delegaciones. Sus delegados y su serie se asignan al inscribirlas en la olimpiada.</p>
         </div>
 
         @can('create', \App\Models\Team::class)
             <button wire:click="create" type="button"
                     class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                <i class="fa-solid fa-plus"></i> Nuevo equipo
+                <i class="fa-solid fa-plus"></i> Nueva delegación
             </button>
         @endcan
     </div>
@@ -25,8 +25,8 @@
         <select wire:model.live="statusFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="all">Todos los estados</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
+            <option value="active">Activas</option>
+            <option value="inactive">Inactivas</option>
         </select>
 
         <select wire:model.live="perPage"
@@ -45,8 +45,8 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <x-sortable-th field="name" label="Nombre" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Delegado</th>
-                        <x-sortable-th field="season_teams_count" label="Inscripciones" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                        <x-sortable-th field="edition_teams_count" label="Olimpiadas" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                        <x-sortable-th field="season_teams_count" label="Competencias" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="is_active" label="Estado" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="created_at" label="Creado" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3"></th>
@@ -63,12 +63,12 @@
                                     <span class="font-medium text-gray-900">{{ $team->name }}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-gray-600">{{ $team->delegate?->name ?? '—' }}</td>
+                            <td class="px-4 py-3 text-gray-600">{{ $team->edition_teams_count }}</td>
                             <td class="px-4 py-3 text-gray-600">{{ $team->season_teams_count }}</td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
                                              {{ $team->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600' }}">
-                                    {{ $team->is_active ? 'Activo' : 'Inactivo' }}
+                                    {{ $team->is_active ? 'Activa' : 'Inactiva' }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-gray-500">{{ $team->created_at->format('d/m/Y') }}</td>
@@ -90,7 +90,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-10 text-center text-gray-400">No hay equipos que coincidan con el filtro.</td>
+                            <td colspan="6" class="px-4 py-10 text-center text-gray-400">No hay delegaciones que coincidan con el filtro.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -109,7 +109,7 @@
 
         <div x-show="show" x-transition class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <h2 class="text-lg font-semibold text-gray-900">
-                {{ $editingId ? 'Editar equipo' : 'Nuevo equipo' }}
+                {{ $editingId ? 'Editar delegación' : 'Nueva delegación' }}
             </h2>
 
             <form wire:submit="save" class="mt-4 space-y-4">
@@ -119,95 +119,6 @@
                            class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                     @error('form.name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
-
-                @if ($this->canAssignDelegate())
-                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                        <div class="flex items-center justify-between">
-                            <label class="block text-sm font-medium text-gray-700">Delegado responsable</label>
-                            @if (! $selectedDelegateId && $this->isAdmin())
-                                <button type="button" wire:click="toggleCreatingDelegate"
-                                        class="text-xs font-semibold text-indigo-600 hover:text-indigo-500">
-                                    {{ $creatingDelegate ? '← Volver al selector' : '+ Crear nueva cuenta' }}
-                                </button>
-                            @endif
-                        </div>
-
-                        @if ($creatingDelegate && $this->isAdmin())
-                            {{-- Solo visible para admin: crear cuentas es una regla de negocio
-                                 exclusiva de admin, revalidada tambien en el Service. --}}
-                            <div class="mt-2 space-y-2 rounded-lg bg-white p-3 ring-1 ring-gray-200">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <input type="text" wire:model="newDelegateFirstName" placeholder="Nombres"
-                                               class="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                        @error('newDelegateFirstName') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
-                                    </div>
-                                    <div>
-                                        <input type="text" wire:model="newDelegateLastName" placeholder="Apellidos"
-                                               class="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                        @error('newDelegateLastName') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
-                                    </div>
-                                </div>
-
-                                <input type="email" wire:model="newDelegateEmail" placeholder="Correo electrónico"
-                                       class="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                @error('newDelegateEmail') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
-
-                                <input type="text" wire:model="newDelegatePassword" placeholder="Contraseña temporal (mín. 8)"
-                                       class="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                @error('newDelegatePassword') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
-
-                                <button type="button" wire:click="saveNewDelegateAccount"
-                                        class="w-full rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">
-                                    <span wire:loading.remove wire:target="saveNewDelegateAccount">Guardar cuenta</span>
-                                    <span wire:loading wire:target="saveNewDelegateAccount">Creando...</span>
-                                </button>
-                            </div>
-                        @else
-                            {{-- Autocomplete server-side: TeamRegistrationService::searchDelegates()
-                                 (rol delegado, activos, máx. 10). Nunca se cargan todos. --}}
-                            <div x-data="{ open: false }" @click.outside="open = false" class="relative mt-2">
-                                <div class="relative">
-                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i>
-                                    <input type="text" wire:model.live.debounce.300ms="delegateSearch"
-                                           x-on:focus="open = true" x-on:input="open = true" x-on:keydown.escape="open = false"
-                                           placeholder="Buscar por nombre o correo (mín. 2 letras)" autocomplete="off"
-                                           @class([
-                                               'w-full rounded-lg py-2 pl-8 pr-8 text-sm focus:border-indigo-500 focus:ring-indigo-500',
-                                               'border-indigo-300 bg-indigo-50 font-medium text-indigo-900' => $selectedDelegateId,
-                                               'border-gray-300' => ! $selectedDelegateId,
-                                           ])>
-                                    @if ($selectedDelegateId || $delegateSearch !== '')
-                                        <button type="button" wire:click="clearDelegate" title="Quitar delegado"
-                                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
-                                            <i class="fa-solid fa-xmark"></i>
-                                        </button>
-                                    @endif
-                                </div>
-
-                                @if (! $selectedDelegateId && mb_strlen(trim($delegateSearch)) >= 2)
-                                    <div x-show="open" x-transition
-                                         class="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
-                                        @forelse ($this->delegateResults() as $option)
-                                            <button type="button" wire:key="delegate-opt-{{ $option->id }}"
-                                                    wire:click="selectDelegate({{ $option->id }})" x-on:click="open = false"
-                                                    class="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50">
-                                                {{ $option->name }} <span class="text-gray-400">· {{ $option->email }}</span>
-                                            </button>
-                                        @empty
-                                            <p class="px-3 py-2 text-sm text-gray-400">Sin resultados.</p>
-                                        @endforelse
-                                    </div>
-                                @endif
-                            </div>
-                            <p class="mt-1 text-xs text-gray-400">
-                                {{ $selectedDelegateId ? 'Delegado seleccionado.' : 'Sin asignar: escribe para buscar un delegado.' }}
-                            </p>
-                            @error('selectedDelegateId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            @error('form.delegate_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                        @endif
-                    </div>
-                @endif
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Escudo / logo</label>
@@ -231,7 +142,7 @@
 
                 <label class="flex items-center gap-2">
                     <input type="checkbox" wire:model="form.is_active" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                    <span class="text-sm text-gray-700">Activo</span>
+                    <span class="text-sm text-gray-700">Activa</span>
                 </label>
 
                 <div class="flex justify-end gap-3 pt-2">

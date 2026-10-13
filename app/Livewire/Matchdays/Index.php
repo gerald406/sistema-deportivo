@@ -73,7 +73,7 @@ class Index extends Component
         $this->resetPage();
     }
 
-    /** Temporadas (no cerradas) en las que el usuario puede crear jornadas. */
+    /** Competencias (no cerradas) en las que el usuario puede crear jornadas. */
     public function seasonOptions(): Collection
     {
         return SeasonAccess::manageableSeasons(auth()->user());
@@ -159,14 +159,14 @@ class Index extends Component
         $user = auth()->user();
 
         $query = Matchday::query()
-            // El organizador solo ve jornadas de sus torneos.
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+            // El organizador solo ve jornadas de sus olimpiadas.
+            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->when(ctype_digit($this->seasonFilter), fn ($q) => $q->where('season_id', (int) $this->seasonFilter))
             ->when($this->completionFilter === 'pending', fn ($q) => $q->where('is_completed', false))
             ->when($this->completionFilter === 'completed', fn ($q) => $q->where('is_completed', true))
             ->withCount(['matches', 'matches as pending_matches_count' => fn ($q) => $q->where('status', 'pending')])
-            ->with(['season:id,name,status,tournament_id,sport_id', 'season.tournament:id,name,organizer_id', 'season.sport:id,name'])
+            ->with(['season:id,name,status,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'season.sport:id,name'])
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('id');
 
@@ -217,7 +217,7 @@ class Index extends Component
     protected function validationAttributes(): array
     {
         return [
-            'form.season_id' => 'temporada',
+            'form.season_id' => 'competencia',
             'form.name' => 'nombre',
             'form.start_date' => 'fecha de inicio',
             'form.end_date' => 'fecha de fin',

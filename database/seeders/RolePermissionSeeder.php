@@ -16,7 +16,7 @@ class RolePermissionSeeder extends Seeder
             'sports.manage',
             'venues.manage',
             'categories.manage',
-            'tournaments.manage',
+            'editions.manage',
             'seasons.manage',
             'teams.manage',
             'players.manage',
@@ -33,17 +33,20 @@ class RolePermissionSeeder extends Seeder
         $admin->syncPermissions($permissions); // el admin recibe todos los permisos
 
         $organizador = Role::findOrCreate('organizador', 'web');
-        // teams.manage: el organizador crea equipos y les asigna delegado
-        // ("Flujo de permisos" punto 3 de CLAUDE.md). Agregado en el fix de
-        // permisos; en una BD ya sembrada se aplico con givePermissionTo().
+        // teams.manage: el organizador crea las delegaciones ("Flujo de
+        // permisos" punto 3 de CLAUDE.md).
+        // categories.manage: define los niveles de su olimpiada. En una BD
+        // ya sembrada lo aplica la migracion
+        // adjust_role_permissions_for_delegations.
         $organizador->syncPermissions([
-            'tournaments.manage',
+            'editions.manage',
             'seasons.manage',
             'teams.manage',
             'venues.manage',
+            'categories.manage',
             'matches.manage',
             // matches.reopen: sin el, SeasonPolicy::reopenMatches nunca deja
-            // al organizador reabrir resultados de SU torneo (solo al admin).
+            // al organizador reabrir resultados de SU olimpiada (solo al admin).
             // Agregado en el fix de reaperturas; en la BD actual se aplico
             // con givePermissionTo().
             'matches.reopen',
@@ -51,8 +54,9 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         $delegado = Role::findOrCreate('delegado', 'web');
+        // Sin teams.manage: el delegado no edita su delegacion, solo
+        // registra participantes (docs/fases/00-especificacion.md, D4).
         $delegado->syncPermissions([
-            'teams.manage',
             'players.manage',
             'reports.view',
         ]);

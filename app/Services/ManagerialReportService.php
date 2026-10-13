@@ -9,7 +9,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPdf;
 
 /**
- * Reporte Gerencial de una temporada. Equivalente a
+ * Reporte Gerencial de una competencia. Equivalente a
  * pichanga ReportService::generateManagerialPdf() sin ramas por deporte.
  *
  * Que secciones se muestran y sus datos salen de SeasonOverviewService, el
@@ -30,7 +30,7 @@ class ManagerialReportService
      */
     public function collect(int $seasonId): array
     {
-        $season = Season::with('tournament.organizer', 'sport')->findOrFail($seasonId);
+        $season = Season::with('gamesEdition.organizer', 'sport')->findOrFail($seasonId);
 
         $sections = $this->overview->sections($season);
         $lastMatchday = $this->overview->completedMatchdays($season)->first();
@@ -39,8 +39,8 @@ class ManagerialReportService
 
         return [
             'season' => $season,
-            'tournament' => $season->tournament,
-            'organizer' => $season->tournament->organizer,
+            'gamesEdition' => $season->gamesEdition,
+            'organizer' => $season->gamesEdition->organizer,
             'scoring' => $season->scoringConfigs()->orderBy('id')->first(),
             'generatedAt' => now()->format('d/m/Y H:i'),
             'lastMatchday' => $lastMatchday,
@@ -66,8 +66,8 @@ class ManagerialReportService
 
     public function filename(int $seasonId): string
     {
-        $season = Season::with('tournament:id,name')->findOrFail($seasonId);
+        $season = Season::with('gamesEdition:id,name')->findOrFail($seasonId);
 
-        return 'Reporte_Gerencial_' . str($season->tournament->name . ' ' . $season->name)->slug('_') . '.pdf';
+        return 'Reporte_Gerencial_' . str($season->gamesEdition->name . ' ' . $season->name)->slug('_') . '.pdf';
     }
 }

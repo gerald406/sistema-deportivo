@@ -12,9 +12,9 @@ use Livewire\Component;
 
 /**
  * Filtro del Reporte Gerencial (PDF). Adaptado de pichanga/ManagerialReport:
- * solo pide la Temporada (no deporte + campeonato por separado): la Season
- * ya sabe su deporte y su torneo. Mismo alcance que la referencia: el admin
- * ve todas, el organizador solo las de sus torneos.
+ * solo pide la Competencia (no deporte + campeonato por separado): la Season
+ * ya sabe su deporte y su olimpiada. Mismo alcance que la referencia: el admin
+ * ve todas, el organizador solo las de sus olimpiadas.
  *
  * Solo arma la URL: ManagerialReportController revalida con
  * SeasonPolicy::printReports.
@@ -37,18 +37,18 @@ class ManagerialReport extends Component
         $this->showInfo = ! $this->showInfo;
     }
 
-    /** Temporadas agrupables por torneo; organizador: solo las de sus torneos. */
+    /** Competencias agrupables por olimpiada; organizador: solo las de sus olimpiadas. */
     public function seasons(): Collection
     {
         $user = auth()->user();
 
         return Season::query()
-            ->with('tournament:id,name', 'sport:id,name')
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+            ->with('gamesEdition:id,name', 'sport:id,name')
+            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->orderByDesc('start_date')
             ->orderBy('name')
-            ->get(['id', 'tournament_id', 'sport_id', 'name', 'status'])
-            ->sortBy('tournament.name')
+            ->get(['id', 'games_edition_id', 'sport_id', 'name', 'status'])
+            ->sortBy('gamesEdition.name')
             ->values();
     }
 

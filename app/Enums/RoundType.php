@@ -11,6 +11,7 @@ enum RoundType: string
     case QuarterFinal = 'quarterfinal';
     case SemiFinal = 'semifinal';
     case Final = 'final';
+    case ThirdPlace = 'third_place';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum RoundType: string
             self::QuarterFinal => 'Cuartos de final',
             self::SemiFinal => 'Semifinal',
             self::Final => 'Final',
+            self::ThirdPlace => 'Tercer puesto',
         };
     }
 }

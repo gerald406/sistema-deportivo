@@ -11,7 +11,7 @@ class CategoryPolicy
 {
     /**
      * Category es un catalogo global (no tiene dueno): basta el permiso
-     * categories.manage, que el RolePermissionSeeder solo da al admin.
+     * categories.manage, que el RolePermissionSeeder da al admin y al organizador.
      * El admin igual pasa por Gate::before; esta policy existe para que
      * si mas adelante se le da el permiso a otro rol, funcione sin tocar
      * el componente.

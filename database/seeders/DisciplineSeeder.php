@@ -11,51 +11,44 @@ use App\Models\Discipline;
 use App\Models\Sport;
 use Illuminate\Database\Seeder;
 
+/** Pruebas de atletismo de las bases (Art. 1; especificacion §5.4). */
 class DisciplineSeeder extends Seeder
 {
     public function run(): void
     {
         $atletismo = Sport::where('slug', 'atletismo')->firstOrFail();
 
-        Discipline::updateOrCreate(
-            ['sport_id' => $atletismo->id, 'name' => '100 metros llanos'],
-            [
-                'unit_of_measure' => UnitOfMeasure::Time,
-                'better_direction' => BetterDirection::Ascending, // menor tiempo = mejor
-                'is_active' => true,
-            ]
-        );
+        // Nombre anterior de la prueba: se renombra en vez de duplicarla.
+        Discipline::where('sport_id', $atletismo->id)->where('name', '100 metros llanos')
+            ->whereNotExists(fn ($q) => $q->from('disciplines as d')->where('d.sport_id', $atletismo->id)->where('d.name', '100 metros'))
+            ->update(['name' => '100 metros']);
 
-        Discipline::updateOrCreate(
-            ['sport_id' => $atletismo->id, 'name' => 'Salto largo'],
-            [
-                'unit_of_measure' => UnitOfMeasure::Distance,
-                'better_direction' => BetterDirection::Descending, // mayor distancia = mejor
-                'is_active' => true,
-            ]
-        );
+        $time = [UnitOfMeasure::Time, BetterDirection::Ascending];       // menor tiempo = mejor
+        $distance = [UnitOfMeasure::Distance, BetterDirection::Descending]; // mayor distancia = mejor
 
-        Discipline::updateOrCreate(
-            ['sport_id' => $atletismo->id, 'name' => 'Posta 4x100'],
-            [
-                // Sobrescribe el formato del deporte padre: Atletismo es
-                // individual_ranked, pero la posta se corre en equipo.
-                'format_type' => SportFormatType::TeamRelay,
-                'unit_of_measure' => UnitOfMeasure::Time,
-                'better_direction' => BetterDirection::Ascending,
-                'is_active' => true,
-            ]
-        );
+        $events = [
+            '100 metros' => [...$time, null],
+            '400 metros' => [...$time, null],
+            '1500 metros' => [...$time, null],
+            '3000 metros' => [...$time, null],
+            'Salto largo' => [...$distance, null],
+            'Lanzamiento de peso' => [...$distance, null],
+            'Lanzamiento de disco' => [...$distance, null],
+            // Sobrescribe el formato del deporte padre: Atletismo es
+            // individual_ranked, pero la posta se corre en equipo.
+            'Posta 4x100' => [...$time, SportFormatType::TeamRelay],
+        ];
 
-        $ajedrez = Sport::where('slug', 'ajedrez')->firstOrFail();
-
-        Discipline::updateOrCreate(
-            ['sport_id' => $ajedrez->id, 'name' => 'Ajedrez clasico'],
-            [
-                'unit_of_measure' => UnitOfMeasure::Points,
-                'better_direction' => BetterDirection::Descending,
-                'is_active' => true,
-            ]
-        );
+        foreach ($events as $name => [$unit, $direction, $format]) {
+            Discipline::updateOrCreate(
+                ['sport_id' => $atletismo->id, 'name' => $name],
+                [
+                    'format_type' => $format,
+                    'unit_of_measure' => $unit,
+                    'better_direction' => $direction,
+                    'is_active' => true,
+                ]
+            );
+        }
     }
 }

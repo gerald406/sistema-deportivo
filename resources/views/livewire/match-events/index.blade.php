@@ -18,15 +18,15 @@
         <div class="relative flex-1">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" wire:model.live.debounce.400ms="search"
-                   placeholder="Buscar jugador..."
+                   placeholder="Buscar participante..."
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
         <select wire:model.live="seasonFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todas las temporadas</option>
+            <option value="">Todas las competencias</option>
             @foreach ($filterSeasons as $season)
-                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }}</option>
+                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
         </select>
 
@@ -55,7 +55,7 @@
                     <tr>
                         <x-sortable-th field="minute" label="Min." :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Incidencia</th>
-                        <x-sortable-th field="player_last_name" label="Jugador" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                        <x-sortable-th field="player_last_name" label="Participante" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Partido</th>
                         <x-sortable-th field="created_at" label="Registrada" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3"></th>
@@ -162,7 +162,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Jugador</label>
+                    <label class="block text-sm font-medium text-gray-700">Participante</label>
                     <select wire:model="form.season_team_player_id"
                             class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">Selecciona...</option>

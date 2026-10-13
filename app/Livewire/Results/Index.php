@@ -57,6 +57,15 @@ class Index extends Component
 
     public string $awayScore = '';
 
+    /** Desempate de un partido de llave empatado: via ('' = sin desempate), lado ganador y marcador opcional. */
+    public string $tiebreakType = '';
+
+    public string $tiebreakWinner = '';
+
+    public string $tiebreakHome = '';
+
+    public string $tiebreakAway = '';
+
     /** Individual/posta: event_participant_id => marca. @var array<int, string> */
     public array $marks = [];
 
@@ -118,8 +127,8 @@ class Index extends Component
     }
 
     /**
-     * Cargar el resultado: solo quien gestiona la temporada (organizador del
-     * torneo o admin). El delegado ve /resultados en solo lectura.
+     * Cargar el resultado: solo quien gestiona la competencia (organizador del
+     * olimpiada o admin). El delegado ve /resultados en solo lectura.
      */
     public function canManage(GameMatch $match): bool
     {
@@ -134,10 +143,21 @@ class Index extends Component
 
     public function openResult(int $id): void
     {
-        $match = $this->visibleMatches()->with('season.tournament')->findOrFail($id);
+        $match = $this->visibleMatches()->with('season.gamesEdition', 'season.sport', 'discipline')->findOrFail($id);
         abort_unless($this->canManage($match), 403);
 
+        // Partido de llave que aun espera al ganador de la ronda anterior.
+        if ($this->formatOf($match) === SportFormatType::HeadToHead && $match->participants()->count() < 2) {
+            $this->dispatch('toast', type: 'info', message: 'El partido aún no tiene a sus dos participantes: se completa al cerrar la ronda anterior.');
+
+            return;
+        }
+
         $this->editingId = $match->id;
+        $this->tiebreakType = '';
+        $this->tiebreakWinner = '';
+        $this->tiebreakHome = '';
+        $this->tiebreakAway = '';
         $this->walkover = '';
         $this->homeScore = '';
         $this->awayScore = '';
@@ -156,6 +176,11 @@ class Index extends Component
             'home' => $this->homeScore,
             'away' => $this->awayScore,
             'results' => $this->marks,
+            // Solo se envia si se eligio una via: ResultService decide si corresponde.
+            'tiebreak_type' => $this->walkover === '' && $this->tiebreakType !== '' ? $this->tiebreakType : null,
+            'tiebreak_winner_side' => $this->tiebreakWinner ?: null,
+            'tiebreak_home' => $this->tiebreakHome,
+            'tiebreak_away' => $this->tiebreakAway,
         ], auth()->user());
 
         $this->closeModal();
@@ -164,7 +189,7 @@ class Index extends Component
 
     public function openReopen(int $id): void
     {
-        $match = $this->visibleMatches()->with('season.tournament')->findOrFail($id);
+        $match = $this->visibleMatches()->with('season.gamesEdition')->findOrFail($id);
         abort_unless($this->canReopen($match), 403);
 
         $this->reopeningId = $match->id;
@@ -214,7 +239,7 @@ class Index extends Component
             ->when(ctype_digit($this->seasonFilter), fn ($q) => $q->where('season_id', (int) $this->seasonFilter))
             ->when(MatchStatus::tryFrom($this->matchStatusFilter), fn ($q, $s) => $q->where('status', $s->value))
             ->with([
-                'season:id,name,status,tournament_id,sport_id', 'season.tournament:id,name,organizer_id', 'season.sport:id,name,format_type',
+                'season:id,name,status,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'season.sport:id,name,format_type',
                 'discipline:id,name,format_type,better_direction,unit_of_measure', 'matchday:id,name',
                 'participants' => ParticipantLabel::eagerLoad(),
             ])

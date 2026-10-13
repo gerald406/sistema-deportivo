@@ -10,17 +10,19 @@ use App\Models\GamesEdition;
 use App\Models\Venue;
 use App\Services\GamesEditionService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 #[Layout('layouts.admin')]
-#[Title('Ediciones (Olimpiadas)')]
+#[Title('Olimpiadas')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use LimitsPerPage, Sortable, WithFileUploads, WithPagination;
 
     public string $search = '';
 
@@ -39,19 +41,24 @@ class Index extends Component
 
     public array $form = [
         'name' => '',
+        'organizer_id' => '',
         'start_date' => '',
         'end_date' => '',
         'host_venue_id' => '',
         'is_active' => true,
+        'yellow_cards_limit' => '',
+        'captain_red_matches' => '',
     ];
 
-    /**
-     * Modulo solo-admin sin Policy: boot() corre en CADA request (el
-     * middleware role:admin de la ruta no se reaplica en /livewire/update).
-     */
-    public function boot(): void
+    /** Logo nuevo pendiente de subir (Livewire\WithFileUploads). */
+    public $newLogo = null;
+
+    /** URL del logo actual, para mostrarlo en el modal al editar. */
+    public ?string $existingLogoUrl = null;
+
+    public function mount(): void
     {
-        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        $this->authorize('viewAny', GamesEdition::class);
     }
 
     public function updatingSearch(): void
@@ -69,13 +76,23 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function organizers(): Collection
+    {
+        return app(GamesEditionService::class)->organizerCandidates();
+    }
+
+    public function isAdmin(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
+
     /**
-     * Sedes activas + la sede actual de la edicion en edicion (aunque se
+     * Sedes activas + la sede actual de la olimpiada en edicion (aunque se
      * haya desactivado despues, para no perderla del selector).
      */
     public function venues(): Collection
     {
-        $currentVenueId = $this->editingId ? GamesEdition::find($this->editingId)?->host_venue_id : null;
+        $currentVenueId = $this->editingId ? $this->findManaged($this->editingId)->host_venue_id : null;
 
         return Venue::where('is_active', true)
             ->when($currentVenueId, fn ($q) => $q->orWhere('id', $currentVenueId))
@@ -85,22 +102,29 @@ class Index extends Component
 
     public function create(): void
     {
+        $this->authorize('create', GamesEdition::class);
+
         $this->resetForm();
         $this->showModal = true;
     }
 
     public function edit(int $id): void
     {
-        $edition = GamesEdition::findOrFail($id);
+        $edition = $this->findManaged($id);
+        $this->authorize('update', $edition);
 
         $this->editingId = $edition->id;
         $this->form = [
             'name' => $edition->name,
+            'organizer_id' => $edition->organizer_id,
             'start_date' => $edition->start_date?->format('Y-m-d') ?? '',
             'end_date' => $edition->end_date?->format('Y-m-d') ?? '',
             'host_venue_id' => $edition->host_venue_id ?? '',
             'is_active' => $edition->is_active,
+            'yellow_cards_limit' => $edition->yellow_cards_limit ?? '',
+            'captain_red_matches' => $edition->captain_red_matches ?? '',
         ];
+        $this->existingLogoUrl = $edition->logo ? Storage::disk('public')->url($edition->logo) : null;
         $this->showModal = true;
     }
 
@@ -108,24 +132,53 @@ class Index extends Component
     {
         $data = $this->validate($this->rules())['form'];
 
+        // Vacio = la regla no se aplica.
+        foreach (['yellow_cards_limit', 'captain_red_matches'] as $rule) {
+            $data[$rule] = in_array($data[$rule] ?? '', ['', null], true) ? null : (int) $data[$rule];
+        }
+        $actor = auth()->user();
+
         foreach (['start_date', 'end_date', 'host_venue_id'] as $field) {
             $data[$field] = in_array($data[$field], ['', null], true) ? null : $data[$field];
         }
 
         if ($this->editingId) {
-            $service->update(GamesEdition::findOrFail($this->editingId), $data);
+            $edition = $this->findManaged($this->editingId);
+            $this->authorize('update', $edition);
+
+            if ($this->newLogo) {
+                $previousLogo = $edition->logo;
+                $data['logo'] = $this->newLogo->store('editions', 'public');
+            }
+
+            $service->update($edition, $data, $actor);
+
+            // Se borra el logo anterior solo despues de guardar: si el
+            // Service rechaza el cambio, la olimpiada conserva su logo.
+            if (isset($previousLogo)) {
+                $this->deleteLogoIfExists($previousLogo);
+            }
         } else {
-            $service->register($data);
+            $this->authorize('create', GamesEdition::class);
+
+            if ($this->newLogo) {
+                $data['logo'] = $this->newLogo->store('editions', 'public');
+            }
+
+            $service->register($data, $actor);
         }
 
         $this->showModal = false;
         $this->resetForm();
-        $this->dispatch('toast', type: 'success', message: 'Edición guardada correctamente.');
+        $this->dispatch('toast', type: 'success', message: 'Olimpiada guardada correctamente.');
     }
 
     public function delete(int $id, GamesEditionService $service): void
     {
-        $result = $service->delete(GamesEdition::findOrFail($id));
+        $edition = $this->findManaged($id);
+        $this->authorize('delete', $edition);
+
+        $result = $service->delete($edition);
 
         if ($result !== true) {
             $this->dispatch('toast', type: 'error', message: $result);
@@ -133,7 +186,7 @@ class Index extends Component
             return;
         }
 
-        $this->dispatch('toast', type: 'success', message: 'Edición eliminada.');
+        $this->dispatch('toast', type: 'success', message: 'Olimpiada eliminada.');
     }
 
     public function closeModal(): void
@@ -144,12 +197,12 @@ class Index extends Component
 
     public function render()
     {
-        $query = GamesEdition::query()
+        $query = $this->managedQuery()
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->withCount('seasons')
-            ->with('hostVenue:id,name')
+            ->with(['hostVenue:id,name', 'organizer:id,name'])
             ->orderBy($this->sortColumn(), $this->sortOrder());
 
         return view('livewire.games-editions.index', [
@@ -162,19 +215,51 @@ class Index extends Component
         return ['start_date', 'name', 'end_date', 'seasons_count', 'is_active'];
     }
 
+    /** Olimpiadas que el usuario gestiona: el organizador solo ve las suyas. */
+    private function managedQuery()
+    {
+        return app(GamesEditionService::class)->scopeManagedBy(GamesEdition::query(), auth()->user());
+    }
+
+    /**
+     * El id llega del navegador: se busca dentro del alcance del usuario,
+     * asi una olimpiada ajena da 404 antes de llegar a la Policy.
+     */
+    private function findManaged(int $id): GamesEdition
+    {
+        return $this->managedQuery()->findOrFail($id);
+    }
+
+    private function deleteLogoIfExists(?string $path): void
+    {
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
     private function resetForm(): void
     {
         $this->editingId = null;
         $this->form = [
             'name' => '',
+            'organizer_id' => '',
             'start_date' => '',
             'end_date' => '',
             'host_venue_id' => '',
             'is_active' => true,
+            'yellow_cards_limit' => '',
+            'captain_red_matches' => '',
         ];
+        $this->newLogo = null;
+        $this->existingLogoUrl = null;
         $this->resetErrorBag();
     }
 
+    /**
+     * organizer_id solo se valida aqui como entero; que sea un
+     * organizador/admin activo (y que un organizador no pueda cambiarlo)
+     * lo decide GamesEditionService::resolveOrganizerId().
+     */
     private function rules(): array
     {
         $hasStart = ! in_array($this->form['start_date'], ['', null], true);
@@ -184,10 +269,14 @@ class Index extends Component
                 'required', 'string', 'max:150',
                 Rule::unique('games_editions', 'name')->ignore($this->editingId),
             ],
+            'form.organizer_id' => ['nullable', 'integer'],
             'form.start_date' => ['nullable', 'date'],
             'form.end_date' => array_filter(['nullable', 'date', $hasStart ? 'after_or_equal:form.start_date' : null]),
             'form.host_venue_id' => ['nullable', 'integer', Rule::exists('venues', 'id')],
             'form.is_active' => ['boolean'],
+            'form.yellow_cards_limit' => ['nullable', 'integer', 'between:1,20'],
+            'form.captain_red_matches' => ['nullable', 'integer', 'between:1,20'],
+            'newLogo' => ['nullable', 'image', 'max:2048'],
         ];
     }
 
@@ -195,9 +284,13 @@ class Index extends Component
     {
         return [
             'form.name' => 'nombre',
+            'form.organizer_id' => 'organizador',
             'form.start_date' => 'fecha de inicio',
             'form.end_date' => 'fecha de fin',
-            'form.host_venue_id' => 'sede anfitriona',
+            'form.host_venue_id' => 'sede principal',
+            'form.yellow_cards_limit' => 'amarillas para suspensión',
+            'form.captain_red_matches' => 'partidos de sanción al capitán',
+            'newLogo' => 'logo',
         ];
     }
 }

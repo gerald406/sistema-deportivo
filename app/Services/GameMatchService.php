@@ -34,11 +34,11 @@ use Illuminate\Validation\ValidationException;
  * Decisiones confirmadas (Fase 6):
  *   - Formato efectivo = discipline.format_type ?? sport.format_type.
  *   - Enfrentamiento (head_to_head): exactamente 2 participantes, local y
- *     visitante, ambos equipos (season_team) o ambos jugadores
+ *     visitante, ambos equipos (season_team) o ambos participantes
  *     (season_team_player, ej. ajedrez individual): lo elige el partido.
- *   - Ranking individual: 1+ jugadores del plantel. Postas: 1+ equipos.
+ *   - Ranking individual: 1+ participantes del plantel. Postas: 1+ equipos.
  *   - La disciplina es obligatoria si el deporte tiene disciplinas; si no
- *     tiene, no se usa. Que la disciplina sea DEL deporte de la temporada
+ *     tiene, no se usa. Que la disciplina sea DEL deporte de la competencia
  *     lo valida el trigger trg_matches_before_*_validate_discipline (no se
  *     duplica aqui): su SQLSTATE 45000 se traduce a un error de formulario.
  *   - En enfrentamientos un participante no juega dos partidos de la misma
@@ -54,7 +54,7 @@ class GameMatchService
      */
     public function register(array $data, array $participants, User $actor): GameMatch
     {
-        $matchday = Matchday::with('season.tournament', 'season.sport')->findOrFail($data['matchday_id']);
+        $matchday = Matchday::with('season.gamesEdition', 'season.sport')->findOrFail($data['matchday_id']);
         $season = $matchday->season;
 
         $this->ensureCanSchedule($season, $actor);
@@ -74,14 +74,14 @@ class GameMatchService
 
     public function update(GameMatch $match, array $data, array $participants, User $actor): GameMatch
     {
-        $match->load('season.tournament', 'season.sport');
+        $match->load('season.gamesEdition', 'season.sport');
         $season = $match->season;
         $this->ensureCanSchedule($season, $actor);
 
         $matchday = Matchday::findOrFail($data['matchday_id']);
 
         if ($matchday->season_id !== $season->id) {
-            throw ValidationException::withMessages(['form.matchday_id' => 'La jornada debe ser de la misma temporada del partido.']);
+            throw ValidationException::withMessages(['form.matchday_id' => 'La jornada debe ser de la misma competencia del partido.']);
         }
 
         $data = $this->normalizeMatchData($data, $season, $matchday, $match);
@@ -159,11 +159,11 @@ class GameMatchService
     /**
      * Partidos que $actor ve en /partidos y /resultados (union si tiene
      * varios roles). Solo lectura para el delegado: escribir sigue siendo
-     * SeasonAccess::manages() (organizador del torneo o admin).
+     * SeasonAccess::manages() (organizador de la olimpiada o admin).
      *   - Admin: todos.
-     *   - Organizador: los de temporadas de un torneo suyo.
+     *   - Organizador: los de competencias de una olimpiada suya.
      *   - Delegado: aquellos donde participa su equipo, como equipo
-     *     (season_team) o con jugadores de su plantel (season_team_player,
+     *     (season_team) o con participantes de su plantel (season_team_player,
      *     individual/ajedrez). "Su equipo" = inscripciones visibles segun
      *     SeasonTeamService::scopeVisibleTo() (delegado efectivo).
      *   - Cualquier otro: ninguno.
@@ -185,7 +185,7 @@ class GameMatchService
 
         return $query->where(function ($q) use ($actor, $isOrganizer, $isDelegate, $seasonTeams) {
             if ($isOrganizer) {
-                $q->orWhereHas('season.tournament', fn ($t) => $t->where('organizer_id', $actor->id));
+                $q->orWhereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id));
             }
 
             if ($isDelegate) {
@@ -204,16 +204,16 @@ class GameMatchService
     }
 
     /**
-     * Temporadas para el filtro de /partidos y /resultados: admin todas;
-     * organizador las de sus torneos (tengan o no partidos); delegado las
+     * Competencias para el filtro de /partidos y /resultados: admin todas;
+     * organizador las de sus olimpiadas (tengan o no partidos); delegado las
      * que tienen algun partido visible para el.
      */
     public function visibleSeasons(User $actor): Collection
     {
         return Season::query()
-            ->with(['tournament:id,name,organizer_id', 'sport:id,name,format_type'])
+            ->with(['gamesEdition:id,name,organizer_id', 'sport:id,name,format_type'])
             ->unless($actor->hasRole('admin'), fn ($q) => $q->where(fn ($q) => $q
-                ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('tournament', fn ($t) => $t->where('organizer_id', $actor->id)))
+                ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id)))
                 ->orWhereHas('matches', fn ($m) => $this->scopeVisibleTo($m, $actor))))
             ->orderByDesc('start_date')
             ->get();
@@ -238,7 +238,7 @@ class GameMatchService
                 ->whereHas('season.sport', fn ($s) => $s->where('format_type', $format->value))));
     }
 
-    /** true si el deporte de la temporada exige disciplina (regla 3A). */
+    /** true si el deporte de la competencia exige disciplina (regla 3A). */
     public function requiresDiscipline(Season $season): bool
     {
         return $season->sport->disciplines()->exists();
@@ -263,11 +263,11 @@ class GameMatchService
     private function ensureCanSchedule(Season $season, User $actor): void
     {
         if (! SeasonAccess::manages($actor, $season)) {
-            throw new AuthorizationException('Solo el organizador del torneo gestiona los partidos de esta temporada.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona los partidos de esta competencia.');
         }
 
         if ($season->status === SeasonStatus::Closed) {
-            throw ValidationException::withMessages(['form.matchday_id' => 'La temporada está cerrada: no admite cambios en sus partidos.']);
+            throw ValidationException::withMessages(['form.matchday_id' => 'La competencia está cerrada: no admite cambios en sus partidos.']);
         }
     }
 
@@ -328,9 +328,9 @@ class GameMatchService
         match ($format) {
             SportFormatType::HeadToHead => (count($participants) !== 2 || count($types) !== 1
                 || array_column($participants, 'side') != ['home', 'away'])
-                    ? $fail('Un enfrentamiento necesita un local y un visitante del mismo tipo (dos equipos o dos jugadores).') : null,
+                    ? $fail('Un enfrentamiento necesita un local y un visitante del mismo tipo (dos equipos o dos participantes).') : null,
             SportFormatType::IndividualRanked => ($participants === [] || $types !== ['season_team_player'])
-                ? $fail('Una prueba individual necesita al menos un jugador.') : null,
+                ? $fail('Una prueba individual necesita al menos un participante.') : null,
             SportFormatType::TeamRelay => ($participants === [] || $types !== ['season_team'])
                 ? $fail('Una posta necesita al menos un equipo.') : null,
         };
@@ -338,11 +338,11 @@ class GameMatchService
         foreach ($participants as $p) {
             if ($p['type'] === 'season_team') {
                 $ok = SeasonTeam::whereKey($p['id'])->where('season_id', $season->id)->where('is_active', true)->exists();
-                $ok || $fail('Todos los equipos deben estar inscritos (y activos) en la temporada.');
+                $ok || $fail('Todos los equipos deben estar inscritos (y activos) en la competencia.');
             } else {
                 $ok = SeasonTeamPlayer::whereKey($p['id'])->where('status', SeasonTeamPlayerStatus::Active->value)
                     ->whereHas('seasonTeam', fn ($q) => $q->where('season_id', $season->id)->where('is_active', true))->exists();
-                $ok || $fail('Todos los jugadores deben estar habilitados en el plantel de un equipo de la temporada.');
+                $ok || $fail('Todos los participantes deben estar habilitados en el plantel de un equipo de la competencia.');
             }
         }
 
@@ -402,7 +402,7 @@ class GameMatchService
         } catch (QueryException $e) {
             if (($e->errorInfo[0] ?? null) === '45000') {
                 throw ValidationException::withMessages([
-                    'form.discipline_id' => $e->errorInfo[2] ?? 'La disciplina no pertenece al deporte de la temporada.',
+                    'form.discipline_id' => 'La disciplina no pertenece al deporte de la competencia del partido.',
                 ]);
             }
 

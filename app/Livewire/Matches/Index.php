@@ -147,9 +147,9 @@ class Index extends Component
     }
 
     /**
-     * Temporada del formulario, solo si el usuario la gestiona: season_id
+     * Competencia del formulario, solo si el usuario la gestiona: season_id
      * viene del navegador y las opciones (jornadas, equipos, plantel) no
-     * deben revelar datos de temporadas ajenas (el delegado no gestiona
+     * deben revelar datos de competencias ajenas (el delegado no gestiona
      * ninguna). Incluye Cerradas para poder abrir un partido existente.
      */
     public function formSeason(): ?Season
@@ -182,7 +182,7 @@ class Index extends Component
             ->orderBy('name')->get(['id', 'name']);
     }
 
-    /** Formato efectivo del partido que se esta armando (null si falta la temporada). */
+    /** Formato efectivo del partido que se esta armando (null si falta la competencia). */
     public function format(): ?SportFormatType
     {
         $season = $this->formSeason();
@@ -343,7 +343,7 @@ class Index extends Component
             ->when(ctype_digit($this->matchdayFilter), fn ($q) => $q->where('matchday_id', (int) $this->matchdayFilter))
             ->when(MatchStatus::tryFrom($this->matchStatusFilter), fn ($q, $s) => $q->where('status', $s->value))
             ->with([
-                'season:id,name,tournament_id,sport_id', 'season.tournament:id,name,organizer_id', 'season.sport:id,name,format_type',
+                'season:id,name,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'season.sport:id,name,format_type',
                 'matchday:id,name', 'discipline:id,name,format_type', 'venue:id,name',
                 'participants' => fn ($q) => $q->orderByRaw("FIELD(side, 'home', 'away')")->orderBy('id')
                     ->with(['participant' => fn (MorphTo $m) => $m->morphWith([
@@ -360,7 +360,7 @@ class Index extends Component
         return view('livewire.matches.index', [
             'matches' => $query->paginate($this->perPageLimit()),
             'filterSeasons' => $filterSeasons,
-            // Jornadas solo de una temporada visible (seasonFilter viene del navegador).
+            // Jornadas solo de una competencia visible (seasonFilter viene del navegador).
             'filterMatchdays' => ctype_digit($this->seasonFilter) && $filterSeasons->contains('id', (int) $this->seasonFilter)
                 ? Matchday::where('season_id', (int) $this->seasonFilter)->orderBy('start_date')->orderBy('id')->get(['id', 'name'])
                 : collect(),
@@ -451,7 +451,7 @@ class Index extends Component
     protected function validationAttributes(): array
     {
         return [
-            'form.season_id' => 'temporada',
+            'form.season_id' => 'competencia',
             'form.matchday_id' => 'jornada',
             'form.discipline_id' => 'disciplina',
             'form.venue_id' => 'sede',

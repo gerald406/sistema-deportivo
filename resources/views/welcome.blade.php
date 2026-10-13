@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="{{ config('app.name') }} - Gestión de torneos multideporte: enfrentamientos, pruebas individuales con ranking y postas. Equipos, planteles, resultados, tablas y reportes en una sola plataforma.">
-    <title>{{ config('app.name') }} - Gestión de Torneos Multideporte</title>
+    <meta name="description" content="{{ config('app.name') }} - Gestión de olimpiadas multideporte: enfrentamientos, pruebas individuales con ranking y postas. Equipos, planteles, resultados, tablas y reportes en una sola plataforma.">
+    <title>{{ config('app.name') }} - Gestión de Olimpiadas Multideporte</title>
 
     {{-- Google Fonts: Unbounded (display) + Sora (body) --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -101,7 +101,7 @@
             </div>
 
             <h1 class="mb-6 font-display text-5xl font-black leading-[1.1] tracking-tighter text-white drop-shadow-lg md:text-7xl lg:text-8xl">
-                Organiza tu torneo <br class="hidden md:block">
+                Organiza tu olimpiada <br class="hidden md:block">
                 <span class="text-brand-gold">como un pro</span>
             </h1>
 
@@ -139,7 +139,7 @@
                     </span>
                     <span class="h-2 w-2 rounded-full bg-slate-300"></span>
                     <span class="flex items-center gap-3 font-display text-sm font-bold uppercase tracking-widest text-slate-600">
-                        <i class="fa-solid fa-trophy text-brand-gold"></i> Torneos y temporadas
+                        <i class="fa-solid fa-trophy text-brand-gold"></i> Olimpiadas y competencias
                     </span>
                     <span class="h-2 w-2 rounded-full bg-slate-300"></span>
                     <span class="flex items-center gap-3 font-display text-sm font-bold uppercase tracking-widest text-brand-primary">
@@ -170,7 +170,7 @@
                 <span class="text-brand-primary">en un solo lugar</span>
             </h2>
             <p class="mx-auto max-w-2xl text-lg font-light text-slate-500">
-                Desde la creación del torneo hasta el reporte final, con un solo modelo para todos los deportes: nada de sistemas separados por disciplina.
+                Desde la creación de la olimpiada hasta el reporte final, con un solo modelo para todos los deportes: nada de sistemas separados por disciplina.
             </p>
         </div>
 
@@ -187,14 +187,14 @@
                     <i class="fa-solid fa-shield-halved text-3xl"></i>
                 </div>
                 <h3 class="mb-3 font-display text-xl font-bold text-slate-900">Equipos e inscripciones</h3>
-                <p class="text-sm leading-relaxed text-slate-600">Catálogo de equipos con escudo y delegado. Cada temporada inscribe a sus equipos con categoría y, si hace falta, un delegado propio.</p>
+                <p class="text-sm leading-relaxed text-slate-600">Catálogo de equipos con escudo y delegado. Cada competencia inscribe a sus equipos con categoría y, si hace falta, un delegado propio.</p>
             </div>
             <div class="modern-card reveal delay-200 rounded-3xl p-8">
                 <div class="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-secondary/10 text-brand-secondary">
                     <i class="fa-solid fa-user-group text-3xl"></i>
                 </div>
-                <h3 class="mb-3 font-display text-xl font-bold text-slate-900">Planteles por temporada</h3>
-                <p class="text-sm leading-relaxed text-slate-600">Jugadores con documento y foto. Dorsal, posición, capitán y estado se definen en cada temporada, con control de edad por categoría.</p>
+                <h3 class="mb-3 font-display text-xl font-bold text-slate-900">Planteles por competencia</h3>
+                <p class="text-sm leading-relaxed text-slate-600">Participantes con documento y foto. Dorsal, posición, capitán y estado se definen en cada competencia, con control de edad por categoría.</p>
             </div>
             <div class="modern-card reveal rounded-3xl p-8">
                 <div class="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-accent/10 text-brand-accent">
@@ -308,7 +308,7 @@
                         <i class="fa-solid fa-table-list"></i> Visitar la Zona Pública
                         <i class="fa-solid fa-arrow-right transition-transform group-hover:translate-x-1"></i>
                     </a>
-                    <p class="mt-4 text-xs text-slate-500"><i class="fa-solid fa-unlock text-green-500"></i> Jugadores y aficionados no necesitan cuenta para ver resultados</p>
+                    <p class="mt-4 text-xs text-slate-500"><i class="fa-solid fa-unlock text-green-500"></i> Participantes y aficionados no necesitan cuenta para ver resultados</p>
                 </div>
             </div>
         </div>
@@ -334,9 +334,9 @@
                     </div>
                     <div class="text-center md:text-left">
                         <h3 class="mb-2 font-display text-2xl font-bold text-slate-900">Administrador</h3>
-                        <p class="mb-4 text-slate-600">Crea los torneos y les asigna organizador, crea las cuentas de usuario y mantiene los catálogos (deportes, disciplinas, roles). Tiene acceso a todos los módulos.</p>
+                        <p class="mb-4 text-slate-600">Crea las olimpiadas y les asigna organizador, crea las cuentas de usuario y mantiene los catálogos (deportes, disciplinas, roles). Tiene acceso a todos los módulos.</p>
                         <div class="flex flex-wrap justify-center gap-2 md:justify-start">
-                            <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Crear torneos</span>
+                            <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Crear olimpiadas</span>
                             <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Asignar organizador</span>
                             <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Crear cuentas</span>
                         </div>
@@ -349,9 +349,9 @@
                     </div>
                     <div class="text-center md:text-left">
                         <h3 class="mb-2 font-display text-2xl font-bold text-slate-900">Organizador</h3>
-                        <p class="mb-4 text-slate-600">Gestiona los torneos que le asignaron: crea sus temporadas, registra los equipos con su delegado, inscribe equipos, programa partidos, carga resultados y genera los reportes.</p>
+                        <p class="mb-4 text-slate-600">Gestiona las olimpiadas que le asignaron: crea sus competencias, registra los equipos con su delegado, inscribe equipos, programa partidos, carga resultados y genera los reportes.</p>
                         <div class="flex flex-wrap justify-center gap-2 md:justify-start">
-                            <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Temporadas</span>
+                            <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Competencias</span>
                             <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Equipos e inscripciones</span>
                             <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Resultados</span>
                         </div>
@@ -364,9 +364,9 @@
                     </div>
                     <div class="text-center md:text-left">
                         <h3 class="mb-2 font-display text-2xl font-bold text-slate-900">Delegado</h3>
-                        <p class="mb-4 text-slate-600">El representante de su equipo. No crea equipos ni inscripciones: arma el plantel de los equipos que tiene a cargo en cada temporada y genera los carnets y fichas de sus jugadores.</p>
+                        <p class="mb-4 text-slate-600">El representante de su equipo. No crea equipos ni inscripciones: arma el plantel de los equipos que tiene a cargo en cada competencia y genera los carnets y fichas de sus participantes.</p>
                         <div class="flex flex-wrap justify-center gap-2 md:justify-start">
-                            <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Inscribir jugadores</span>
+                            <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Inscribir participantes</span>
                             <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Carnets y fichas</span>
                         </div>
                     </div>
@@ -380,7 +380,7 @@
         <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Cg%3E%3C/svg%3E')] opacity-10"></div>
 
         <div class="relative z-10 mx-auto grid max-w-6xl grid-cols-2 gap-8 md:grid-cols-4">
-            @foreach ([['tournaments', 'Torneos'], ['teams', 'Equipos'], ['players', 'Jugadores'], ['matches', 'Partidos jugados']] as $i => [$key, $label])
+            @foreach ([['gamesEditions', 'Olimpiadas'], ['teams', 'Equipos'], ['players', 'Participantes'], ['matches', 'Partidos jugados']] as $i => [$key, $label])
                 <div class="reveal {{ $i ? 'delay-'.($i * 100) : '' }} text-center">
                     <div class="stat-num mb-2 font-display text-5xl font-black text-white drop-shadow-md md:text-6xl" data-target="{{ $stats[$key] }}">{{ number_format($stats[$key]) }}</div>
                     <div class="text-xs font-bold uppercase tracking-widest text-white/80 md:text-sm">{{ $label }}</div>
@@ -397,7 +397,7 @@
                     <i class="fa-solid fa-file-pdf"></i> Reportes automáticos
                 </div>
                 <h2 class="mb-4 font-display text-4xl font-black text-slate-900 md:text-5xl">Documentos <span class="text-red-500">profesionales</span></h2>
-                <p class="text-lg text-slate-500">Listos para imprimir con un clic, con los datos de cada temporada.</p>
+                <p class="text-lg text-slate-500">Listos para imprimir con un clic, con los datos de cada competencia.</p>
             </div>
 
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -405,13 +405,13 @@
                     <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-500 transition-transform group-hover:scale-110"><i class="fa-solid fa-id-card"></i></div>
                     <div>
                         <h4 class="mb-2 font-display font-bold text-slate-900">Carnet con QR</h4>
-                        <p class="text-sm text-slate-600">Fotocheck por jugador y temporada, individual o masivo. El QR abre una ficha pública para que el árbitro valide la identidad en la cancha.</p>
+                        <p class="text-sm text-slate-600">Fotocheck por participante y competencia, individual o masivo. El QR abre una ficha pública para que el árbitro valide la identidad en la cancha.</p>
                     </div>
                 </div>
                 <div class="modern-card reveal delay-100 group flex items-start gap-6 rounded-3xl p-6">
                     <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-500 transition-transform group-hover:scale-110"><i class="fa-solid fa-list-ol"></i></div>
                     <div>
-                        <h4 class="mb-2 font-display font-bold text-slate-900">Padrón de jugadores</h4>
+                        <h4 class="mb-2 font-display font-bold text-slate-900">Padrón de participantes</h4>
                         <p class="text-sm text-slate-600">El plantel de cada equipo inscrito, ordenado por dorsal, con firmas del delegado y del organizador.</p>
                     </div>
                 </div>
@@ -426,7 +426,7 @@
                     <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-500 transition-transform group-hover:scale-110"><i class="fa-solid fa-file-signature"></i></div>
                     <div>
                         <h4 class="mb-2 font-display font-bold text-slate-900">Ficha de inscripción</h4>
-                        <p class="text-sm text-slate-600">Documento oficial por jugador con compromiso firmado, garantía del delegado y registro del organizador.</p>
+                        <p class="text-sm text-slate-600">Documento oficial por participante con compromiso firmado, garantía del delegado y registro del organizador.</p>
                     </div>
                 </div>
             </div>
@@ -440,7 +440,7 @@
                 ¿Listo para el <span class="text-brand-primary">pitazo inicial?</span>
             </h2>
             <p class="mb-10 text-xl font-light text-slate-600">
-                Sigue los resultados de tu torneo o ingresa al panel para gestionarlo.
+                Sigue los resultados de tu olimpiada o ingresa al panel para gestionarla.
             </p>
 
             <div class="flex flex-col justify-center gap-4 sm:flex-row">

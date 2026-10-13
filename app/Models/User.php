@@ -75,32 +75,27 @@ class User extends Authenticatable
     }
 
     /**
-     * Torneos que organiza (tournaments.organizer_id, RESTRICT).
+     * Olimpiadas que organiza (games_editions.organizer_id, RESTRICT).
      */
-    public function tournaments(): HasMany
+    public function gamesEditions(): HasMany
     {
-        return $this->hasMany(Tournament::class, 'organizer_id');
+        return $this->hasMany(GamesEdition::class, 'organizer_id');
+    }
+
+    /** Delegaciones inscritas de las que es delegado titular (SET NULL). */
+    public function delegatedEditionTeams(): HasMany
+    {
+        return $this->hasMany(GamesEditionTeam::class, 'delegate_id');
+    }
+
+    /** Delegaciones inscritas de las que es delegado suplente (SET NULL). */
+    public function substituteEditionTeams(): HasMany
+    {
+        return $this->hasMany(GamesEditionTeam::class, 'substitute_delegate_id');
     }
 
     /**
-     * Equipos de los que es delegado general (teams.delegate_id, SET NULL).
-     */
-    public function delegatedTeams(): HasMany
-    {
-        return $this->hasMany(Team::class, 'delegate_id');
-    }
-
-    /**
-     * Inscripciones de las que es delegado de temporada
-     * (season_team.delegate_id, SET NULL).
-     */
-    public function delegatedSeasonTeams(): HasMany
-    {
-        return $this->hasMany(SeasonTeam::class, 'delegate_id');
-    }
-
-    /**
-     * Jugadores que registro (players.created_by, SET NULL).
+     * Participantes que registro (players.created_by, SET NULL).
      */
     public function createdPlayers(): HasMany
     {

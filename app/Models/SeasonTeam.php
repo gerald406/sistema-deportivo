@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Collection;
 
 class SeasonTeam extends Model
 {
@@ -24,7 +25,6 @@ class SeasonTeam extends Model
         'season_id',
         'team_id',
         'category_id',
-        'delegate_id',
         'is_active',
     ];
 
@@ -50,25 +50,45 @@ class SeasonTeam extends Model
         return $this->belongsTo(Category::class);
     }
 
+    /** Memo de editionTeam(): false = aun no resuelto. */
+    private GamesEditionTeam|false|null $resolvedEditionTeam = false;
+
     /**
-     * Delegado especifico de esta temporada (puede ser null).
+     * Inscripcion de la delegacion en la olimpiada de esta competencia
+     * (games_edition_teams). Es la UNICA fuente de los delegados: no hay
+     * delegado por competencia ni delegado general de la delegacion.
+     * Se resuelve una vez por instancia (los listados preguntan por fila).
      */
-    public function delegate(): BelongsTo
+    public function editionTeam(): ?GamesEditionTeam
     {
-        return $this->belongsTo(User::class, 'delegate_id');
+        if ($this->resolvedEditionTeam === false) {
+            $editionId = $this->season?->games_edition_id;
+
+            $this->resolvedEditionTeam = $editionId
+                ? GamesEditionTeam::with('delegate:id,name,email', 'substituteDelegate:id,name,email')
+                    ->where('games_edition_id', $editionId)
+                    ->where('team_id', $this->team_id)
+                    ->first()
+                : null;
+        }
+
+        return $this->resolvedEditionTeam;
     }
 
     /**
-     * Regla de precedencia entre delegados (resuelve el punto 2.5 de la
-     * revision): el delegado de la temporada, si existe, sustituye al
-     * delegado general del club para esta inscripcion. Si no se definio
-     * uno especifico para la temporada, se usa el general del equipo
-     * como fallback. Ningun Service debe reimplementar esta regla; deben
-     * llamar a este accessor.
+     * Delegado titular y suplente de la delegacion en esta olimpiada (sin
+     * nulos). Ambos tienen los mismos permisos. Ningun Service debe
+     * reimplementar esta regla: usan delegates(), hasDelegate() o, en SQL,
+     * SeasonTeamPolicy::delegateConstraint().
      */
-    public function effectiveDelegate(): ?User
+    public function delegates(): Collection
     {
-        return $this->delegate ?? $this->team?->delegate;
+        return $this->editionTeam()?->delegates() ?? collect();
+    }
+
+    public function hasDelegate(User $user): bool
+    {
+        return (bool) $this->editionTeam()?->hasDelegate($user);
     }
 
     public function roster(): HasMany

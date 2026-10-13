@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Season;
-use App\Models\Tournament;
+use App\Models\GamesEdition;
+use App\Models\GamesEditionEvent;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -19,20 +21,21 @@ use Illuminate\Validation\ValidationException;
  *
  * Decisiones confirmadas (Fase 4):
  *   - Season no tiene sede: la sede se elige por partido (matches.venue_id).
- *   - Varias fases de puntaje por temporada, minimo una.
+ *   - Varias fases de puntaje por competencia, minimo una.
  *   - scoring_configs.rules (JSON) no se edita todavia: queda NULL hasta
  *     definir el calculo de SeasonStanding.
- *   - Una temporada con historial no se borra: se cierra o desactiva.
+ *   - Una competencia con historial no se borra: se cierra o desactiva.
  */
 class SeasonService
 {
     /**
-     * @param array{tournament_id: int, sport_id: int, games_edition_id: int|null, name: string, start_date: string|null, end_date: string|null, status: string, is_active: bool} $data
+     * @param array{games_edition_id: int, sport_id: int, name: string, start_date: string|null, end_date: string|null, status: string, is_active: bool} $data
      * @param array<int, array{id?: int|string|null, phase_name: string, pts_win: int, pts_draw: int, pts_loss: int, pts_walkover: int}> $phases
      */
     public function register(array $data, array $phases, User $actor): Season
     {
-        $this->ensureCanUseTournament((int) $data['tournament_id'], $actor);
+        $this->ensureCanUseEdition((int) $data['games_edition_id'], $actor);
+        $this->ensureEventBelongsToEdition($data);
         $this->ensureHasPhases($phases);
 
         return DB::transaction(function () use ($data, $phases) {
@@ -45,16 +48,17 @@ class SeasonService
 
     public function update(Season $season, array $data, array $phases, User $actor): Season
     {
-        $this->ensureCanUseTournament((int) $data['tournament_id'], $actor);
+        $this->ensureCanUseEdition((int) $data['games_edition_id'], $actor);
+        $this->ensureEventBelongsToEdition($data);
         $this->ensureHasPhases($phases);
 
-        // Cambiar el deporte de una temporada que ya tiene equipos o
+        // Cambiar el deporte de una competencia que ya tiene equipos o
         // partidos romperia la coherencia con disciplinas, posiciones y
         // tipos de evento (todos dependen del deporte).
         if ((int) $data['sport_id'] !== $season->sport_id
             && ($season->seasonTeams()->exists() || $season->matches()->exists())) {
             throw ValidationException::withMessages([
-                'form.sport_id' => 'No se puede cambiar el deporte: la temporada ya tiene equipos inscritos o partidos.',
+                'form.sport_id' => 'No se puede cambiar el deporte: la competencia ya tiene equipos inscritos o partidos.',
             ]);
         }
 
@@ -62,13 +66,17 @@ class SeasonService
             $season->update($data);
             $this->syncPhases($season, $phases);
 
+            // Activar/desactivar la competencia o cambiar su fila del
+            // cuadro cambia el puntaje general.
+            app(AwardService::class)->rebuild($season->gamesEdition()->first());
+
             return $season;
         });
     }
 
     /**
      * Sin soft deletes y con cascadas en conflicto (ver migracion de
-     * suspensions): solo se borra una temporada vacia. scoring_configs
+     * suspensions): solo se borra una competencia vacia. scoring_configs
      * se va por CASCADE.
      *
      * Devuelve true o el mensaje exacto de por que no se pudo borrar.
@@ -76,42 +84,59 @@ class SeasonService
     public function delete(Season $season): bool|string
     {
         if ($season->seasonTeams()->exists()) {
-            return 'No se puede eliminar: la temporada tiene equipos inscritos. Ciérrala o desactívala en su lugar.';
+            return 'No se puede eliminar: la competencia tiene equipos inscritos. Ciérrala o desactívala en su lugar.';
         }
 
         if ($season->matchdays()->exists() || $season->matches()->exists()) {
-            return 'No se puede eliminar: la temporada tiene jornadas o partidos. Ciérrala o desactívala en su lugar.';
+            return 'No se puede eliminar: la competencia tiene jornadas o partidos. Ciérrala o desactívala en su lugar.';
         }
+
+        $edition = $season->gamesEdition()->first();
 
         try {
             $season->delete();
         } catch (QueryException) {
-            return 'No se puede eliminar: la temporada tiene historial asociado. Ciérrala o desactívala en su lugar.';
+            return 'No se puede eliminar: la competencia tiene historial asociado. Ciérrala o desactívala en su lugar.';
         }
+
+        // Sus fases y podio directo se fueron en CASCADE: el puntaje general se recalcula.
+        app(AwardService::class)->rebuild($edition);
 
         return true;
     }
 
     /**
-     * Torneos en los que $actor puede crear/mover temporadas: el admin en
-     * cualquiera, el organizador solo en los suyos (misma regla que
-     * SeasonPolicy::update, que mira tournament.organizer_id).
+     * Olimpiadas en las que $actor puede crear/mover competencias: el admin en
+     * cualquiera, el organizador solo en las suyas (misma regla que
+     * SeasonPolicy::update, que mira gamesEdition.organizer_id).
      */
-    public function tournamentsFor(User $actor)
+    public function editionsFor(User $actor): Collection
     {
-        return Tournament::query()
+        return GamesEdition::query()
             ->when(! $actor->hasRole('admin'), fn ($q) => $q->where('organizer_id', $actor->id))
             ->orderBy('name')
             ->get(['id', 'name', 'is_active']);
     }
 
-    private function ensureCanUseTournament(int $tournamentId, User $actor): void
+    private function ensureCanUseEdition(int $gamesEditionId, User $actor): void
     {
-        // SeasonPolicy::create no conoce el torneo destino: sin esto un
-        // organizador podria crear (o mover) temporadas en torneos ajenos
-        // mandando otro tournament_id desde el navegador.
-        if (! $this->tournamentsFor($actor)->contains('id', $tournamentId)) {
-            throw new AuthorizationException('Solo puedes gestionar temporadas de tus propios torneos.');
+        // SeasonPolicy::create no conoce la olimpiada destino: sin esto un
+        // organizador podria crear (o mover) competencias en olimpiadas ajenas
+        // mandando otro games_edition_id desde el navegador.
+        if (! $this->editionsFor($actor)->contains('id', $gamesEditionId)) {
+            throw new AuthorizationException('Solo puedes gestionar competencias de tus propias olimpiadas.');
+        }
+    }
+
+    /** La fila del cuadro (opcional) debe ser de la misma olimpiada. */
+    private function ensureEventBelongsToEdition(array $data): void
+    {
+        $eventId = $data['games_edition_event_id'] ?? null;
+
+        if ($eventId !== null && ! GamesEditionEvent::whereKey($eventId)->where('games_edition_id', $data['games_edition_id'])->exists()) {
+            throw ValidationException::withMessages([
+                'form.games_edition_event_id' => 'La fila del cuadro no pertenece a esta olimpiada.',
+            ]);
         }
     }
 
@@ -119,7 +144,7 @@ class SeasonService
     {
         if ($phases === []) {
             throw ValidationException::withMessages([
-                'phases' => 'La temporada necesita al menos una fase de puntaje.',
+                'phases' => 'La competencia necesita al menos una fase de puntaje.',
             ]);
         }
     }
@@ -127,7 +152,7 @@ class SeasonService
     /**
      * Upsert de las fases enviadas + borrado de las que se quitaron del
      * formulario. Los ids que llegan del navegador solo se aceptan si
-     * pertenecen a ESTA temporada (si no, se tratan como fase nueva).
+     * pertenecen a ESTA competencia (si no, se tratan como fase nueva).
      * Nada referencia a scoring_configs, asi que borrar una fase es seguro.
      */
     private function syncPhases(Season $season, array $phases): void
@@ -170,10 +195,10 @@ class SeasonService
     }
 
     /**
-     * Temporadas que $actor ve en los reportes de solo lectura (/reportes),
+     * Competencias que $actor ve en los reportes de solo lectura (/reportes),
      * union si tiene varios roles:
      *   - Admin: todas.
-     *   - Organizador: las de sus torneos.
+     *   - Organizador: las de sus olimpiadas.
      *   - Delegado: aquellas donde su equipo esta inscrito
      *     (SeasonTeamService::scopeVisibleTo(), delegado efectivo).
      *   - Cualquier otro: ninguna.
@@ -189,7 +214,7 @@ class SeasonService
         }
 
         return $query->where(fn ($q) => $q
-            ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('tournament', fn ($t) => $t->where('organizer_id', $actor->id)))
+            ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id)))
             ->orWhereHas('seasonTeams', fn ($st) => app(SeasonTeamService::class)->scopeVisibleTo($st, $actor)));
     }
 }

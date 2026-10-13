@@ -9,6 +9,8 @@ use App\Models\SeasonTeamPlayer;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -53,5 +55,25 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function ($user, string $ability) {
             return $user->hasRole('admin') ? true : null;
         });
+
+        $this->configureProduction();
+    }
+
+    /**
+     * Publicado, todo enlace generado es HTTPS (N1) y, si el hosting pone
+     * un proxy delante, se confia en sus cabeceras para reconocer la
+     * peticion como segura (config/app.php, trusted_proxies).
+     */
+    private function configureProduction(): void
+    {
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
+        $proxies = config('app.trusted_proxies');
+
+        if (is_string($proxies) && trim($proxies) !== '') {
+            TrustProxies::at(trim($proxies) === '*' ? '*' : array_map('trim', explode(',', $proxies)));
+        }
     }
 }

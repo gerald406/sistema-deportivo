@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Enums\MatchStatus;
 use App\Enums\SeasonTeamPlayerStatus;
 use App\Models\GameMatch;
+use App\Models\MatchEvent;
 use App\Models\SeasonTeamPlayer;
 use App\Models\Suspension;
 use App\Models\User;
@@ -16,12 +17,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Sanciones. Reglas confirmadas (regla 6A, Fase 7):
+ * Sanciones. Reglas confirmadas (regla 6A, Fase 7) y reglas de la olimpiada
+ * que son DATOS (games_editions; NULL = no se aplica):
  *   - Automaticas: al cerrar un partido, cada roja directa (red_card) o
  *     roja por doble amarilla (red_card_indirect) genera una sancion de
- *     1 partido. Las amarillas no se acumulan.
+ *     1 partido. Si el expulsado es capitan y la olimpiada define
+ *     captain_red_matches, la sancion dura ese numero de partidos.
+ *   - Amarillas: solo se acumulan si la olimpiada define
+ *     yellow_cards_limit. Cada vez que el total de amarillas de un
+ *     participante en la competencia (en partidos con resultado) completa
+ *     otro multiplo del limite, recibe 1 partido de sancion. Las de otra
+ *     competencia no cuentan.
  *   - Manuales: el organizador crea/edita/borra y marca como cumplidas.
- *   - Mientras un jugador tenga sanciones pendientes su ficha de plantel
+ *   - Mientras un participante tenga sanciones pendientes su ficha de plantel
  *     queda "Suspendido"; al no tener ninguna pendiente vuelve a
  *     "Habilitado". Solo se toca el estado si era Habilitado/Suspendido
  *     (un Lesionado o de Baja conserva su estado).
@@ -31,26 +39,37 @@ class SuspensionService
     /** Codigos de event_types que generan sancion automatica. */
     public const AUTO_CODES = ['red_card', 'red_card_indirect'];
 
+    public const YELLOW_CODE = 'yellow_card';
+
+    public const YELLOW_ACCUMULATION_REASON = 'Acumulación de tarjetas amarillas';
+
     /**
      * Genera las sanciones automaticas de un partido cerrado. Idempotente:
-     * no duplica si ya existe una sancion del mismo jugador, partido y
+     * no duplica si ya existe una sancion del mismo participante, partido y
      * motivo (p. ej. al re-cerrar tras una reapertura).
      *
      * @return int sanciones creadas
      */
     public function generateForMatch(GameMatch $match): int
     {
+        $match->loadMissing('season.gamesEdition');
+        $edition = $match->season->gamesEdition;
+
         $events = $match->events()
-            ->with('eventType:id,code,name')
+            ->with('eventType:id,code,name', 'seasonTeamPlayer:id,is_captain')
             ->whereHas('eventType', fn ($q) => $q->whereIn('code', self::AUTO_CODES))
             ->get();
 
         $created = 0;
 
         foreach ($events as $event) {
+            $matches = $event->seasonTeamPlayer?->is_captain && $edition?->captain_red_matches
+                ? $edition->captain_red_matches
+                : 1;
+
             $suspension = Suspension::firstOrCreate(
                 ['match_id' => $match->id, 'season_team_player_id' => $event->season_team_player_id, 'reason' => $event->eventType->name],
-                ['season_id' => $match->season_id, 'matches_suspended' => 1, 'is_served' => false],
+                ['season_id' => $match->season_id, 'matches_suspended' => $matches, 'is_served' => false],
             );
 
             if ($suspension->wasRecentlyCreated) {
@@ -59,12 +78,58 @@ class SuspensionService
             }
         }
 
+        return $created + $this->generateForYellowCards($match, $edition?->yellow_cards_limit);
+    }
+
+    /**
+     * Sancion por acumulacion de amarillas. Se compara lo que el
+     * participante DEBE (total de amarillas / limite) con las sanciones de
+     * este motivo que ya tiene en la competencia: asi no duplica al
+     * re-cerrar un partido ni depende del orden en que se cierren.
+     */
+    private function generateForYellowCards(GameMatch $match, ?int $limit): int
+    {
+        if ($limit === null || $limit < 1) {
+            return 0;
+        }
+
+        $isYellow = fn ($q) => $q->where('code', self::YELLOW_CODE);
+        $playerIds = $match->events()->whereHas('eventType', $isYellow)->pluck('season_team_player_id')->unique();
+        $created = 0;
+
+        foreach ($playerIds as $playerId) {
+            $total = MatchEvent::where('season_team_player_id', $playerId)
+                ->whereHas('eventType', $isYellow)
+                ->whereHas('match', fn ($q) => $q->where('season_id', $match->season_id)
+                    ->whereIn('status', [MatchStatus::Played->value, MatchStatus::Walkover->value]))
+                ->count();
+
+            $existing = Suspension::where('season_id', $match->season_id)
+                ->where('season_team_player_id', $playerId)
+                ->where('reason', self::YELLOW_ACCUMULATION_REASON)
+                ->count();
+
+            if (intdiv($total, $limit) <= $existing) {
+                continue;
+            }
+
+            $suspension = Suspension::firstOrCreate(
+                ['match_id' => $match->id, 'season_team_player_id' => $playerId, 'reason' => self::YELLOW_ACCUMULATION_REASON],
+                ['season_id' => $match->season_id, 'matches_suspended' => 1, 'is_served' => false],
+            );
+
+            if ($suspension->wasRecentlyCreated) {
+                $created++;
+                $this->syncRosterStatus($playerId);
+            }
+        }
+
         return $created;
     }
 
     /**
      * Borra las sanciones NO cumplidas originadas en un partido (lo usa la
-     * reapertura) y reajusta el estado de esos jugadores.
+     * reapertura) y reajusta el estado de esos participantes.
      *
      * @return int sanciones borradas
      */
@@ -83,7 +148,7 @@ class SuspensionService
      */
     public function register(array $data, User $actor): Suspension
     {
-        $match = GameMatch::with('season.tournament')->findOrFail($data['match_id']);
+        $match = GameMatch::with('season.gamesEdition')->findOrFail($data['match_id']);
         $this->ensureCanManage($match, $actor);
         $this->ensureValid($match, $data);
 
@@ -103,10 +168,10 @@ class SuspensionService
         });
     }
 
-    /** Jugador y partido de origen no cambian: solo motivo, fechas y cumplimiento. */
+    /** Participante y partido de origen no cambian: solo motivo, fechas y cumplimiento. */
     public function update(Suspension $suspension, array $data, User $actor): Suspension
     {
-        $suspension->load('match.season.tournament');
+        $suspension->load('match.season.gamesEdition');
         $this->ensureCanManage($suspension->match, $actor);
 
         $matches = (int) $data['matches_suspended'];
@@ -129,7 +194,7 @@ class SuspensionService
 
     public function toggleServed(Suspension $suspension, User $actor): Suspension
     {
-        $suspension->load('match.season.tournament');
+        $suspension->load('match.season.gamesEdition');
         $this->ensureCanManage($suspension->match, $actor);
 
         $suspension->update(['is_served' => ! $suspension->is_served]);
@@ -144,7 +209,7 @@ class SuspensionService
      */
     public function delete(Suspension $suspension, User $actor): bool|string
     {
-        $suspension->load('match.season.tournament');
+        $suspension->load('match.season.gamesEdition');
         $this->ensureCanManage($suspension->match, $actor);
 
         $playerId = $suspension->season_team_player_id;
@@ -175,7 +240,7 @@ class SuspensionService
     private function ensureCanManage(GameMatch $match, User $actor): void
     {
         if (! SeasonAccess::manages($actor, $match->season)) {
-            throw new AuthorizationException('Solo el organizador del torneo gestiona las sanciones de esta temporada.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona las sanciones de esta competencia.');
         }
     }
 
@@ -187,7 +252,7 @@ class SuspensionService
 
         if (! SeasonTeamPlayer::whereKey($data['season_team_player_id'])
             ->whereHas('seasonTeam', fn ($q) => $q->where('season_id', $match->season_id))->exists()) {
-            throw ValidationException::withMessages(['form.season_team_player_id' => 'El jugador no pertenece a un plantel de esta temporada.']);
+            throw ValidationException::withMessages(['form.season_team_player_id' => 'El participante no pertenece a un plantel de esta competencia.']);
         }
 
         if (mb_strlen(trim((string) $data['reason'])) < 3) {
