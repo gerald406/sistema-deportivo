@@ -45,8 +45,8 @@ desde los pasos de abajo, que son reproducibles.
 
 ## Tarea 1.1 — Migraciones y modelos
 
-- [ ] **Paso 1.** `git stash pop`. Verificar que existen M1, M2 y M3 en `database/migrations/`.
-- [ ] **Paso 2.** Escribir `SeasonBelongsToEditionTest`:
+- [x] **Paso 1.** `git stash pop`. Verificar que existen M1, M2 y M3 en `database/migrations/`.
+- [x] **Paso 2.** Escribir `SeasonBelongsToEditionTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -56,12 +56,12 @@ desde los pasos de abajo, que son reproducibles.
 | `test_edition_with_seasons_cannot_be_deleted` | `GamesEditionService::delete()` devuelve un string y la olimpiada sigue existiendo |
 | `test_tournaments_permission_was_renamed` | Existe el permiso `editions.manage` y no existe `tournaments.manage` |
 
-- [ ] **Paso 3.** Ejecutar la prueba. Esperado: falla (aún sin factories ni modelos ajustados).
-- [ ] **Paso 4.** Ajustar modelos: `GamesEdition` (`$fillable`, `organizer()`), `Season` (quitar `tournament_id` y `tournament()`), `User` (`gamesEditions()`). Crear las tres factories.
-- [ ] **Paso 5.** `RolePermissionSeeder`: `tournaments.manage` → `editions.manage` en la lista y en el rol organizador.
-- [ ] **Paso 6.** `php artisan migrate` en la base de trabajo. Esperado: M1–M3 aplicadas; `games_editions.organizer_id` con valor en la olimpiada existente.
-- [ ] **Paso 7.** Ejecutar la prueba. Esperado: 5 en verde.
-- [ ] **Paso 8.** Commit: `F1: Olimpiada con organizador; tabla tournaments eliminada`.
+- [x] **Paso 3.** Ejecutar la prueba. Esperado: falla (aún sin factories ni modelos ajustados).
+- [x] **Paso 4.** Ajustar modelos: `GamesEdition` (`$fillable`, `organizer()`), `Season` (quitar `tournament_id` y `tournament()`), `User` (`gamesEditions()`). Crear las tres factories.
+- [x] **Paso 5.** `RolePermissionSeeder`: `tournaments.manage` → `editions.manage` en la lista y en el rol organizador.
+- [x] **Paso 6.** `php artisan migrate` en la base de trabajo. Esperado: M1–M3 aplicadas; `games_editions.organizer_id` con valor en la olimpiada existente.
+- [x] **Paso 7.** Ejecutar la prueba. Esperado: 5 en verde.
+- [x] **Paso 8.** Commit: `F1: Olimpiada con organizador; tabla tournaments eliminada`.
 
 ## Tarea 1.2 — Renombrado de referencias y autorización
 
@@ -76,7 +76,7 @@ El stash ya trae este renombrado. Si se rehace, el orden de sustitución sobre l
 6. `tournaments` → `gamesEditions`, `tournament` → `gamesEdition`
 7. Textos: `Torneo(s)` → `Olimpiada(s)` cuidando el género (`del torneo` → `de la olimpiada`, `el torneo` → `la olimpiada`, `un torneo` → `una olimpiada`, `sus torneos` → `sus olimpiadas`, `otro torneo` → `otra olimpiada`).
 
-- [ ] **Paso 1.** Escribir `GamesEditionAuthorizationTest`:
+- [x] **Paso 1.** Escribir `GamesEditionAuthorizationTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -88,32 +88,32 @@ El stash ya trae este renombrado. Si se rehace, el orden de sustitución sobre l
 | `test_season_can_only_be_created_in_own_edition` | `SeasonService::register()` de un organizador con el `games_edition_id` de otra olimpiada lanza `AuthorizationException` |
 | `test_user_organizing_an_edition_cannot_be_deleted` | `UserAccountService::delete()` devuelve un string para ese usuario |
 
-- [ ] **Paso 2.** Ejecutar. Esperado: falla.
-- [ ] **Paso 3.** Crear `GamesEditionPolicy` y `GamesEditionService` según las firmas. `register()` revalida `hasRole('admin')`. `update()` ignora `organizer_id` si el actor no es admin. `delete()` conserva los chequeos actuales y borra el logo del disco `public` al terminar.
-- [ ] **Paso 4.** Corregir a mano los archivos donde el renombrado deja duplicados:
+- [x] **Paso 2.** Ejecutar. Esperado: falla.
+- [x] **Paso 3.** Crear `GamesEditionPolicy` y `GamesEditionService` según las firmas. `register()` revalida `hasRole('admin')`. `update()` ignora `organizer_id` si el actor no es admin. `delete()` conserva los chequeos actuales y borra el logo del disco `public` al terminar.
+- [x] **Paso 4.** Corregir a mano los archivos donde el renombrado deja duplicados:
   - `app/Models/Season.php`: una sola clave `games_edition_id` en `$fillable`, una sola `gamesEdition()`.
   - `app/Services/SeasonService.php`: `editionsFor()`, `ensureCanUseEdition()`, docblock de `register()`.
   - `app/Livewire/Seasons/Index.php` y su vista: un solo campo "Olimpiada" obligatorio (el selector opcional de edición desaparece); filtro `editionFilter`; `with()` sin relación repetida.
   - `app/Services/PublicResultsService.php`, `app/Livewire/Public/PublicResults.php`, `app/Livewire/Reports/RosterReport.php`, `app/Livewire/PlayerRegistrationSelector.php`: comprobar que propiedad, método `updated...` y vista usan el mismo nombre.
-- [ ] **Paso 5.** Ejecutar `GamesEditionAuthorizationTest`. Esperado: 7 en verde.
-- [ ] **Paso 6.** Commit: `F1: Autorización contra la olimpiada en policies y services`.
+- [x] **Paso 5.** Ejecutar `GamesEditionAuthorizationTest`. Esperado: 7 en verde.
+- [x] **Paso 6.** Commit: `F1: Autorización contra la olimpiada en policies y services`.
 
 ## Tarea 1.3 — Pantalla de Olimpiadas, rutas y menú
 
-- [ ] **Paso 1.** `app/Livewire/GamesEditions/Index.php`: quitar el `abort_unless` de `boot()`; `authorize('viewAny', GamesEdition::class)` en `mount()` y `authorize()` en `create`, `edit`, `save`, `delete`. Agregar al formulario `organizer_id` (solo lo ve el admin) y logo con `WithFileUploads` (carpeta `editions` del disco `public`, máx. 2 MB). El listado usa `GamesEditionService::scopeManagedBy()`.
-- [ ] **Paso 2.** Vista: título "Olimpiadas", columnas Nombre (con logo), Organizador, Inicio, Fin, Sede principal, Competencias, Estado. Botón "Nueva olimpiada" bajo `@can('create', GamesEdition::class)`.
-- [ ] **Paso 3.** `routes/web.php`: una sola ruta `/olimpiadas` → `games-editions.index`, fuera del grupo `role:admin`. Quitar `/torneos` y `/ediciones`.
-- [ ] **Paso 4.** `config/admin-menu.php`: grupo "Olimpiada" con "Olimpiadas" (`editions.manage`) y "Temporadas" (`seasons.manage`). Quitar las entradas duplicadas.
-- [ ] **Paso 5.** `resources/views/livewire/dashboard.blade.php` y `DashboardService`: la métrica es `activeGamesEditions`, etiqueta "Olimpiadas activas", ruta `games-editions.index`, permiso `editions.manage`.
-- [ ] **Paso 6.** `RoutesSmokeTest::adminRoutes()`: quitar `tournaments.index`. Agregar la prueba `test_organizer_sees_only_own_editions`: con dos olimpiadas de organizadores distintos, la respuesta de `games-editions.index` contiene el nombre de la propia y no el de la ajena.
-- [ ] **Paso 7.** Revisar textos: `grep -rnE "otro olimpiada|del Olimpiada|los suyos" app resources` y corregir concordancias.
-- [ ] **Paso 8.** Ejecutar `php artisan test`. Esperado: todo en verde.
-- [ ] **Paso 9.** Commit: `F1: Pantalla de Olimpiadas con organizador y logo; rutas y menú`.
+- [x] **Paso 1.** `app/Livewire/GamesEditions/Index.php`: quitar el `abort_unless` de `boot()`; `authorize('viewAny', GamesEdition::class)` en `mount()` y `authorize()` en `create`, `edit`, `save`, `delete`. Agregar al formulario `organizer_id` (solo lo ve el admin) y logo con `WithFileUploads` (carpeta `editions` del disco `public`, máx. 2 MB). El listado usa `GamesEditionService::scopeManagedBy()`.
+- [x] **Paso 2.** Vista: título "Olimpiadas", columnas Nombre (con logo), Organizador, Inicio, Fin, Sede principal, Competencias, Estado. Botón "Nueva olimpiada" bajo `@can('create', GamesEdition::class)`.
+- [x] **Paso 3.** `routes/web.php`: una sola ruta `/olimpiadas` → `games-editions.index`, fuera del grupo `role:admin`. Quitar `/torneos` y `/ediciones`.
+- [x] **Paso 4.** `config/admin-menu.php`: grupo "Olimpiada" con "Olimpiadas" (`editions.manage`) y "Temporadas" (`seasons.manage`). Quitar las entradas duplicadas.
+- [x] **Paso 5.** `resources/views/livewire/dashboard.blade.php` y `DashboardService`: la métrica es `activeGamesEditions`, etiqueta "Olimpiadas activas", ruta `games-editions.index`, permiso `editions.manage`.
+- [x] **Paso 6.** `RoutesSmokeTest::adminRoutes()`: quitar `tournaments.index`. Agregar la prueba `test_organizer_sees_only_own_editions`: con dos olimpiadas de organizadores distintos, la respuesta de `games-editions.index` contiene el nombre de la propia y no el de la ajena.
+- [x] **Paso 7.** Revisar textos: `grep -rnE "otro olimpiada|del Olimpiada|los suyos" app resources` y corregir concordancias.
+- [x] **Paso 8.** Ejecutar `php artisan test`. Esperado: todo en verde.
+- [x] **Paso 9.** Commit: `F1: Pantalla de Olimpiadas con organizador y logo; rutas y menú`.
 
 ## Tarea 1.4 — Documentación
 
-- [ ] **Paso 1.** `CLAUDE.md`: reemplazar el punto 1 y 2 del "Flujo de permisos" (olimpiada en lugar de torneo), quitar `Tournament` de "Modelos y ubicación", y marcar la fase en la tabla del rediseño.
-- [ ] **Paso 2.** Commit: `Docs: CLAUDE.md refleja la olimpiada como eje`.
+- [x] **Paso 1.** `CLAUDE.md`: reemplazar el punto 1 y 2 del "Flujo de permisos" (olimpiada en lugar de torneo), quitar `Tournament` de "Modelos y ubicación", y marcar la fase en la tabla del rediseño.
+- [x] **Paso 2.** Commit: `Docs: CLAUDE.md refleja la olimpiada como eje`.
 
 ## Reglas que cumple
 

@@ -5,9 +5,10 @@ Laravel 12 + PHP 8.2 (XAMPP) + Jetstream (stack Livewire) + **Livewire 3 (NUNCA 
 
 ## Qué es esto
 
-Gestión de torneos multi-deporte: fútbol/vóley (enfrentamiento), atletismo (individual con
-ranking), postas (equipos, relay), ajedrez, y una capa opcional "Olimpiadas" (`GamesEdition`)
-que agrupa varios deportes. Cero duplicación por deporte: NO existen `FootballTeam`,
+Sistema a medida de una olimpiada multi-deporte: fútbol/vóley (enfrentamiento), atletismo
+(individual con ranking), postas (equipos, relay), ajedrez. La olimpiada (`GamesEdition`) es el
+eje: tiene un organizador y agrupa las competencias (`Season`) de todos los deportes.
+Cero duplicación por deporte: NO existen `FootballTeam`,
 `VolleyPlayer`, etc. Un solo modelo de dominio para todos los deportes.
 
 ## Reglas de negocio confirmadas (NO renegociar sin preguntar)
@@ -32,12 +33,14 @@ que agrupa varios deportes. Cero duplicación por deporte: NO existen `FootballT
 
 Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando botones en Blade.
 
-1. **Torneos (`Tournament`)**: solo el ADMIN los crea (y los borra) y asigna su organizador
-   (`organizer_id`). El organizador asignado edita los datos de SU torneo, pero no cambia
-   `organizer_id` (`TournamentPolicy`, `TournamentService`).
-2. **Temporadas (`Season`)**: las crea el ORGANIZADOR, pero solo dentro de un torneo que le fue
-   asignado (`tournament.organizer_id === auth()->id()`) (`SeasonPolicy`,
-   `SeasonService::ensureCanUseTournament()`).
+1. **Olimpiadas (`GamesEdition`)**: solo el ADMIN las crea (y las borra) y asigna su organizador
+   (`organizer_id`). El organizador asignado edita los datos de SU olimpiada, pero no cambia
+   `organizer_id` (`GamesEditionPolicy`, `GamesEditionService`). `Tournament` ya NO existe: la
+   olimpiada es el unico eje. La regla "quien gestiona la olimpiada" vive en un solo sitio:
+   `GamesEditionService::manages()`.
+2. **Competencias (`Season`)**: las crea el ORGANIZADOR, pero solo dentro de una olimpiada que le
+   fue asignada (`gamesEdition.organizer_id === auth()->id()`) (`SeasonPolicy`,
+   `SeasonService::ensureCanUseEdition()`). `seasons.games_edition_id` es obligatorio.
 3. **Equipos (`Team`) y su delegado (`delegate_id`)**: los crea el ORGANIZADOR o el ADMIN. El
    delegado NUNCA crea ni borra equipos; conserva la edición de nombre/logo de SU equipo sin
    poder reasignar `delegate_id` (`TeamPolicy`, `TeamRegistrationService`). El organizador tiene
@@ -114,7 +117,24 @@ sirven de referencia exacta: `app/Livewire/Teams/Index.php`, `app/Livewire/Playe
 **Sigue este orden**: dentro de cada fase, implementa primero las tablas independientes/catálogo
 antes que las que dependen de ellas (ya se hizo así con Sport/Discipline antes de Season).
 
-## Rediseño "Ediciones flexibles" (rama `feature/ediciones-flexibles`) — ⬜ Diseño aprobado, sin implementar
+## Plan vigente: Olimpiada Puno 2026 (rama `feature/olimpiada-puno-2026`)
+
+**El plan que manda esta en `docs/fases/`** y reemplaza a la tabla R1-R6 de mas abajo:
+
+- `docs/fases/00-especificacion.md`: que exigen las bases, decisiones del cliente (D1-D15) y
+  supuestos por confirmar.
+- `docs/fases/00-plan-maestro.md`: estado de cada fase e inventarios de migraciones, tablas,
+  enums, Services, Policies, rutas, permisos, menu y pruebas.
+- `docs/fases/F0..F7-*.md`: una fase por archivo, con tareas, pruebas y su puerta.
+
+Para implementar o retomar una fase se usa la skill `implementar-fase`
+(`.claude/skills/implementar-fase/SKILL.md`): una fase a la vez y no se avanza si la puerta
+(`php artisan test` en verde, Blade compilando, rutas, migraciones al dia) no pasa.
+
+Las pruebas corren sobre MySQL en la base `laravel_pichangav2_test` (`phpunit.xml`);
+`tests/TestCase.php` aborta si la base no termina en `_test`.
+
+## Rediseño "Ediciones flexibles" — diseño original (referencia historica)
 
 Motivo: sistematizar un evento real (XXVIII Juegos Deportivos Regionales de Docentes de IES/EES
 de la Región Puno 2026, Yunguyo, 28-30/10/2026) **sin atar el código a ese reglamento**. Cada
@@ -183,7 +203,7 @@ Policy, pantalla) y esperar aprobación.
 - `event_participants` es polimórfica **sin FK real** hacia `season_team`/`season_team_player`:
   antes de borrar una inscripción, revisar `eventParticipants()` en el Service.
 - Modelos: `app/Models/` (Sport, Discipline, SportPosition, EventType, Category, Venue,
-  Tournament, GamesEdition, Season, ScoringConfig, Team, Player, Matchday, GameMatch,
+  GamesEdition, Season, ScoringConfig, Team, Player, Matchday, GameMatch,
   EventParticipant, EventLineup, MatchPeriod, MatchEvent, Suspension, MatchReopenLog,
   SeasonStanding, GamesEditionMedal, SeasonTeam, SeasonTeamPlayer)
 - Enums: `app/Enums/`
