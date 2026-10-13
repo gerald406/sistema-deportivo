@@ -45,7 +45,7 @@ Actualizar esta tabla al cerrar cada fase. `Puerta` = resultado de la puerta de 
 | F1 Olimpiada como eje | `F1-olimpiada-como-eje.md` | 13–14/10 | ✅ | 2026-10-12 · 45 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
 | F2 Delegaciones y series | `F2-delegaciones-y-series.md` | 14–16/10 | ✅ | 2026-10-12 · 90 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
 | F3 Catálogo y cuadro de puntaje | `F3-catalogo-y-puntajes.md` | 16–17/10 | ✅ | 2026-10-13 · 109 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S1, S2 y S6 confirmados por el cliente |
-| F4 Competencias y plantel | `F4-competencias-y-plantel.md` | 17–19/10 | ⬜ | — |
+| F4 Competencias y plantel | `F4-competencias-y-plantel.md` | 17–19/10 | ✅ | 2026-10-13 · 145 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S3 pendiente de confirmar |
 | F5 Fases, llaves y podios | `F5-fases-llaves-podios.md` | 20–24/10 | ⬜ | — |
 | F6 Puntaje general | `F6-puntaje-general.md` | 24–26/10 | ⬜ | — |
 | F7 Producción | `F7-produccion.md` | desde el 17/10, cierre 27/10 | ⬜ | — |
@@ -133,7 +133,9 @@ Todos con `label(): string` en español.
 |---|---|---|---|
 | `Tournament` | `tournaments` | F1 | Eliminar |
 | `GamesEdition` | `games_editions` | F1 | + `organizer()`, `groups()`, `editionTeams()`, `events()` |
-| `Season` | `seasons` | F1, F4 | − `tournament()`; + `event()`, `category()`, `discipline()`, `stages()` |
+| `Season` | `seasons` | F1, F4 | − `tournament()`; + `event()`, `category()`, `discipline()` (F4), `stages()` (F5) |
+| `Player` | `players` | F4 | + `gender`, `staff_type`, `employment_type` en `$fillable`; `documents_verified_at` solo con cast (fuera de `$fillable`) |
+| `PlayerPolicy` | — | F4 | + `verifyDocuments(User, Player)` |
 | `GamesEditionGroup` | `games_edition_groups` | F2 | Nuevo |
 | `GamesEditionTeam` | `games_edition_teams` | F2 | Nuevo; `delegates(): Collection`, `hasDelegate(User): bool` |
 | `Team`, `SeasonTeam` | — | F2 | − `delegate()`; + `Team::editionTeams()`; `SeasonTeam::effectiveDelegate()` se reemplaza por `editionTeam()`, `delegates(): Collection` y `hasDelegate(User): bool`. Versión SQL: `SeasonTeamPolicy::delegateConstraint(User)` |
@@ -161,10 +163,11 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | `EditionTeamService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionTeam`; `update(GamesEditionTeam $entry, array $data, User $actor): GamesEditionTeam`; `delete(GamesEditionTeam $entry, User $actor): bool\|string`; `delegateOptions(): Collection`; `assignableTeams(User $actor): Builder`; `scopeDelegatedTo(Builder $teams, User $actor): Builder` | F2 |
 | `DelegateAccountService` | `createQuickAccount(array $data, User $actor): User` (admin u organizador con olimpiada; rol forzado `delegado`) | F2 |
 | `EditionEventService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionEvent`; `update(GamesEditionEvent $event, array $data, User $actor): GamesEditionEvent`; `delete(GamesEditionEvent $event, User $actor): bool\|string` (solo admin) | F3 |
-| `CompetitionGeneratorService` | `generate(GamesEdition $edition, User $actor): array{created: int, existing: int}` | F4 |
-| `RosterRuleService` | `evaluate(Season $season, Team $team, Player $player): array{errors: string[], warnings: string[]}` | F4 |
+| `CompetitionGeneratorService` | `generate(GamesEdition $edition, User $actor): array{created: int, existing: int, skipped: int}` (`skipped` = filas activas sin deporte); constante `DEFAULT_PHASE` | F4 |
+| `RosterRuleService` | `evaluate(Season $season, Team $team, Player $player): array{errors: string[], warnings: string[]}` (ya clasifica: `errors` si la fila es bloqueante, `warnings` si no); `violations(...): string[]` (sin clasificar); `isBlocking(Season): bool`; `referenceYear(Season): int`; `missingForMinimum(Season, int $activeCount): int` | F4 |
 | `SeasonTeamService` | `ensureFor(Season $season, Team $team): SeasonTeam` | F4 |
-| `SeasonTeamPlayerService` | `registerInCompetition(Season $season, Team $team, array $data, User $actor): SeasonTeamPlayer` | F4 |
+| `SeasonTeamPlayerService` | `registerInCompetition(Season $season, Team $team, array $data, User $actor): SeasonTeamPlayer`; `canRegisterFor(User, Season, Team): bool`; `competitionsFor(User): Collection`; `delegationsFor(User, Season): Collection`. Se eliminan `seasonTeamsFor()` y `ageAtSeason()` | F4 |
+| `PlayerRegistrationService` | `setDocumentsVerified(Player $player, bool $verified, User $actor): Player`; `canVerifyDocuments(User, Player): bool`. `register()`/`update()` solo aceptan los campos del formulario | F4 |
 | `StageService` | `register(Season $season, array $data, User $actor): SeasonStage`; `update(SeasonStage $stage, array $data, User $actor): SeasonStage`; `delete(SeasonStage $stage, User $actor): bool\|string`; `createStandardStages(Season $season, User $actor): Collection`; `winners(SeasonStage $stage): Collection` | F5 |
 | `BracketService` | `generate(SeasonStage $stage, array $seasonTeamIdsInSeedOrder, User $actor): Collection`; `advance(GameMatch $match): void` | F5 |
 | `DirectPodiumService` | `save(SeasonStage $stage, array $places, User $actor): void` (`$places`: `[1 => ['team_id' => int, 'season_team_player_id' => ?int], ...]`) | F5 |
@@ -190,7 +193,8 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | `/delegaciones-inscritas` | `edition-teams.index` | `EditionTeams\Index` | `manage` de la olimpiada elegida | F2 |
 | `/equipos` | `teams.index` | `Teams\Index` | Se rotula "Delegaciones"; sin delegado | F2 |
 | `/puntajes` | `edition-events.index` | `EditionEvents\Index` | Ver: admin y organizador de la olimpiada. Editar: solo admin | F3 |
-| `/temporadas` → `/competencias` | `seasons.index` (el nombre no cambia) | `Seasons\Index` | Igual que hoy | F4 |
+| `/temporadas` → `/competencias` | `seasons.index` (el nombre no cambia) | `Seasons\Index` | Usa `SelectsEdition`: solo las competencias de una olimpiada que el usuario gestiona | F4 |
+| `/jugadores` → `/participantes` | `players.index` (el nombre no cambia) | `Players\Index` | Igual que antes | F4 |
 | `/fases` | `season-stages.index` | `SeasonStages\Index` | `SeasonAccess::manages` | F5 |
 | `/reportes/puntaje-general` | `reports.general-score` | `Reports\GeneralScore` | `reports.view`, acotado por rol | F6 |
 
@@ -222,7 +226,7 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | Dashboard | `dashboard` |
 | Olimpiada | Olimpiadas (`games-editions.index`; `editions.manage`), Series (`edition-groups.index`; `editions.manage`), Delegaciones inscritas (`edition-teams.index`; `editions.manage`), Cuadro de puntaje (`edition-events.index`; `editions.manage`), Competencias (`seasons.index`; `seasons.manage`), Fases y llaves (`season-stages.index`; `matches.manage`) |
 | Catálogos | Niveles (`categories.index`; `categories.manage`), Sedes (`venues.index`; `venues.manage`) |
-| Participantes | Delegaciones (`teams.index`; `teams.manage`), Participantes (`players.index`; `players.manage`), Planteles (`rosters.index`), Fichas de inscripción (`registrations.index`) |
+| Participantes | Delegaciones (`teams.index`; `teams.manage`), Participantes (`players.index`; `players.manage`), Inscripciones (`season-teams.index`; se conserva para que el organizador retire o desactive una inscripción), Planteles (`rosters.index`), Fichas de inscripción (`registrations.index`) |
 | Partidos | Sin cambios |
 | Reportes | + Puntaje general (`reports.general-score`; `reports.view`) |
 | Administración | Sin cambios |

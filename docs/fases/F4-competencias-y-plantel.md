@@ -71,8 +71,8 @@ descalificada").
 
 ## Tarea 4.1 — Generador de competencias
 
-- [ ] **Paso 1.** Migración M9; modelo `Season`; `SeasonFactory`.
-- [ ] **Paso 2.** Escribir `CompetitionGeneratorTest`:
+- [x] **Paso 1.** Migración M9; modelo `Season`; `SeasonFactory`.
+- [x] **Paso 2.** Escribir `CompetitionGeneratorTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -88,26 +88,26 @@ descalificada").
 | `test_puno_table_generates_expected_total` | Con `Puno2026Seeder`: el total coincide con la suma calculada en la prueba a partir de las filas (no un número fijo escrito a mano) |
 | `test_row_with_competitions_is_not_deleted` | `EditionEventService::delete()` devuelve un string |
 
-- [ ] **Paso 3.** Ejecutar: falla. Implementar. Ejecutar: en verde.
-- [ ] **Paso 4.** `Seasons\Index`: título "Competencias", selector de olimpiada (`SelectsEdition`), botón "Generar competencias" con confirmación y toast "Creadas: n. Ya existían: m.", filtros por deporte, nivel y género. El formulario manual conserva los campos actuales y agrega nivel, género y fila del cuadro (opcionales).
-- [ ] **Paso 5.** Ruta `/competencias`; menú; en vistas y menú, "Temporada(s)" → "Competencia(s)" y "Jugador(es)" → "Participante(s)" en títulos, etiquetas y mensajes visibles.
-- [ ] **Paso 6.** `php artisan migrate`; `php artisan test`. Commit: `F4: Competencias generadas desde el cuadro de puntaje`.
+- [x] **Paso 3.** Ejecutar: falla. Implementar. Ejecutar: en verde.
+- [x] **Paso 4.** `Seasons\Index`: título "Competencias", selector de olimpiada (`SelectsEdition`), botón "Generar competencias" con confirmación y toast "Creadas: n. Ya existían: m.", filtros por deporte, nivel y género. El formulario manual conserva los campos actuales y agrega nivel, género y fila del cuadro (opcionales).
+- [x] **Paso 5.** Ruta `/competencias`; menú; en vistas y menú, "Temporada(s)" → "Competencia(s)" y "Jugador(es)" → "Participante(s)" en títulos, etiquetas y mensajes visibles.
+- [x] **Paso 6.** `php artisan migrate`; `php artisan test`. Commit: `F4: Competencias generadas desde el cuadro de puntaje`.
 
 ## Tarea 4.2 — Datos del participante
 
-- [ ] **Paso 1.** Migración M10, enums (`label()`: Docente, Administrativo; Nombrado, Contratado), modelo, factory.
-- [ ] **Paso 2.** Pruebas en `RosterRuleTest` (primera parte):
+- [x] **Paso 1.** Migración M10, enums (`label()`: Docente, Administrativo; Nombrado, Contratado), modelo, factory.
+- [x] **Paso 2.** Pruebas en `RosterRuleTest` (primera parte):
 
 | Prueba | Afirmación |
 |---|---|
 | `test_delegate_registers_participant_with_gender_and_staff_data` | `PlayerRegistrationService` guarda `gender`, `staff_type`, `employment_type` |
 | `test_only_edition_manager_or_admin_marks_documents_verified` | El delegado no puede fijar `documents_verified_at`; el organizador sí |
 
-- [ ] **Paso 3.** `Players\Index`: campos género (obligatorio al crear), tipo y condición; casilla "Documentos verificados" visible solo para admin y organizador. `php artisan test`. Commit: `F4: Género, tipo y condición del participante`.
+- [x] **Paso 3.** `Players\Index`: campos género (obligatorio al crear), tipo y condición; casilla "Documentos verificados" visible solo para admin y organizador. `php artisan test`. Commit: `F4: Género, tipo y condición del participante`.
 
 ## Tarea 4.3 — Reglas del plantel
 
-- [ ] **Paso 1.** Completar `RosterRuleTest`:
+- [x] **Paso 1.** Completar `RosterRuleTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -126,13 +126,13 @@ descalificada").
 | `test_foreign_delegate_cannot_register_in_competition` | `AuthorizationException` |
 | `test_suspended_participant_keeps_suspended_status` | Un participante con sanción pendiente no puede pasar a `active` (regla existente, se conserva) |
 
-- [ ] **Paso 2.** Ejecutar: falla. Implementar `RosterRuleService`, `ensureFor()`, `registerInCompetition()`. `SeasonTeamPlayerService::register()` deja de llamar a `ensureAgeFitsCategory()` y usa `evaluate()`.
-- [ ] **Paso 3.** `Rosters\Index`: el delegado elige competencia (de las olimpiadas donde su delegación está inscrita) y, si tiene más de una delegación, la delegación; agrega participantes; ve advertencias por participante y el aviso de mínimo. Admin y organizador eligen además cualquier delegación inscrita.
-- [ ] **Paso 4.** `php artisan test`. Commit: `F4: Reglas de plantel configurables (género, edad por año, topes, una delegación)`.
+- [x] **Paso 2.** Ejecutar: falla. Implementar `RosterRuleService`, `ensureFor()`, `registerInCompetition()`. `SeasonTeamPlayerService::register()` deja de llamar a `ensureAgeFitsCategory()` y usa `evaluate()`.
+- [x] **Paso 3.** `Rosters\Index`: el delegado elige competencia (de las olimpiadas donde su delegación está inscrita) y, si tiene más de una delegación, la delegación; agrega participantes; ve advertencias por participante y el aviso de mínimo. Admin y organizador eligen además cualquier delegación inscrita.
+- [x] **Paso 4.** `php artisan test`. Commit: `F4: Reglas de plantel configurables (género, edad por año, topes, una delegación)`.
 
 ## Tarea 4.4 — Documentación
 
-- [ ] `CLAUDE.md`: regla 6 y punto 4 del flujo de permisos (la inscripción a una competencia se crea sola); fase marcada. Commit.
+- [x] `CLAUDE.md`: regla 6 y punto 4 del flujo de permisos (la inscripción a una competencia se crea sola); fase marcada. Commit.
 
 ## Reglas que cumple
 
@@ -151,3 +151,36 @@ descalificada").
 
 G1–G6. G5 agrega `Temporada|temporada` en `resources/views` y `config`: 0 coincidencias. Registrar
 en "Estado". **Hito:** con F4 y la tarea 7.1 cerradas, se publica y se abre a los delegados.
+
+## Notas de cierre (2026-10-13)
+
+Cambios respecto al plan, hechos al implementar:
+
+- `generate()` devuelve además `skipped` (filas activas sin deporte). Si una competencia creada a
+  mano ya usa el nombre, la generada se numera (`… (2)`) en vez de fallar por el único.
+- `RosterRuleService::evaluate()` ya clasifica: `errors` si la fila del cuadro es bloqueante,
+  `warnings` si no. `violations()` da la lista sin clasificar (la usan las pruebas y el listado de
+  planteles). Una competencia sin fila del cuadro **advierte**, no bloquea (el plan decía lo
+  contrario; se eligió lo coherente con D11).
+- R3 cuenta a todo participante que no esté de baja (lesionados y suspendidos ocupan cupo).
+- "Documentos verificados" no es una casilla del formulario sino un botón por fila en
+  /participantes (`toggleDocuments`): el organizador no edita participantes, solo los verifica.
+  `documents_verified_at` queda fuera de `$fillable`.
+- `/jugadores` pasó a `/participantes` (el nombre de ruta no cambia). El reemplazo de
+  vocabulario se aplicó también a los mensajes de `app/` (toasts y validaciones), no solo a vistas.
+- Se conserva la entrada de menú "Inscripciones": el organizador la necesita para retirar o
+  desactivar la inscripción de una delegación en una competencia.
+- Pruebas añadidas fuera de la tabla: nombre simple sin género ni nivel, fila inactiva, nombre ya
+  usado, generar desde la pantalla, alcance de /competencias, año de referencia, competencia
+  cerrada, y dos de la pantalla de planteles.
+
+Pendiente de decisión del cliente:
+
+- **S3** (la inscripción a la competencia se crea sola con el primer participante): implementado,
+  falta su confirmación.
+- El buscador de participantes del modal de planteles sigue siendo global: un delegado puede
+  encontrar por nombre o DNI a un participante registrado por otra delegación (R4 advierte si lo
+  agrega). Acotarlo exige decidir cómo comparten participantes el titular y el suplente.
+- El organizador no crea participantes (`players.manage` es de admin y delegado); sí los agrega
+  a planteles y verifica documentos.
+- Tope de plantel de Atletismo: vacío en el cuadro (1 por prueba, 4 en la posta según las bases).

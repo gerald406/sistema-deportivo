@@ -31,9 +31,16 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
    `season_team.delegate_id` ya NO existen. Para preguntar "¿es delegado?" se usa
    `SeasonTeam::hasDelegate()` / `delegates()` y, en SQL, `SeasonTeamPolicy::delegateConstraint()`;
    ningún Service reimplementa la regla.
-6. `Player` es un catálogo global (no pertenece a un solo Team hasta que se inscribe vía
-   `season_team_player`, que es Fase 5). Por eso `players.created_by` existe: reconoce
-   propiedad de un jugador recién creado antes de tener roster.
+6. `Player` (participante) es un catálogo global: no pertenece a una delegación hasta que entra
+   a un plantel (`season_team_player`). Por eso `players.created_by` existe: reconoce al delegado
+   que lo registró antes de tener plantel. Lleva género, tipo (docente/administrativo) y condición
+   (nombrado/contratado). `documents_verified_at` solo lo fija el organizador o el admin
+   (`PlayerRegistrationService::setDocumentsVerified()`), nunca el delegado ni el formulario.
+7. **Reglas de plantel = datos.** Género, edad por AÑO de nacimiento (año de la olimpiada − año
+   de nacimiento ≥ edad mínima del nivel; sin edad máxima), tope de plantel y "una sola
+   delegación por olimpiada" salen de la competencia (`seasons.category_id`, `seasons.gender`) y
+   de su fila del cuadro. Las evalúa `RosterRuleService`; **advierten** salvo que la fila tenga
+   `rules_blocking`. Ningún otro Service reimplementa estas reglas.
 
 ### Flujo de permisos (confirmado por el negocio; el admin conserva bypass total vía `Gate::before`)
 
@@ -44,9 +51,12 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
    `organizer_id` (`GamesEditionPolicy`, `GamesEditionService`). `Tournament` ya NO existe: la
    olimpiada es el unico eje. La regla "quien gestiona la olimpiada" vive en un solo sitio:
    `GamesEditionService::manages()`.
-2. **Competencias (`Season`)**: las crea el ORGANIZADOR, pero solo dentro de una olimpiada que le
-   fue asignada (`gamesEdition.organizer_id === auth()->id()`) (`SeasonPolicy`,
-   `SeasonService::ensureCanUseEdition()`). `seasons.games_edition_id` es obligatorio.
+2. **Competencias (`Season`, pantalla /competencias)**: deporte × nivel × género (y prueba en
+   atletismo). Lo normal es **generarlas** desde el cuadro de puntaje
+   (`CompetitionGeneratorService::generate()`, idempotente: solo agrega, nunca modifica ni
+   reactiva); también se crean a mano. Solo quien gestiona la olimpiada (`SeasonPolicy`,
+   `SeasonService::ensureCanUseEdition()`). Una competencia que no corresponde se **desactiva**,
+   no se borra (el generador la volvería a crear).
 3. **Delegaciones (`Team`)**: las crea, edita y borra el ORGANIZADOR o el ADMIN (`teams.manage`).
    El delegado NO entra a /equipos ni edita su delegación: solo registra participantes
    (`TeamPolicy`, `TeamRegistrationService`). El organizador solo ve y gestiona las delegaciones
@@ -62,13 +72,15 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
    (`EditionEventService` revalida `hasRole('admin')`); el organizador de la olimpiada solo lo ve.
    Puntos y topes de plantel son opcionales: vacío = sin puntos / sin restricción. Los datos
    reales de Puno 2026 se cargan con `php artisan db:seed --class=Puno2026Seeder` (no destructivo).
-4. **Inscripciones a una competencia (`SeasonTeam`)**: las crean, editan y retiran solo el
-   ORGANIZADOR de la olimpiada o el ADMIN, en Borrador o En curso (nadie en Cerrada). El delegado
-   NUNCA crea ni edita `SeasonTeam` en ningún estado; solo las ve (`SeasonTeamPolicy`,
-   `SeasonTeamService`).
+4. **Inscripciones a una competencia (`SeasonTeam`)**: nacen solas cuando se registra el primer
+   participante de la delegación en esa competencia (`SeasonTeamService::ensureFor()`, que exige
+   que la delegación esté inscrita en la olimpiada y no retirada ni descalificada). El delegado
+   NUNCA crea ni edita `SeasonTeam` directamente; el ORGANIZADOR o el ADMIN las editan o retiran
+   en /inscripciones (`SeasonTeamPolicy`, `SeasonTeamService`).
 5. **Participantes en el plantel (`SeasonTeamPlayer`)**: los inscribe el DELEGADO (titular o
-   suplente) de la delegación (`SeasonTeam::hasDelegate()`, permiso `players.manage`), y nunca en
-   delegaciones ajenas. El organizador de la olimpiada y el admin conservan acceso de supervisión
+   suplente) eligiendo competencia y delegación
+   (`SeasonTeamPlayerService::registerInCompetition()`, que autoriza con `canRegisterFor()`),
+   y nunca en delegaciones ajenas. El organizador de la olimpiada y el admin conservan acceso de supervisión
    (`SeasonTeamPlayerPolicy::managesSeasonTeam()`).
 
 ## Arquitectura (no negociable sin pasar por diseño primero)
