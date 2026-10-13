@@ -44,7 +44,8 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D14 | Ajedrez: emparejamiento manual por el organizador | 29/09 |
 | D15 | Se publica en un hosting (proveedor por definir) | 12/10 |
 
-Supuestos míos, pendientes de confirmar por el cliente (cada uno es un valor por defecto editable):
+Supuestos míos (cada uno es un valor por defecto editable). **S1, S2 y S6 confirmados por el
+cliente el 13/10**; S3, S4 y S5 siguen pendientes:
 
 | # | Supuesto | Fase |
 |---|---|---|

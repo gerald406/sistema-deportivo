@@ -58,6 +58,10 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
    delegaciones a su cargo (`EditionGroupService`, `EditionTeamService`). Las pantallas usan el
    trait `App\Livewire\Concerns\SelectsEdition` (olimpiada en `?olimpiada=`, siempre buscada
    dentro de las que el usuario gestiona).
+3c. **Cuadro de puntaje (`GamesEditionEvent`, pantalla /puntajes)**: lo edita SOLO el admin
+   (`EditionEventService` revalida `hasRole('admin')`); el organizador de la olimpiada solo lo ve.
+   Puntos y topes de plantel son opcionales: vacío = sin puntos / sin restricción. Los datos
+   reales de Puno 2026 se cargan con `php artisan db:seed --class=Puno2026Seeder` (no destructivo).
 4. **Inscripciones a una competencia (`SeasonTeam`)**: las crean, editan y retiran solo el
    ORGANIZADOR de la olimpiada o el ADMIN, en Borrador o En curso (nadie en Cerrada). El delegado
    NUNCA crea ni edita `SeasonTeam` en ningún estado; solo las ve (`SeasonTeamPolicy`,
@@ -214,7 +218,7 @@ Policy, pantalla) y esperar aprobación.
 - `event_participants` es polimórfica **sin FK real** hacia `season_team`/`season_team_player`:
   antes de borrar una inscripción, revisar `eventParticipants()` en el Service.
 - Modelos: `app/Models/` (Sport, Discipline, SportPosition, EventType, Category, Venue,
-  GamesEdition, GamesEditionGroup, GamesEditionTeam, Season, ScoringConfig, Team, Player, Matchday, GameMatch,
+  GamesEdition, GamesEditionGroup, GamesEditionTeam, GamesEditionEvent, Season, ScoringConfig, Team, Player, Matchday, GameMatch,
   EventParticipant, EventLineup, MatchPeriod, MatchEvent, Suspension, MatchReopenLog,
   SeasonStanding, GamesEditionMedal, SeasonTeam, SeasonTeamPlayer)
 - Enums: `app/Enums/`

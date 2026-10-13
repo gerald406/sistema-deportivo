@@ -35,8 +35,8 @@ el sistema queda cargado con los datos reales de la olimpiada.
 
 ## Tarea 3.1 — Cuadro de puntaje (solo admin)
 
-- [ ] **Paso 1.** Migración M8, enum `GenderScope` (`label()`: Varones, Damas, Damas y varones, Sin género), modelo y factory.
-- [ ] **Paso 2.** Escribir `EditionEventTest`:
+- [x] **Paso 1.** Migración M8, enum `GenderScope` (`label()`: Varones, Damas, Damas y varones, Sin género), modelo y factory.
+- [x] **Paso 2.** Escribir `EditionEventTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -50,30 +50,30 @@ el sistema queda cargado con los datos reales de la olimpiada.
 | `test_genders_resolution` | Los cinco casos de `genders()` de la sección Interfaces |
 | `test_row_with_competitions_is_not_deleted` | `delete()` devuelve un string si la fila tiene competencias (se completa en F4; hasta entonces verifica que una fila sin competencias devuelve `true`) |
 
-- [ ] **Paso 3.** Ejecutar: falla. Implementar `EditionEventService`. Ejecutar: en verde.
-- [ ] **Paso 4.** Componente `EditionEvents\Index`: tabla con N.º, Etiqueta, Deporte, Nivel, Alcance, 1.º, 2.º, 3.º, Mín., Máx., Bloqueante, y fila final con la suma de cada columna de puntos. Modal de edición con todos los campos del inventario de columnas, más las casillas "Podios separados por género" y "Una competencia por prueba". `boot()` no aborta: `save`, `delete` y `create` hacen `abort_unless(auth()->user()->hasRole('admin'), 403)`.
-- [ ] **Paso 5.** Ruta, menú "Cuadro de puntaje", prueba de humo. `php artisan migrate`; `php artisan test`.
-- [ ] **Paso 6.** Commit: `F3: Cuadro de puntaje por categorías, editable solo por el admin`.
+- [x] **Paso 3.** Ejecutar: falla. Implementar `EditionEventService`. Ejecutar: en verde.
+- [x] **Paso 4.** Componente `EditionEvents\Index`: tabla con N.º, Etiqueta, Deporte, Nivel, Alcance, 1.º, 2.º, 3.º, Mín., Máx., Bloqueante, y fila final con la suma de cada columna de puntos. Modal de edición con todos los campos del inventario de columnas, más las casillas "Podios separados por género" y "Una competencia por prueba". `boot()` no aborta: `save`, `delete` y `create` hacen `abort_unless(auth()->user()->hasRole('admin'), 403)`.
+- [x] **Paso 5.** Ruta, menú "Cuadro de puntaje", prueba de humo. `php artisan migrate`; `php artisan test`.
+- [x] **Paso 6.** Commit: `F3: Cuadro de puntaje por categorías, editable solo por el admin`.
 
 ## Tarea 3.2 — Catálogo y datos de Puno 2026
 
-- [ ] **Paso 1.** Escribir `Puno2026SeederTest` (corre `DatabaseSeeder` y luego `Puno2026Seeder`):
+- [x] **Paso 1.** Escribir `Puno2026SeederTest` (corre `DatabaseSeeder` y luego `Puno2026Seeder`):
 
 | Prueba | Afirmación |
 |---|---|
 | `test_levels_match_the_rules` | Existen exactamente los niveles activos Libre (25), Máster (40) y Súper Máster (55) |
-| `test_sports_catalogue_is_complete` | Existen los 12 slugs de la sección Interfaces; atletismo tiene las 8 pruebas de la especificación §5.4 y "Posta 4x100" tiene formato `team_relay` |
+| `test_sports_catalogue_is_complete` | Existen los 12 slugs de la sección Interfaces; atletismo tiene las 8 pruebas de la especificación §5.4 (`100 metros`, `400 metros`, `1500 metros`, `3000 metros`, `Salto largo`, `Lanzamiento de peso`, `Lanzamiento de disco`, `Posta 4x100`) y "Posta 4x100" tiene formato `team_relay` |
 | `test_edition_groups_and_delegations` | 1 olimpiada, 4 series, 18 delegaciones inscritas; Serie A y C con 5, B y D con 4 |
 | `test_scoring_table_matches_page_9` | 26 filas; las 22 primeras con los puntos exactos de la especificación §5.5 (comprobar al menos: fila 1 = 18/14/10, fila 11 = 24/20/16, fila 14 = 28/24/20, fila 20 = 24/20/16); las filas 23–26 con los tres puntos nulos |
 | `test_roster_limits_match_the_rules` | Fútbol 7/18, Futsal 3/10, Básquetbol —/10, Voleibol 6/12, Sapo —/3, Ajedrez —/1 |
 | `test_venues_are_loaded` | Las 8 sedes de la especificación §5.3 |
 | `test_seeder_is_idempotent` | Correr `Puno2026Seeder` dos veces no cambia ningún conteo |
 
-- [ ] **Paso 2.** Ejecutar: falla.
-- [ ] **Paso 3.** Actualizar los seeders de catálogo con `updateOrCreate`. `CategorySeeder` desactiva (`is_active = false`) Sub-17, Damas y Varones si existen; no las borra. `EventTypeSeeder`: futsal y fútbol comparten los códigos `goal`, `yellow_card`, `red_card`, `red_card_indirect`; básquetbol: `points`, `foul`, `disqualification`.
-- [ ] **Paso 4.** Escribir `Puno2026Seeder` con los datos de la especificación §5. El organizador de la olimpiada es el primer usuario con rol `organizador`, o el admin si no hay ninguno. Las filas de atletismo llevan `per_discipline = true`.
-- [ ] **Paso 5.** Ejecutar: en verde. En la base de trabajo: `php artisan db:seed --class=CategorySeeder` (y los otros tres de catálogo) y `php artisan db:seed --class=Puno2026Seeder`.
-- [ ] **Paso 6.** Commit: `F3: Catálogo de deportes, niveles y datos iniciales de Puno 2026`.
+- [x] **Paso 2.** Ejecutar: falla.
+- [x] **Paso 3.** Actualizar los seeders de catálogo con `updateOrCreate`. `CategorySeeder` desactiva (`is_active = false`) Sub-17, Damas y Varones si existen; no las borra. `EventTypeSeeder`: futsal y fútbol comparten los códigos `goal`, `yellow_card`, `red_card`, `red_card_indirect`; básquetbol: `points`, `foul`, `disqualification`.
+- [x] **Paso 4.** Escribir `Puno2026Seeder` con los datos de la especificación §5. El organizador de la olimpiada es el primer usuario con rol `organizador`, o el admin si no hay ninguno. Las filas de atletismo llevan `per_discipline = true`.
+- [x] **Paso 5.** Ejecutar: en verde. En la base de trabajo: `php artisan db:seed --class=CategorySeeder` (y los otros tres de catálogo) y `php artisan db:seed --class=Puno2026Seeder`.
+- [x] **Paso 6.** Commit: `F3: Catálogo de deportes, niveles y datos iniciales de Puno 2026`.
 
 ## Reglas que cumple
 
@@ -90,3 +90,18 @@ el sistema queda cargado con los datos reales de la olimpiada.
 
 G1–G6. Registrar en "Estado". Mostrar al cliente la pantalla `/puntajes` y pedir confirmación de
 los supuestos S1, S2 y S6 antes de F4.
+
+## Notas de cierre (2026-10-13)
+
+- S1, S2 y S6 confirmados por el cliente el 13/10.
+- Pruebas añadidas fuera de la tabla: `test_admin_edits_a_row_from_the_screen`,
+  `test_row_of_another_edition_is_out_of_reach_from_the_screen`,
+  `test_legacy_and_duplicated_levels_are_deactivated_not_deleted`.
+- La pantalla no usa `Sortable` ni paginación: el cuadro se lee en el orden de las bases.
+- `SportSeeder` solo escribe `config` al crear el deporte. La prueba "100 metros llanos" se renombra a
+  "100 metros". "Ajedrez clásico" ya no se siembra (ajedrez no compite por prueba).
+- Los topes de Atletismo quedan vacíos en el cuadro: dependen de la prueba (1; posta 4). F4 los
+  resuelve por formato de la prueba si hace falta.
+- En la base de trabajo quedaron sin tocar tres deportes creados a mano que duplican pruebas de
+  atletismo (`salto-largo`, `lanzamiento-de-peso`, `lanzamiento-de-disco`) y la olimpiada de prueba
+  "Olimpiada Docente". El cliente decide si los borra.

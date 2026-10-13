@@ -44,7 +44,7 @@ Actualizar esta tabla al cerrar cada fase. `Puerta` = resultado de la puerta de 
 | F0 Base de pruebas | `F0-base-de-pruebas.md` | 12/10 | ✅ | 2026-10-12 · 26 pruebas, 0 fallos (10 omitidas por funciones de Jetstream desactivadas); G1–G4 aprobadas |
 | F1 Olimpiada como eje | `F1-olimpiada-como-eje.md` | 13–14/10 | ✅ | 2026-10-12 · 45 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
 | F2 Delegaciones y series | `F2-delegaciones-y-series.md` | 14–16/10 | ✅ | 2026-10-12 · 90 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
-| F3 Catálogo y cuadro de puntaje | `F3-catalogo-y-puntajes.md` | 16–17/10 | ⬜ | — |
+| F3 Catálogo y cuadro de puntaje | `F3-catalogo-y-puntajes.md` | 16–17/10 | ✅ | 2026-10-13 · 109 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S1, S2 y S6 confirmados por el cliente |
 | F4 Competencias y plantel | `F4-competencias-y-plantel.md` | 17–19/10 | ⬜ | — |
 | F5 Fases, llaves y podios | `F5-fases-llaves-podios.md` | 20–24/10 | ⬜ | — |
 | F6 Puntaje general | `F6-puntaje-general.md` | 24–26/10 | ⬜ | — |
@@ -232,9 +232,9 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | Seeder | Contenido | Fase |
 |---|---|---|
 | `RolePermissionSeeder` | Matriz de permisos final | F1, F2 |
-| `CategorySeeder` | Libre 25, Máster 40, Súper Máster 55 (género `X`) | F3 |
+| `CategorySeeder` | Libre 25, Máster 40, Súper Máster 55 (género `X`). Reutiliza la fila más antigua con ese nombre o un nombre anterior (Master, Senior) y desactiva duplicados por género y categorías heredadas | F3 |
 | `SportSeeder`, `DisciplineSeeder`, `EventTypeSeeder` | Catálogo de la especificación §5.4 (9 deportes y 3 actividades) | F3 |
-| `Puno2026Seeder` | Olimpiada, 8 sedes, 4 series, 18 delegaciones, 26 filas del cuadro. Idempotente. No está en `DatabaseSeeder`: se corre a mano | F3 |
+| `Puno2026Seeder` | Olimpiada, 8 sedes, 4 series, 18 delegaciones, 26 filas del cuadro. Idempotente y no destructivo (`firstOrCreate`: no pisa lo que el admin ya cambió). No está en `DatabaseSeeder`: se corre a mano, después de los de catálogo. Constante `Puno2026Seeder::EDITION_NAME` | F3 |
 
 ### Pruebas (`tests/`)
 
