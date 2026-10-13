@@ -27,7 +27,6 @@ use App\Livewire\SeasonTeams\Index as SeasonTeamsIndex;
 use App\Livewire\Seasons\Index as SeasonsIndex;
 use App\Livewire\Suspensions\Index as SuspensionsIndex;
 use App\Livewire\Teams\Index as TeamsIndex;
-use App\Livewire\Tournaments\Index as TournamentsIndex;
 use App\Livewire\Venues\Index as VenuesIndex;
 use App\Services\PublicResultsService;
 use Illuminate\Support\Facades\Route;
@@ -60,8 +59,8 @@ Route::middleware([
     Route::get('/jugadores', PlayersIndex::class)
         ->name('players.index');
 
-    Route::get('/torneos', TournamentsIndex::class)
-        ->name('tournaments.index');
+    Route::get('/olimpiadas', GamesEditionsIndex::class)
+        ->name('games-editions.index');
 
     Route::get('/temporadas', SeasonsIndex::class)
         ->name('seasons.index');
@@ -140,6 +139,5 @@ Route::middleware([
         Route::get('/admin/deportes', AdminSportsIndex::class)->name('admin.sports.index');
         Route::get('/admin/usuarios', AdminUsersIndex::class)->name('admin.users.index');
         Route::get('/admin/roles', AdminRolesIndex::class)->name('admin.roles.index');
-        Route::get('/ediciones', GamesEditionsIndex::class)->name('games-editions.index');
     });
 });

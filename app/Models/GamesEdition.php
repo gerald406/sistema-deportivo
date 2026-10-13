@@ -15,6 +15,8 @@ class GamesEdition extends Model
 
     protected $fillable = [
         'name',
+        'logo',
+        'organizer_id',
         'start_date',
         'end_date',
         'host_venue_id',
@@ -28,6 +30,12 @@ class GamesEdition extends Model
             'end_date' => 'date',
             'is_active' => 'boolean',
         ];
+    }
+
+    /** Organizador responsable: gestiona todo lo que cuelga de la olimpiada. */
+    public function organizer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'organizer_id');
     }
 
     public function hostVenue(): BelongsTo

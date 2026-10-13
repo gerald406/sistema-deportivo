@@ -24,12 +24,11 @@ return [
             'route' => 'dashboard',
         ],
         [
-            'label' => 'Torneos',
+            'label' => 'Olimpiada',
             'icon' => 'fa-solid fa-trophy',
             'children' => [
-                ['label' => 'Torneos', 'route' => 'tournaments.index', 'permission' => 'tournaments.manage'],
+                ['label' => 'Olimpiadas', 'route' => 'games-editions.index', 'permission' => 'editions.manage'],
                 ['label' => 'Temporadas', 'route' => 'seasons.index', 'permission' => 'seasons.manage'],
-                ['label' => 'Ediciones (Olimpiadas)', 'route' => 'games-editions.index', 'role' => 'admin'],
             ],
         ],
         [

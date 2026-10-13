@@ -33,7 +33,7 @@ class MatchEventService
      */
     public function register(array $data, User $actor): MatchEvent
     {
-        $match = GameMatch::with('season.tournament')->findOrFail($data['match_id']);
+        $match = GameMatch::with('season.gamesEdition')->findOrFail($data['match_id']);
         $this->ensureEditable($match, $actor);
         $this->ensureValid($match, $data);
 
@@ -48,7 +48,7 @@ class MatchEventService
     /** El partido de una incidencia no cambia (seria otra incidencia). */
     public function update(MatchEvent $event, array $data, User $actor): MatchEvent
     {
-        $event->load('match.season.tournament');
+        $event->load('match.season.gamesEdition');
         $this->ensureEditable($event->match, $actor);
         $this->ensureValid($event->match, $data);
 
@@ -66,14 +66,14 @@ class MatchEventService
      */
     public function delete(MatchEvent $event, User $actor): bool|string
     {
-        $event->load('match.season.tournament');
+        $event->load('match.season.gamesEdition');
 
         if ($event->match->status !== MatchStatus::Pending) {
             return 'No se puede eliminar: el partido ya tiene resultado. Reábrelo para corregir sus incidencias.';
         }
 
         if (! SeasonAccess::manages($actor, $event->match->season)) {
-            throw new AuthorizationException('Solo el organizador del torneo gestiona las incidencias de este partido.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona las incidencias de este partido.');
         }
 
         $event->delete();
@@ -104,7 +104,7 @@ class MatchEventService
     private function ensureEditable(GameMatch $match, User $actor): void
     {
         if (! SeasonAccess::manages($actor, $match->season)) {
-            throw new AuthorizationException('Solo el organizador del torneo gestiona las incidencias de este partido.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona las incidencias de este partido.');
         }
 
         if ($match->status !== MatchStatus::Pending) {

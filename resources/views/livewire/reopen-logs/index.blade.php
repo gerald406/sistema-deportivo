@@ -24,7 +24,7 @@
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="">Todas las temporadas</option>
             @foreach ($filterSeasons as $season)
-                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }}</option>
+                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
         </select>
 
@@ -72,7 +72,7 @@
                             <td class="px-4 py-3">
                                 @if ($log->match)
                                     <p class="font-medium text-gray-900">{{ $log->match->participants->map(fn ($p) => \App\Support\ParticipantLabel::for($p))->join(' vs ') }}</p>
-                                    <p class="text-xs text-gray-400">{{ $log->match->season->tournament->name }} · {{ $log->match->season->name }} · {{ $log->match->matchday->name }}</p>
+                                    <p class="text-xs text-gray-400">{{ $log->match->season->gamesEdition->name }} · {{ $log->match->season->name }} · {{ $log->match->matchday->name }}</p>
                                 @else
                                     <span class="text-gray-400">(partido eliminado)</span>
                                 @endif

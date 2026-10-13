@@ -75,11 +75,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Torneos que organiza (tournaments.organizer_id, RESTRICT).
+     * Olimpiadas que organiza (games_editions.organizer_id, RESTRICT).
      */
-    public function tournaments(): HasMany
+    public function gamesEditions(): HasMany
     {
-        return $this->hasMany(Tournament::class, 'organizer_id');
+        return $this->hasMany(GamesEdition::class, 'organizer_id');
     }
 
     /**

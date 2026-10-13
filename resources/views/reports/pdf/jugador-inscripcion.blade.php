@@ -293,15 +293,15 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
             <tr>
                 <td class="logo-cell">
                     <div class="logo-box">
-                        @if(!empty($card['tournamentLogoBase64']))
-                            <img src="{{ $card['tournamentLogoBase64'] }}" alt="Logo del torneo">
+                        @if(!empty($card['gamesEditionLogoBase64']))
+                            <img src="{{ $card['gamesEditionLogoBase64'] }}" alt="Logo de la olimpiada">
                         @else
-                            <div class="logo-placeholder">Torneo</div>
+                            <div class="logo-placeholder">Olimpiada</div>
                         @endif
                     </div>
                 </td>
                 <td class="hdr-title-cell">
-                    <div class="hdr-champ">{{ $card['tournament']->name }}</div>
+                    <div class="hdr-champ">{{ $card['gamesEdition']->name }}</div>
                     <div class="hdr-champ-org">{{ $card['season']->name }} &middot; {{ $card['season']->sport->name }}</div>
                     <div class="hdr-champ-slogan">Organiza: {{ $card['organizer']->name }}</div>
                 </td>
@@ -383,14 +383,14 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
 
     <div class="commitment-box">
         <p class="commitment-intro">
-            Declaro haber leído, comprendido y aceptado en su totalidad las Bases Específicas del torneo "{{ $card['tournament']->name }}". En ese sentido, me comprometo a:
+            Declaro haber leído, comprendido y aceptado en su totalidad las Bases Específicas de la olimpiada "{{ $card['gamesEdition']->name }}". En ese sentido, me comprometo a:
         </p>
         <table class="commitment-list">
-            <tr><td class="bullet-num">01</td><td>Cumplir todas las disposiciones establecidas en las Bases del Torneo.</td></tr>
-            <tr><td class="bullet-num">02</td><td>Respetar las decisiones de la Comisión Organizadora, de la comisión de justicia y de los árbitros durante el desarrollo del torneo.</td></tr>
+            <tr><td class="bullet-num">01</td><td>Cumplir todas las disposiciones establecidas en las Bases de la Olimpiada.</td></tr>
+            <tr><td class="bullet-num">02</td><td>Respetar las decisiones de la Comisión Organizadora, de la comisión de justicia y de los árbitros durante el desarrollo de la olimpiada.</td></tr>
             <tr><td class="bullet-num">03</td><td>Promover el juego limpio, el respeto mutuo, la disciplina y la sana competencia entre todos los participantes.</td></tr>
             <tr><td class="bullet-num">04</td><td>Asumir la responsabilidad por mi conducta dentro y fuera del campo de juego.</td></tr>
-            <tr><td class="bullet-num">05</td><td>Acatar las sanciones que correspondan en caso de incumplimiento de las Bases del Torneo.</td></tr>
+            <tr><td class="bullet-num">05</td><td>Acatar las sanciones que correspondan en caso de incumplimiento de las Bases de la Olimpiada.</td></tr>
         </table>
         <p class="commitment-final">En señal de conformidad, suscribo el presente compromiso de manera voluntaria.</p>
     </div>
@@ -466,16 +466,16 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
     </table>
 
     <p class="guarantee-note">
-        El jugador firmante de esta Ficha de Inscripción queda registrado oficialmente en el "{{ $card['tournament']->name }}".
+        El jugador firmante de esta Ficha de Inscripción queda registrado oficialmente en el "{{ $card['gamesEdition']->name }}".
     </p>
 
     <table class="sign-tbl single">
         <tr>
             <td>
-                <div class="seal-box" style="margin-bottom: 1.5mm;">Sello del<br>Torneo</div>
+                <div class="seal-box" style="margin-bottom: 1.5mm;">Sello de la<br>Olimpiada</div>
                 <div class="sign-line">
                     <div class="sign-name">{{ $card['organizer']->name }}</div>
-                    <div class="sign-role">Organizador del Torneo</div>
+                    <div class="sign-role">Organizador de la Olimpiada</div>
                 </div>
             </td>
         </tr>

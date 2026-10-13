@@ -184,7 +184,7 @@ class Index extends Component
     /**
      * Ids que llegan del navegador se buscan acotados al alcance del
      * usuario (scopeVisibleTo): quien mande el id de un jugador fuera de
-     * su torneo/equipo recibe 404 antes de llegar a la Policy.
+     * su olimpiada/equipo recibe 404 antes de llegar a la Policy.
      */
     private function findVisiblePlayer(int $id): Player
     {

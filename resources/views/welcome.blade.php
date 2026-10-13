@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="{{ config('app.name') }} - Gestión de torneos multideporte: enfrentamientos, pruebas individuales con ranking y postas. Equipos, planteles, resultados, tablas y reportes en una sola plataforma.">
-    <title>{{ config('app.name') }} - Gestión de Torneos Multideporte</title>
+    <meta name="description" content="{{ config('app.name') }} - Gestión de olimpiadas multideporte: enfrentamientos, pruebas individuales con ranking y postas. Equipos, planteles, resultados, tablas y reportes en una sola plataforma.">
+    <title>{{ config('app.name') }} - Gestión de Olimpiadas Multideporte</title>
 
     {{-- Google Fonts: Unbounded (display) + Sora (body) --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -101,7 +101,7 @@
             </div>
 
             <h1 class="mb-6 font-display text-5xl font-black leading-[1.1] tracking-tighter text-white drop-shadow-lg md:text-7xl lg:text-8xl">
-                Organiza tu torneo <br class="hidden md:block">
+                Organiza tu olimpiada <br class="hidden md:block">
                 <span class="text-brand-gold">como un pro</span>
             </h1>
 
@@ -139,7 +139,7 @@
                     </span>
                     <span class="h-2 w-2 rounded-full bg-slate-300"></span>
                     <span class="flex items-center gap-3 font-display text-sm font-bold uppercase tracking-widest text-slate-600">
-                        <i class="fa-solid fa-trophy text-brand-gold"></i> Torneos y temporadas
+                        <i class="fa-solid fa-trophy text-brand-gold"></i> Olimpiadas y temporadas
                     </span>
                     <span class="h-2 w-2 rounded-full bg-slate-300"></span>
                     <span class="flex items-center gap-3 font-display text-sm font-bold uppercase tracking-widest text-brand-primary">
@@ -170,7 +170,7 @@
                 <span class="text-brand-primary">en un solo lugar</span>
             </h2>
             <p class="mx-auto max-w-2xl text-lg font-light text-slate-500">
-                Desde la creación del torneo hasta el reporte final, con un solo modelo para todos los deportes: nada de sistemas separados por disciplina.
+                Desde la creación de la olimpiada hasta el reporte final, con un solo modelo para todos los deportes: nada de sistemas separados por disciplina.
             </p>
         </div>
 
@@ -334,9 +334,9 @@
                     </div>
                     <div class="text-center md:text-left">
                         <h3 class="mb-2 font-display text-2xl font-bold text-slate-900">Administrador</h3>
-                        <p class="mb-4 text-slate-600">Crea los torneos y les asigna organizador, crea las cuentas de usuario y mantiene los catálogos (deportes, disciplinas, roles). Tiene acceso a todos los módulos.</p>
+                        <p class="mb-4 text-slate-600">Crea las olimpiadas y les asigna organizador, crea las cuentas de usuario y mantiene los catálogos (deportes, disciplinas, roles). Tiene acceso a todos los módulos.</p>
                         <div class="flex flex-wrap justify-center gap-2 md:justify-start">
-                            <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Crear torneos</span>
+                            <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Crear olimpiadas</span>
                             <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Asignar organizador</span>
                             <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Crear cuentas</span>
                         </div>
@@ -349,7 +349,7 @@
                     </div>
                     <div class="text-center md:text-left">
                         <h3 class="mb-2 font-display text-2xl font-bold text-slate-900">Organizador</h3>
-                        <p class="mb-4 text-slate-600">Gestiona los torneos que le asignaron: crea sus temporadas, registra los equipos con su delegado, inscribe equipos, programa partidos, carga resultados y genera los reportes.</p>
+                        <p class="mb-4 text-slate-600">Gestiona las olimpiadas que le asignaron: crea sus temporadas, registra los equipos con su delegado, inscribe equipos, programa partidos, carga resultados y genera los reportes.</p>
                         <div class="flex flex-wrap justify-center gap-2 md:justify-start">
                             <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Temporadas</span>
                             <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"><i class="fa-solid fa-check mr-1 text-brand-primary"></i> Equipos e inscripciones</span>
@@ -380,7 +380,7 @@
         <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Cg%3E%3C/svg%3E')] opacity-10"></div>
 
         <div class="relative z-10 mx-auto grid max-w-6xl grid-cols-2 gap-8 md:grid-cols-4">
-            @foreach ([['tournaments', 'Torneos'], ['teams', 'Equipos'], ['players', 'Jugadores'], ['matches', 'Partidos jugados']] as $i => [$key, $label])
+            @foreach ([['gamesEditions', 'Olimpiadas'], ['teams', 'Equipos'], ['players', 'Jugadores'], ['matches', 'Partidos jugados']] as $i => [$key, $label])
                 <div class="reveal {{ $i ? 'delay-'.($i * 100) : '' }} text-center">
                     <div class="stat-num mb-2 font-display text-5xl font-black text-white drop-shadow-md md:text-6xl" data-target="{{ $stats[$key] }}">{{ number_format($stats[$key]) }}</div>
                     <div class="text-xs font-bold uppercase tracking-widest text-white/80 md:text-sm">{{ $label }}</div>
@@ -440,7 +440,7 @@
                 ¿Listo para el <span class="text-brand-primary">pitazo inicial?</span>
             </h2>
             <p class="mb-10 text-xl font-light text-slate-600">
-                Sigue los resultados de tu torneo o ingresa al panel para gestionarlo.
+                Sigue los resultados de tu olimpiada o ingresa al panel para gestionarla.
             </p>
 
             <div class="flex flex-col justify-center gap-4 sm:flex-row">

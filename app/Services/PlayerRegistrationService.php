@@ -61,7 +61,7 @@ class PlayerRegistrationService
      * Player es un catalogo global: el alcance no es un where directo sino
      * via su roster: es visible si tiene al menos un convocado visible en
      * /planteles (SeasonTeamPlayerService::scopeVisibleTo(): organizador ->
-     * torneo suyo, delegado -> delegado EFECTIVO, union si tiene ambos).
+     * olimpiada suya, delegado -> delegado EFECTIVO, union si tiene ambos).
      *   - Admin: todos.
      *   - Organizador o delegado: tambien los que el mismo creo
      *     (players.created_by) y aun no tienen roster; sin esto el delegado

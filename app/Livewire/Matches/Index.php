@@ -343,7 +343,7 @@ class Index extends Component
             ->when(ctype_digit($this->matchdayFilter), fn ($q) => $q->where('matchday_id', (int) $this->matchdayFilter))
             ->when(MatchStatus::tryFrom($this->matchStatusFilter), fn ($q, $s) => $q->where('status', $s->value))
             ->with([
-                'season:id,name,tournament_id,sport_id', 'season.tournament:id,name,organizer_id', 'season.sport:id,name,format_type',
+                'season:id,name,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'season.sport:id,name,format_type',
                 'matchday:id,name', 'discipline:id,name,format_type', 'venue:id,name',
                 'participants' => fn ($q) => $q->orderByRaw("FIELD(side, 'home', 'away')")->orderBy('id')
                     ->with(['participant' => fn (MorphTo $m) => $m->morphWith([

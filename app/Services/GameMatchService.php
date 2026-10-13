@@ -54,7 +54,7 @@ class GameMatchService
      */
     public function register(array $data, array $participants, User $actor): GameMatch
     {
-        $matchday = Matchday::with('season.tournament', 'season.sport')->findOrFail($data['matchday_id']);
+        $matchday = Matchday::with('season.gamesEdition', 'season.sport')->findOrFail($data['matchday_id']);
         $season = $matchday->season;
 
         $this->ensureCanSchedule($season, $actor);
@@ -74,7 +74,7 @@ class GameMatchService
 
     public function update(GameMatch $match, array $data, array $participants, User $actor): GameMatch
     {
-        $match->load('season.tournament', 'season.sport');
+        $match->load('season.gamesEdition', 'season.sport');
         $season = $match->season;
         $this->ensureCanSchedule($season, $actor);
 
@@ -159,9 +159,9 @@ class GameMatchService
     /**
      * Partidos que $actor ve en /partidos y /resultados (union si tiene
      * varios roles). Solo lectura para el delegado: escribir sigue siendo
-     * SeasonAccess::manages() (organizador del torneo o admin).
+     * SeasonAccess::manages() (organizador de la olimpiada o admin).
      *   - Admin: todos.
-     *   - Organizador: los de temporadas de un torneo suyo.
+     *   - Organizador: los de temporadas de una olimpiada suya.
      *   - Delegado: aquellos donde participa su equipo, como equipo
      *     (season_team) o con jugadores de su plantel (season_team_player,
      *     individual/ajedrez). "Su equipo" = inscripciones visibles segun
@@ -185,7 +185,7 @@ class GameMatchService
 
         return $query->where(function ($q) use ($actor, $isOrganizer, $isDelegate, $seasonTeams) {
             if ($isOrganizer) {
-                $q->orWhereHas('season.tournament', fn ($t) => $t->where('organizer_id', $actor->id));
+                $q->orWhereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id));
             }
 
             if ($isDelegate) {
@@ -205,15 +205,15 @@ class GameMatchService
 
     /**
      * Temporadas para el filtro de /partidos y /resultados: admin todas;
-     * organizador las de sus torneos (tengan o no partidos); delegado las
+     * organizador las de sus olimpiadas (tengan o no partidos); delegado las
      * que tienen algun partido visible para el.
      */
     public function visibleSeasons(User $actor): Collection
     {
         return Season::query()
-            ->with(['tournament:id,name,organizer_id', 'sport:id,name,format_type'])
+            ->with(['gamesEdition:id,name,organizer_id', 'sport:id,name,format_type'])
             ->unless($actor->hasRole('admin'), fn ($q) => $q->where(fn ($q) => $q
-                ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('tournament', fn ($t) => $t->where('organizer_id', $actor->id)))
+                ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id)))
                 ->orWhereHas('matches', fn ($m) => $this->scopeVisibleTo($m, $actor))))
             ->orderByDesc('start_date')
             ->get();
@@ -263,7 +263,7 @@ class GameMatchService
     private function ensureCanSchedule(Season $season, User $actor): void
     {
         if (! SeasonAccess::manages($actor, $season)) {
-            throw new AuthorizationException('Solo el organizador del torneo gestiona los partidos de esta temporada.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona los partidos de esta temporada.');
         }
 
         if ($season->status === SeasonStatus::Closed) {

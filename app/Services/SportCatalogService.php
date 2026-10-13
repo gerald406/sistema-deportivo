@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 /**
  * CRUD de Sport y Discipline. Ambos son catalogos independientes (Sport)
  * o casi-independientes (Discipline solo depende de Sport), por eso se
- * implementan antes que Tournament/Season, que dependen de estos.
+ * implementan antes que GamesEdition/Season, que dependen de estos.
  */
 class SportCatalogService
 {

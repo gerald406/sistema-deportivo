@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Temporadas</h1>
-            <p class="text-sm text-gray-500">Cada temporada es un deporte dentro de un torneo, con sus fases de puntaje.</p>
+            <p class="text-sm text-gray-500">Cada temporada es un deporte dentro de una olimpiada, con sus fases de puntaje.</p>
         </div>
 
         @can('create', \App\Models\Season::class)
@@ -22,11 +22,11 @@
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
-        <select wire:model.live="tournamentFilter"
+        <select wire:model.live="gamesEditionFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todos los torneos</option>
-            @foreach ($this->tournamentFilterOptions() as $tournament)
-                <option value="{{ $tournament->id }}">{{ $tournament->name }}</option>
+            <option value="">Todas las olimpiadas</option>
+            @foreach ($this->gamesEditionFilterOptions() as $gamesEdition)
+                <option value="{{ $gamesEdition->id }}">{{ $gamesEdition->name }}</option>
             @endforeach
         </select>
 
@@ -62,7 +62,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <x-sortable-th field="name" label="Temporada" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Torneo / Deporte</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Olimpiada / Deporte</th>
                         <x-sortable-th field="start_date" label="Inicio" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="end_date" label="Fin" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="season_teams_count" label="Equipos" :sort-field="$sortField" :sort-direction="$sortDirection" />
@@ -78,13 +78,10 @@
                                 <p class="font-medium text-gray-900">{{ $season->name }}</p>
                                 <p class="text-xs text-gray-400">
                                     {{ $season->scoring_configs_count }} {{ Str::plural('fase', $season->scoring_configs_count) }} de puntaje
-                                    @if ($season->gamesEdition)
-                                        · <i class="fa-solid fa-medal"></i> {{ $season->gamesEdition->name }}
-                                    @endif
                                 </p>
                             </td>
                             <td class="px-4 py-3 text-gray-600">
-                                <p>{{ $season->tournament->name }}</p>
+                                <p>{{ $season->gamesEdition->name }}</p>
                                 <p class="text-xs text-gray-400">{{ $season->sport->name }}</p>
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $season->start_date?->format('d/m/Y') ?? '—' }}</td>
@@ -144,15 +141,15 @@
             <form wire:submit="save" class="mt-4 space-y-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Torneo</label>
-                        <select wire:model="form.tournament_id"
+                        <label class="block text-sm font-medium text-gray-700">Olimpiada</label>
+                        <select wire:model="form.games_edition_id"
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Selecciona un torneo</option>
-                            @foreach ($this->tournamentOptions() as $tournament)
-                                <option value="{{ $tournament->id }}">{{ $tournament->name }}{{ $tournament->is_active ? '' : ' (inactivo)' }}</option>
+                            <option value="">Selecciona una olimpiada</option>
+                            @foreach ($this->gamesEditionOptions() as $gamesEdition)
+                                <option value="{{ $gamesEdition->id }}">{{ $gamesEdition->name }}{{ $gamesEdition->is_active ? '' : ' (inactiva)' }}</option>
                             @endforeach
                         </select>
-                        @error('form.tournament_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        @error('form.games_edition_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Deporte</label>
@@ -197,18 +194,6 @@
                         </select>
                         @error('form.status') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Edición olímpica <span class="text-gray-400">(opcional)</span></label>
-                    <select wire:model="form.games_edition_id"
-                            class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">No pertenece a una edición</option>
-                        @foreach ($this->editionOptions() as $edition)
-                            <option value="{{ $edition->id }}">{{ $edition->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('form.games_edition_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 {{-- Sub-formulario: fases de puntaje (ScoringConfig) --}}

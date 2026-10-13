@@ -26,7 +26,7 @@
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="">Todas las temporadas</option>
             @foreach ($filterSeasons as $season)
-                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }}</option>
+                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
         </select>
 
@@ -94,7 +94,7 @@
                             </td>
                             <td class="px-4 py-3 text-gray-600">
                                 <p>{{ $match->season->name }} · {{ $match->matchday->name }}</p>
-                                <p class="text-xs text-gray-400">{{ $match->season->tournament->name }} · {{ $match->season->sport->name }}</p>
+                                <p class="text-xs text-gray-400">{{ $match->season->gamesEdition->name }} · {{ $match->season->sport->name }}</p>
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $match->round_type->label() }}</td>
                             <td class="px-4 py-3 text-gray-600">{{ $match->venue?->name ?? '—' }}</td>
@@ -151,13 +151,13 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Temporada</label>
                         @if ($editingId)
-                            <p class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">{{ $season?->tournament->name }} — {{ $season?->name }}</p>
+                            <p class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">{{ $season?->gamesEdition->name }} — {{ $season?->name }}</p>
                         @else
                             <select wire:model.live="form.season_id"
                                     class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="">Selecciona una temporada</option>
                                 @foreach ($this->seasonOptions() as $option)
-                                    <option value="{{ $option->id }}">{{ $option->tournament->name }} — {{ $option->name }} ({{ $option->sport->name }})</option>
+                                    <option value="{{ $option->id }}">{{ $option->gamesEdition->name }} — {{ $option->name }} ({{ $option->sport->name }})</option>
                                 @endforeach
                             </select>
                         @endif

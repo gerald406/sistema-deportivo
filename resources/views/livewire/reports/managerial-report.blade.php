@@ -22,8 +22,8 @@
                 <select wire:model.live="seasonId" id="season"
                         class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     <option value="">-- Seleccione una temporada --</option>
-                    @foreach ($this->seasons()->groupBy('tournament.name') as $tournamentName => $seasons)
-                        <optgroup label="{{ $tournamentName }}">
+                    @foreach ($this->seasons()->groupBy('gamesEdition.name') as $gamesEditionName => $seasons)
+                        <optgroup label="{{ $gamesEditionName }}">
                             @foreach ($seasons as $season)
                                 <option value="{{ $season->id }}">{{ $season->name }} · {{ $season->sport->name }} ({{ $season->status->label() }})</option>
                             @endforeach

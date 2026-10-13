@@ -254,7 +254,7 @@
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <option value="">Selecciona un equipo</option>
                             @foreach ($this->manageableSeasonTeams() as $st)
-                                <option value="{{ $st->id }}">{{ $st->team->name }} — {{ $st->season->tournament->name }} / {{ $st->season->name }}</option>
+                                <option value="{{ $st->id }}">{{ $st->team->name }} — {{ $st->season->gamesEdition->name }} / {{ $st->season->name }}</option>
                             @endforeach
                         </select>
                         @error('form.season_team_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror

@@ -347,7 +347,7 @@ body {
                 ══════════════════════════════════════ --}}
                 <div class="hdr">
                     <div class="hdr-app">{{ config('app.name') }}</div>
-                    <div class="hdr-champ">{{ $tournament->name }} · {{ $season->name }}</div>
+                    <div class="hdr-champ">{{ $gamesEdition->name }} · {{ $season->name }}</div>
                 </div>
 
                 <div class="bar-gold"></div>

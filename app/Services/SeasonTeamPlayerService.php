@@ -38,10 +38,10 @@ class SeasonTeamPlayerService
      */
     public function register(array $data, User $actor): SeasonTeamPlayer
     {
-        $seasonTeam = SeasonTeam::with('season.tournament', 'category', 'team.delegate', 'delegate')->findOrFail($data['season_team_id']);
+        $seasonTeam = SeasonTeam::with('season.gamesEdition', 'category', 'team.delegate', 'delegate')->findOrFail($data['season_team_id']);
 
         if (! SeasonTeamPlayerPolicy::managesSeasonTeam($actor, $seasonTeam)) {
-            throw new AuthorizationException('Solo el delegado del equipo o el organizador del torneo gestionan este plantel.');
+            throw new AuthorizationException('Solo el delegado del equipo o el organizador de la olimpiada gestionan este plantel.');
         }
 
         $player = Player::findOrFail($data['player_id']);
@@ -162,7 +162,7 @@ class SeasonTeamPlayerService
     public function seasonTeamsFor(User $actor): Collection
     {
         return SeasonTeam::query()
-            ->with(['team:id,name,delegate_id', 'season:id,name,status,tournament_id,sport_id', 'season.tournament:id,name,organizer_id', 'delegate:id'])
+            ->with(['team:id,name,delegate_id', 'season:id,name,status,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'delegate:id'])
             ->whereHas('season', fn ($q) => $q->where('status', '!=', SeasonStatus::Closed->value))
             ->get()
             ->filter(fn (SeasonTeam $st) => SeasonTeamPlayerPolicy::managesSeasonTeam($actor, $st))

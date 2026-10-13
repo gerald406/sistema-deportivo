@@ -17,7 +17,7 @@
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="">Todas las temporadas</option>
             @foreach ($filterSeasons as $season)
-                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }}</option>
+                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
         </select>
 

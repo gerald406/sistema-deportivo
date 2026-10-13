@@ -244,7 +244,7 @@ class Index extends Component
             ->with([
                 'player:id,first_name,last_name,dni,birth_date,photo_path', 'position:id,name',
                 'seasonTeam:id,season_id,team_id,delegate_id,category_id', 'seasonTeam.team:id,name,delegate_id',
-                'seasonTeam.season:id,name,status,tournament_id', 'seasonTeam.season.tournament:id,name,organizer_id',
+                'seasonTeam.season:id,name,status,games_edition_id', 'seasonTeam.season.gamesEdition:id,name,organizer_id',
                 'seasonTeam.delegate:id', 'seasonTeam.team.delegate:id',
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder())
@@ -273,7 +273,7 @@ class Index extends Component
 
     /**
      * Ids que llegan del navegador se buscan acotados al alcance del
-     * usuario (scopeVisibleTo): un convocado de otro torneo/equipo da 404
+     * usuario (scopeVisibleTo): un convocado de otra olimpiada/equipo da 404
      * antes de llegar a la Policy.
      */
     private function findVisibleEntry(int $id): SeasonTeamPlayer

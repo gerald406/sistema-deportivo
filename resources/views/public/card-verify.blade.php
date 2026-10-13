@@ -38,13 +38,13 @@
             </div>
         @endif
 
-        {{-- ── Cabecera oscura con torneo y temporada ─────────── --}}
+        {{-- ── Cabecera oscura con olimpiada y temporada ─────────── --}}
         <div class="bg-slate-800 px-5 py-4 text-center text-white">
             <p class="mb-1 text-xs font-bold uppercase tracking-widest text-blue-300">
                 <i class="fa-solid fa-trophy mr-1"></i>
                 {{ config('app.name') }}
             </p>
-            <p class="text-sm font-semibold text-white">{{ $tournament->name }}</p>
+            <p class="text-sm font-semibold text-white">{{ $gamesEdition->name }}</p>
             <p class="text-xs text-slate-300">{{ $season->name }}</p>
         </div>
 

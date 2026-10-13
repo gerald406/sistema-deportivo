@@ -202,13 +202,13 @@ class Index extends Component
             ->addSelect(['player_last_name' => Player::select('players.last_name')
                 ->join('season_team_player', 'season_team_player.player_id', '=', 'players.id')
                 ->whereColumn('season_team_player.id', 'suspensions.season_team_player_id')])
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->when($term !== '', fn ($q) => $q->whereHas('seasonTeamPlayer.player', fn ($p) => $p->where('last_name', 'like', "%{$term}%")->orWhere('first_name', 'like', "%{$term}%")))
             ->when(ctype_digit($this->seasonFilter), fn ($q) => $q->where('season_id', (int) $this->seasonFilter))
             ->when($this->servedFilter === 'pending', fn ($q) => $q->where('is_served', false))
             ->when($this->servedFilter === 'served', fn ($q) => $q->where('is_served', true))
             ->with([
-                'season:id,name,tournament_id', 'season.tournament:id,name,organizer_id',
+                'season:id,name,games_edition_id', 'season.gamesEdition:id,name,organizer_id',
                 'seasonTeamPlayer:id,season_team_id,player_id,status', 'seasonTeamPlayer.player:id,first_name,last_name', 'seasonTeamPlayer.seasonTeam.team:id,name',
                 'match:id,matchday_id,scheduled_at', 'match.matchday:id,name',
             ])

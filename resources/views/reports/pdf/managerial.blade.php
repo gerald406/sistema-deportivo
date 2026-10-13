@@ -15,7 +15,7 @@
     datos (ManagerialReportService): el formato efectivo de los partidos
     (discipline.format_type ?? sport.format_type) y si se juega por sets.
 
-    Variables: $tournament, $season, $organizer, $scoring, $generatedAt,
+    Variables: $gamesEdition, $season, $organizer, $scoring, $generatedAt,
     $lastMatchday, $lastResults, $nextMatchday, $nextGames, $showStandings,
     $standings, $standingColumns, $showScorers, $topScorers, $showSuspensions, $suspensions, $showYellows,
     $yellowCardRisks.
@@ -24,7 +24,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Reporte Gerencial - {{ $tournament->name }} - {{ $season->name }}</title>
+    <title>Reporte Gerencial - {{ $gamesEdition->name }} - {{ $season->name }}</title>
     <style>
         @page {
             margin-top: 1.5cm;
@@ -207,7 +207,7 @@
 <body>
 
     <div class="footer">
-        {{ mb_strtoupper(config('app.name')) }} &bull; Reporte Gerencial &bull; {{ $tournament->name }} &bull; {{ $season->name }} &bull;
+        {{ mb_strtoupper(config('app.name')) }} &bull; Reporte Gerencial &bull; {{ $gamesEdition->name }} &bull; {{ $season->name }} &bull;
         Generado: {{ $generatedAt }} &bull; Página <span class="page-number"></span>
     </div>
 
@@ -221,8 +221,8 @@
     <div class="info-bar">
         <table>
             <tr>
-                <td class="label" style="width: 120px;">Torneo:</td>
-                <td>{{ $tournament->name }} &mdash; {{ $season->name }} ({{ $season->sport->name }})</td>
+                <td class="label" style="width: 120px;">Olimpiada:</td>
+                <td>{{ $gamesEdition->name }} &mdash; {{ $season->name }} ({{ $season->sport->name }})</td>
                 <td class="label" style="text-align:right; width: 120px;">Fecha emisión:</td>
                 <td style="text-align:right;">{{ $generatedAt }}</td>
             </tr>
@@ -527,8 +527,8 @@
         <div class="signature-box">
             <div class="signature-line">
                 <div class="signature-name">{{ $organizer->name }}</div>
-                <div class="signature-role">Organizador del Torneo</div>
-                <div class="signature-role">{{ $tournament->name }}</div>
+                <div class="signature-role">Organizador de la Olimpiada</div>
+                <div class="signature-role">{{ $gamesEdition->name }}</div>
             </div>
         </div>
     </div>

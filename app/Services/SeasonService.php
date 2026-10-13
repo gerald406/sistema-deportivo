@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Season;
-use App\Models\Tournament;
+use App\Models\GamesEdition;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -27,12 +28,12 @@ use Illuminate\Validation\ValidationException;
 class SeasonService
 {
     /**
-     * @param array{tournament_id: int, sport_id: int, games_edition_id: int|null, name: string, start_date: string|null, end_date: string|null, status: string, is_active: bool} $data
+     * @param array{games_edition_id: int, sport_id: int, name: string, start_date: string|null, end_date: string|null, status: string, is_active: bool} $data
      * @param array<int, array{id?: int|string|null, phase_name: string, pts_win: int, pts_draw: int, pts_loss: int, pts_walkover: int}> $phases
      */
     public function register(array $data, array $phases, User $actor): Season
     {
-        $this->ensureCanUseTournament((int) $data['tournament_id'], $actor);
+        $this->ensureCanUseEdition((int) $data['games_edition_id'], $actor);
         $this->ensureHasPhases($phases);
 
         return DB::transaction(function () use ($data, $phases) {
@@ -45,7 +46,7 @@ class SeasonService
 
     public function update(Season $season, array $data, array $phases, User $actor): Season
     {
-        $this->ensureCanUseTournament((int) $data['tournament_id'], $actor);
+        $this->ensureCanUseEdition((int) $data['games_edition_id'], $actor);
         $this->ensureHasPhases($phases);
 
         // Cambiar el deporte de una temporada que ya tiene equipos o
@@ -93,25 +94,25 @@ class SeasonService
     }
 
     /**
-     * Torneos en los que $actor puede crear/mover temporadas: el admin en
-     * cualquiera, el organizador solo en los suyos (misma regla que
-     * SeasonPolicy::update, que mira tournament.organizer_id).
+     * Olimpiadas en las que $actor puede crear/mover temporadas: el admin en
+     * cualquiera, el organizador solo en las suyas (misma regla que
+     * SeasonPolicy::update, que mira gamesEdition.organizer_id).
      */
-    public function tournamentsFor(User $actor)
+    public function editionsFor(User $actor): Collection
     {
-        return Tournament::query()
+        return GamesEdition::query()
             ->when(! $actor->hasRole('admin'), fn ($q) => $q->where('organizer_id', $actor->id))
             ->orderBy('name')
             ->get(['id', 'name', 'is_active']);
     }
 
-    private function ensureCanUseTournament(int $tournamentId, User $actor): void
+    private function ensureCanUseEdition(int $gamesEditionId, User $actor): void
     {
-        // SeasonPolicy::create no conoce el torneo destino: sin esto un
-        // organizador podria crear (o mover) temporadas en torneos ajenos
-        // mandando otro tournament_id desde el navegador.
-        if (! $this->tournamentsFor($actor)->contains('id', $tournamentId)) {
-            throw new AuthorizationException('Solo puedes gestionar temporadas de tus propios torneos.');
+        // SeasonPolicy::create no conoce la olimpiada destino: sin esto un
+        // organizador podria crear (o mover) temporadas en olimpiadas ajenas
+        // mandando otro games_edition_id desde el navegador.
+        if (! $this->editionsFor($actor)->contains('id', $gamesEditionId)) {
+            throw new AuthorizationException('Solo puedes gestionar temporadas de tus propias olimpiadas.');
         }
     }
 
@@ -173,7 +174,7 @@ class SeasonService
      * Temporadas que $actor ve en los reportes de solo lectura (/reportes),
      * union si tiene varios roles:
      *   - Admin: todas.
-     *   - Organizador: las de sus torneos.
+     *   - Organizador: las de sus olimpiadas.
      *   - Delegado: aquellas donde su equipo esta inscrito
      *     (SeasonTeamService::scopeVisibleTo(), delegado efectivo).
      *   - Cualquier otro: ninguna.
@@ -189,7 +190,7 @@ class SeasonService
         }
 
         return $query->where(fn ($q) => $q
-            ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('tournament', fn ($t) => $t->where('organizer_id', $actor->id)))
+            ->when($actor->hasRole('organizador'), fn ($q) => $q->orWhereHas('gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id)))
             ->orWhereHas('seasonTeams', fn ($st) => app(SeasonTeamService::class)->scopeVisibleTo($st, $actor)));
     }
 }

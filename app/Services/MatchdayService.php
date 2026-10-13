@@ -29,7 +29,7 @@ class MatchdayService
      */
     public function register(array $data, User $actor): Matchday
     {
-        $season = Season::with('tournament')->findOrFail($data['season_id']);
+        $season = Season::with('gamesEdition')->findOrFail($data['season_id']);
         $this->ensureCanSchedule($season, $actor);
         $this->ensureDatesWithinSeason($season, $data);
 
@@ -47,7 +47,7 @@ class MatchdayService
      */
     public function update(Matchday $matchday, array $data, User $actor): Matchday
     {
-        $matchday->load('season.tournament');
+        $matchday->load('season.gamesEdition');
         $this->ensureCanSchedule($matchday->season, $actor);
         $this->ensureDatesWithinSeason($matchday->season, $data);
 
@@ -91,7 +91,7 @@ class MatchdayService
     private function ensureCanSchedule(Season $season, User $actor): void
     {
         if (! SeasonAccess::manages($actor, $season)) {
-            throw new AuthorizationException('Solo el organizador del torneo gestiona las jornadas de esta temporada.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona las jornadas de esta temporada.');
         }
 
         if ($season->status === SeasonStatus::Closed) {

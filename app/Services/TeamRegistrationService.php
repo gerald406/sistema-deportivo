@@ -132,17 +132,17 @@ class TeamRegistrationService
     }
 
     /**
-     * Team no se relaciona directo con Tournament (un equipo puede estar
-     * inscrito en temporadas de varios torneos a la vez): es del organizador
+     * Team no se relaciona directo con GamesEdition (un equipo puede estar
+     * inscrito en temporadas de varias olimpiadas a la vez): es del organizador
      * si tiene al menos una inscripcion (season_team) en una temporada de
-     * un torneo suyo, o si el mismo lo creo (teams.created_by) y aun no lo
+     * una olimpiada suya, o si el mismo lo creo (teams.created_by) y aun no lo
      * inscribe.
      */
     private function whereOrganizerScope(Builder $query, User $actor): Builder
     {
         return $query->where(fn ($q) => $q
             ->where('teams.created_by', $actor->id)
-            ->orWhereHas('seasonTeams.season.tournament', fn ($t) => $t->where('organizer_id', $actor->id)));
+            ->orWhereHas('seasonTeams.season.gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id)));
     }
 
     /**

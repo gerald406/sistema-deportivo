@@ -67,7 +67,7 @@ class UserAccountService
     /**
      * Salvaguardas antes de borrar (sin soft deletes):
      *   - no dejar el sistema sin ningun admin.
-     *   - FKs RESTRICT: organizer_id de Tournament, user_id de
+     *   - FKs RESTRICT: organizer_id de GamesEdition, user_id de
      *     MatchReopenLog (auditoria).
      *   - delegate_id de Team / SeasonTeam: en la BD son SET NULL, pero
      *     se bloquea igual para no dejar equipos sin delegado en silencio;
@@ -89,8 +89,8 @@ class UserAccountService
             return 'No se puede eliminar: es el único administrador del sistema.';
         }
 
-        if ($user->tournaments()->exists()) {
-            return 'No se puede eliminar: el usuario organiza torneos existentes.';
+        if ($user->gamesEditions()->exists()) {
+            return 'No se puede eliminar: el usuario organiza olimpiadas existentes.';
         }
 
         if ($user->delegatedTeams()->exists() || $user->delegatedSeasonTeams()->exists()) {

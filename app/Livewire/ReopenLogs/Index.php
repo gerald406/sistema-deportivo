@@ -112,7 +112,7 @@ class Index extends Component
             ->when(strtotime($this->dateTo) !== false && $this->dateTo !== '', fn ($q) => $q->whereDate('created_at', '<=', $this->dateTo))
             ->with([
                 'user:id,name', 'match:id,season_id,matchday_id,status', 'match.matchday:id,name',
-                'match.season:id,name,tournament_id', 'match.season.tournament:id,name',
+                'match.season:id,name,games_edition_id', 'match.season.gamesEdition:id,name',
                 'match.participants' => ParticipantLabel::eagerLoad(),
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder())
@@ -131,7 +131,7 @@ class Index extends Component
 
     /**
      * Visibilidad: admin todo; organizador solo reaperturas de partidos de
-     * sus torneos. Un log cuyo partido ya se borro (match_id NULL por SET
+     * sus olimpiadas. Un log cuyo partido ya se borro (match_id NULL por SET
      * NULL) solo lo ve el admin.
      */
     private function baseQuery()
@@ -139,6 +139,6 @@ class Index extends Component
         $user = auth()->user();
 
         return MatchReopenLog::query()
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('match.season.tournament', fn ($t) => $t->where('organizer_id', $user->id)));
+            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('match.season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)));
     }
 }

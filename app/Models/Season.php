@@ -15,9 +15,8 @@ class Season extends Model
     use HasFactory;
 
     protected $fillable = [
-        'tournament_id',
-        'sport_id',
         'games_edition_id',
+        'sport_id',
         'name',
         'start_date',
         'end_date',
@@ -35,19 +34,15 @@ class Season extends Model
         ];
     }
 
-    public function tournament(): BelongsTo
+    /** La olimpiada a la que pertenece la competencia (obligatoria). */
+    public function gamesEdition(): BelongsTo
     {
-        return $this->belongsTo(Tournament::class);
+        return $this->belongsTo(GamesEdition::class);
     }
 
     public function sport(): BelongsTo
     {
         return $this->belongsTo(Sport::class);
-    }
-
-    public function gamesEdition(): BelongsTo
-    {
-        return $this->belongsTo(GamesEdition::class);
     }
 
     public function scoringConfigs(): HasMany

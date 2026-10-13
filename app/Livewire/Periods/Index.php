@@ -148,7 +148,7 @@ class Index extends Component
         $term = trim($this->search);
 
         $query = $matches->queryByFormat(SportFormatType::HeadToHead)
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->when($term !== '', fn ($q) => $q->whereHas('participants', fn ($p) => $p->whereHasMorph('participant', [SeasonTeam::class, SeasonTeamPlayer::class],
                 fn ($m, string $type) => $type === SeasonTeam::class
                     ? $m->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$term}%"))
@@ -156,7 +156,7 @@ class Index extends Component
             ->when(ctype_digit($this->seasonFilter), fn ($q) => $q->where('season_id', (int) $this->seasonFilter))
             ->when(MatchStatus::tryFrom($this->matchStatusFilter), fn ($q, $s) => $q->where('status', $s->value))
             ->with([
-                'season:id,name,tournament_id,sport_id', 'season.tournament:id,name,organizer_id', 'season.sport:id,name',
+                'season:id,name,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'season.sport:id,name',
                 'matchday:id,name', 'participants' => ParticipantLabel::eagerLoad(),
                 'periods' => fn ($q) => $q->orderBy('period_number'),
             ])

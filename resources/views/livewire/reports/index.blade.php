@@ -11,7 +11,7 @@
                 <h2 class="text-base font-semibold text-gray-900">Tabla de posiciones</h2>
                 @if ($season && $scoring)
                     <p class="text-xs text-gray-500">
-                        {{ $season->tournament->name }} · {{ $season->sport->name }} — {{ $scoring->phase_name }}:
+                        {{ $season->gamesEdition->name }} · {{ $season->sport->name }} — {{ $scoring->phase_name }}:
                         victoria {{ $scoring->pts_win }}, empate {{ $scoring->pts_draw }}, derrota {{ $scoring->pts_loss }}, walkover {{ $scoring->pts_walkover }}.
                         Solo partidos de fase regular.
                     </p>
@@ -20,7 +20,7 @@
             <select wire:model.live="seasonId"
                     class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                 @forelse ($this->seasonOptions() as $option)
-                    <option value="{{ $option->id }}">{{ $option->tournament->name }} — {{ $option->name }} ({{ $option->sport->name }})</option>
+                    <option value="{{ $option->id }}">{{ $option->gamesEdition->name }} — {{ $option->name }} ({{ $option->sport->name }})</option>
                 @empty
                     <option value="">Sin tablas calculadas</option>
                 @endforelse

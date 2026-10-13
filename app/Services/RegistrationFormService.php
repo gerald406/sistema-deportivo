@@ -10,7 +10,7 @@ use App\Models\SeasonTeamPlayer;
  * Datos de la Ficha de Inscripcion (reports.pdf.jugador-inscripcion).
  * Equivale a PlayerRegistrationController::prepareRegistrationData() de la
  * referencia, pero fuera del Controller y sobre la inscripcion
- * (season_team_player): equipo, temporada, torneo, organizador y delegado
+ * (season_team_player): equipo, temporada, olimpiada, organizador y delegado
  * EFECTIVO de esa temporada. Reusa el numero de carnet de PlayerCardService
  * y las imagenes de PdfImageService (el helper imageToBase64 compartido).
  */
@@ -21,7 +21,7 @@ class RegistrationFormService
         'seasonTeam.team.delegate',
         'seasonTeam.delegate',
         'seasonTeam.season.sport',
-        'seasonTeam.season.tournament.organizer',
+        'seasonTeam.season.gamesEdition.organizer',
     ];
 
     public function __construct(
@@ -38,15 +38,15 @@ class RegistrationFormService
         $entry->loadMissing(self::RELATIONS);
 
         $seasonTeam = $entry->seasonTeam;
-        $tournament = $seasonTeam->season->tournament;
+        $gamesEdition = $seasonTeam->season->gamesEdition;
 
         return [
             'entry' => $entry,
             'player' => $entry->player,
             'team' => $seasonTeam->team,
             'season' => $seasonTeam->season,
-            'tournament' => $tournament,
-            'organizer' => $tournament->organizer,
+            'gamesEdition' => $gamesEdition,
+            'organizer' => $gamesEdition->organizer,
             'delegateName' => $seasonTeam->effectiveDelegate()?->name ?? '',
             // User no tiene documento de identidad: la vista muestra "Sin registrar".
             'delegateDni' => '',
@@ -54,7 +54,7 @@ class RegistrationFormService
             'cardNumber' => $this->cards->cardNumber($entry),
             'playerPhotoBase64' => $this->images->toBase64($entry->player->photo_path),
             'teamLogoBase64' => $this->images->toBase64($seasonTeam->team->logo_path),
-            'tournamentLogoBase64' => $this->images->toBase64($tournament->logo),
+            'gamesEditionLogoBase64' => $this->images->toBase64($gamesEdition->logo),
             'organizerSignatureBase64' => null,
         ];
     }

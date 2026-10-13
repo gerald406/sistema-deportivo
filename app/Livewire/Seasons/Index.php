@@ -10,7 +10,6 @@ use App\Livewire\Concerns\Sortable;
 use App\Models\GamesEdition;
 use App\Models\Season;
 use App\Models\Sport;
-use App\Models\Tournament;
 use App\Services\SeasonService;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -27,7 +26,7 @@ class Index extends Component
 
     public string $search = '';
 
-    public string $tournamentFilter = '';
+    public string $gamesEditionFilter = '';
 
     public string $sportFilter = '';
 
@@ -45,9 +44,8 @@ class Index extends Component
     public ?int $editingId = null;
 
     public array $form = [
-        'tournament_id' => '',
-        'sport_id' => '',
         'games_edition_id' => '',
+        'sport_id' => '',
         'name' => '',
         'start_date' => '',
         'end_date' => '',
@@ -74,7 +72,7 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function updatingTournamentFilter(): void
+    public function updatingGamesEditionFilter(): void
     {
         $this->resetPage();
     }
@@ -99,30 +97,22 @@ class Index extends Component
         return SeasonStatus::cases();
     }
 
-    /** Torneos para el selector del formulario: admin todos, organizador los suyos. */
-    public function tournamentOptions(): Collection
+    /** Olimpiadas para el selector del formulario: admin todas, organizador las suyas. */
+    public function gamesEditionOptions(): Collection
     {
-        return app(SeasonService::class)->tournamentsFor(auth()->user());
+        return app(SeasonService::class)->editionsFor(auth()->user());
     }
 
-    /** Todos los torneos, para el filtro del listado (cualquier rol puede ver temporadas). */
-    public function tournamentFilterOptions(): Collection
+    /** Todas las olimpiadas, para el filtro del listado (cualquier rol puede ver temporadas). */
+    public function gamesEditionFilterOptions(): Collection
     {
-        return Tournament::orderBy('name')->get(['id', 'name']);
+        return GamesEdition::orderBy('name')->get(['id', 'name']);
     }
 
     public function sportOptions(): Collection
     {
         return Sport::where('is_active', true)
             ->when($this->form['sport_id'] !== '', fn ($q) => $q->orWhere('id', $this->form['sport_id']))
-            ->orderBy('name')
-            ->get(['id', 'name']);
-    }
-
-    public function editionOptions(): Collection
-    {
-        return GamesEdition::where('is_active', true)
-            ->when($this->form['games_edition_id'] !== '', fn ($q) => $q->orWhere('id', $this->form['games_edition_id']))
             ->orderBy('name')
             ->get(['id', 'name']);
     }
@@ -142,9 +132,8 @@ class Index extends Component
 
         $this->editingId = $season->id;
         $this->form = [
-            'tournament_id' => $season->tournament_id,
+            'games_edition_id' => $season->games_edition_id,
             'sport_id' => $season->sport_id,
-            'games_edition_id' => $season->games_edition_id ?? '',
             'name' => $season->name,
             'start_date' => $season->start_date?->format('Y-m-d') ?? '',
             'end_date' => $season->end_date?->format('Y-m-d') ?? '',
@@ -197,7 +186,7 @@ class Index extends Component
         $data = $validated['form'];
         $actor = auth()->user();
 
-        foreach (['games_edition_id', 'start_date', 'end_date'] as $field) {
+        foreach (['start_date', 'end_date'] as $field) {
             $data[$field] = in_array($data[$field], ['', null], true) ? null : $data[$field];
         }
 
@@ -241,11 +230,11 @@ class Index extends Component
     {
         $query = Season::query()
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
-            ->when(ctype_digit($this->tournamentFilter), fn ($q) => $q->where('tournament_id', (int) $this->tournamentFilter))
+            ->when(ctype_digit($this->gamesEditionFilter), fn ($q) => $q->where('games_edition_id', (int) $this->gamesEditionFilter))
             ->when(ctype_digit($this->sportFilter), fn ($q) => $q->where('sport_id', (int) $this->sportFilter))
             ->when(SeasonStatus::tryFrom($this->seasonStatusFilter), fn ($q, SeasonStatus $s) => $q->where('status', $s->value))
             ->withCount(['seasonTeams', 'scoringConfigs'])
-            ->with(['tournament:id,name,organizer_id', 'sport:id,name', 'gamesEdition:id,name'])
+            ->with(['gamesEdition:id,name,organizer_id', 'sport:id,name'])
             ->orderBy($this->sortColumn(), $this->sortOrder());
 
         return view('livewire.seasons.index', [
@@ -263,9 +252,8 @@ class Index extends Component
     {
         $this->editingId = null;
         $this->form = [
-            'tournament_id' => '',
-            'sport_id' => '',
             'games_edition_id' => '',
+            'sport_id' => '',
             'name' => '',
             'start_date' => '',
             'end_date' => '',
@@ -283,13 +271,12 @@ class Index extends Component
         $points = ['required', 'integer', 'between:-99,99'];
 
         return [
-            'form.tournament_id' => ['required', 'integer', Rule::exists('tournaments', 'id')],
+            'form.games_edition_id' => ['required', 'integer', Rule::exists('games_editions', 'id')],
             'form.sport_id' => ['required', 'integer', Rule::exists('sports', 'id')],
-            'form.games_edition_id' => ['nullable', 'integer', Rule::exists('games_editions', 'id')],
             'form.name' => [
                 'required', 'string', 'max:100',
                 Rule::unique('seasons', 'name')
-                    ->where('tournament_id', (int) $this->form['tournament_id'])
+                    ->where('games_edition_id', (int) $this->form['games_edition_id'])
                     ->ignore($this->editingId),
             ],
             'form.start_date' => ['nullable', 'date'],
@@ -309,9 +296,8 @@ class Index extends Component
     protected function validationAttributes(): array
     {
         return [
-            'form.tournament_id' => 'torneo',
+            'form.games_edition_id' => 'olimpiada',
             'form.sport_id' => 'deporte',
-            'form.games_edition_id' => 'edición',
             'form.name' => 'nombre',
             'form.start_date' => 'fecha de inicio',
             'form.end_date' => 'fecha de fin',

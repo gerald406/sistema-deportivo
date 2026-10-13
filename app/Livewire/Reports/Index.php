@@ -22,7 +22,7 @@ use Livewire\Component;
  * StandingService / MedalService; aqui no se escribe nada.
  *
  * Alcance por rol: temporadas via SeasonService::scopeVisibleTo()
- * (organizador: sus torneos; delegado: donde su equipo esta inscrito) y
+ * (organizador: sus olimpiadas; delegado: donde su equipo esta inscrito) y
  * ediciones via GamesEditionService::scopeVisibleTo(). La seleccion viene de
  * la URL (?temporada=, ?edicion=), por eso tambien se busca acotada.
  */
@@ -57,10 +57,10 @@ class Index extends Component
     public function seasonOptions(): Collection
     {
         return app(SeasonService::class)->scopeVisibleTo(Season::query(), auth()->user())
-            ->with('tournament:id,name', 'sport:id,name')
+            ->with('gamesEdition:id,name', 'sport:id,name')
             ->whereHas('standings')
             ->orderByRaw("FIELD(status, 'active', 'draft', 'closed')")->orderByDesc('start_date')
-            ->get(['id', 'name', 'status', 'tournament_id', 'sport_id']);
+            ->get(['id', 'name', 'status', 'games_edition_id', 'sport_id']);
     }
 
     public function editionOptions(): Collection
@@ -86,7 +86,7 @@ class Index extends Component
     private function validSeason(): ?Season
     {
         return ctype_digit($this->seasonId)
-            ? app(SeasonService::class)->scopeVisibleTo(Season::query(), auth()->user())->with('tournament:id,name', 'sport:id,name')->find($this->seasonId)
+            ? app(SeasonService::class)->scopeVisibleTo(Season::query(), auth()->user())->with('gamesEdition:id,name', 'sport:id,name')->find($this->seasonId)
             : null;
     }
 

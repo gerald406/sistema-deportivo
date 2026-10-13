@@ -26,7 +26,7 @@
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="">Todas las temporadas</option>
             @foreach ($filterSeasons as $season)
-                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }}</option>
+                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
         </select>
 
@@ -84,7 +84,7 @@
                                 <p>{{ $seasonTeam->season->name }}
                                     <span class="ml-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium {{ $seasonTeam->season->status->badgeClasses() }}">{{ $seasonTeam->season->status->label() }}</span>
                                 </p>
-                                <p class="text-xs text-gray-400">{{ $seasonTeam->season->tournament->name }} · {{ $seasonTeam->season->sport->name }}</p>
+                                <p class="text-xs text-gray-400">{{ $seasonTeam->season->gamesEdition->name }} · {{ $seasonTeam->season->sport->name }}</p>
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $seasonTeam->category?->name ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-600">
@@ -155,7 +155,7 @@
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <option value="">Selecciona una temporada</option>
                             @foreach ($this->seasonOptions() as $season)
-                                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }} ({{ $season->status->label() }})</option>
+                                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }} ({{ $season->status->label() }})</option>
                             @endforeach
                         </select>
                         @error('form.season_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror

@@ -7,7 +7,7 @@ namespace App\Livewire\Reports;
 use App\Models\Category;
 use App\Models\Season;
 use App\Models\SeasonTeam;
-use App\Models\Tournament;
+use App\Models\GamesEdition;
 use App\Services\SeasonTeamService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -21,11 +21,11 @@ use Livewire\Component;
  * pichanga/RosterReport sin el selector de deporte: aqui no hay tablas por
  * deporte, la Season ya sabe el suyo. El equipo se elige entre las
  * INSCRIPCIONES (season_team) de la temporada, porque Team es un catalogo
- * global sin torneo propio.
+ * global sin olimpiada propia.
  *
  * Alcance por rol: las opciones salen de las inscripciones que el usuario
  * ve en /inscripciones (SeasonTeamService::scopeVisibleTo()). El delegado
- * solo ve torneos/temporadas/categorias donde su equipo esta inscrito y
+ * solo ve olimpiadas/temporadas/categorias donde su equipo esta inscrito y
  * debe elegir su equipo (no hay "todos los equipos" para el).
  *
  * Solo arma la URL del PDF: RosterReportController la revalida
@@ -36,7 +36,7 @@ use Livewire\Component;
 #[Title('Padrón de Jugadores')]
 class RosterReport extends Component
 {
-    public string $tournamentId = '';
+    public string $gamesEditionId = '';
 
     public string $seasonId = '';
 
@@ -58,7 +58,7 @@ class RosterReport extends Component
         $this->showFilters = ! $this->showFilters;
     }
 
-    public function updatedTournamentId(): void
+    public function updatedGamesEditionId(): void
     {
         $this->seasonId = '';
         $this->categoryId = '';
@@ -77,14 +77,14 @@ class RosterReport extends Component
     }
 
     /**
-     * Admin: todos los torneos. Organizador: los suyos (organizer_id).
+     * Admin: todas las olimpiadas. Organizador: las suyas (organizer_id).
      * Delegado: aquellos con alguna inscripcion activa de su equipo.
      */
-    public function tournaments(): Collection
+    public function gamesEditions(): Collection
     {
         $user = auth()->user();
 
-        return Tournament::query()
+        return GamesEdition::query()
             ->unless($user->hasRole('admin'), fn ($q) => $q->where(fn ($q) => $q
                 ->when($user->hasRole('organizador'), fn ($q) => $q->orWhere('organizer_id', $user->id))
                 ->orWhereHas('seasons.seasonTeams', fn ($st) => $this->scopeVisibleSeasonTeams($st))))
@@ -92,16 +92,16 @@ class RosterReport extends Component
             ->get(['id', 'name', 'is_active', 'organizer_id']);
     }
 
-    /** Temporadas del torneo; si no lo gestiona, solo donde su equipo esta inscrito. */
+    /** Temporadas de la olimpiada; si no lo gestiona, solo donde su equipo esta inscrito. */
     public function seasons(): Collection
     {
-        $tournament = $this->selectedTournament();
+        $gamesEdition = $this->selectedGamesEdition();
 
-        return $tournament
-            ? $tournament->seasons()
-                ->unless($this->managesTournament($tournament), fn ($q) => $q->whereHas('seasonTeams', fn ($st) => $this->scopeVisibleSeasonTeams($st)))
+        return $gamesEdition
+            ? $gamesEdition->seasons()
+                ->unless($this->managesGamesEdition($gamesEdition), fn ($q) => $q->whereHas('seasonTeams', fn ($st) => $this->scopeVisibleSeasonTeams($st)))
                 ->orderByDesc('start_date')->orderBy('name')
-                ->get(['id', 'name', 'status', 'tournament_id'])
+                ->get(['id', 'name', 'status', 'games_edition_id'])
             : collect();
     }
 
@@ -145,7 +145,7 @@ class RosterReport extends Component
             : null;
     }
 
-    /** Padron de todos los equipos: solo admin u organizador del torneo. */
+    /** Padron de todos los equipos: solo admin u organizador de la olimpiada. */
     public function canPrintAll(): bool
     {
         $season = $this->selectedSeason();
@@ -185,19 +185,19 @@ class RosterReport extends Component
         return view('livewire.reports.roster-report');
     }
 
-    private function selectedTournament(): ?Tournament
+    private function selectedGamesEdition(): ?GamesEdition
     {
-        return ctype_digit($this->tournamentId)
-            ? $this->tournaments()->firstWhere('id', (int) $this->tournamentId)
+        return ctype_digit($this->gamesEditionId)
+            ? $this->gamesEditions()->firstWhere('id', (int) $this->gamesEditionId)
             : null;
     }
 
-    private function managesTournament(Tournament $tournament): bool
+    private function managesGamesEdition(GamesEdition $gamesEdition): bool
     {
         $user = auth()->user();
 
         return $user->hasRole('admin')
-            || ($user->hasRole('organizador') && $tournament->organizer_id === $user->id);
+            || ($user->hasRole('organizador') && $gamesEdition->organizer_id === $user->id);
     }
 
     /** Inscripciones activas dentro del alcance del usuario (misma regla que /inscripciones). */

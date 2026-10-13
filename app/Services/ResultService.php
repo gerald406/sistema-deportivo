@@ -62,7 +62,7 @@ class ResultService
      */
     public function close(GameMatch $match, array $input, User $actor): void
     {
-        $match->load('season.tournament', 'season.sport', 'discipline', 'participants');
+        $match->load('season.gamesEdition', 'season.sport', 'discipline', 'participants');
         $this->ensureCanManage($match, $actor);
 
         if ($match->status !== MatchStatus::Pending) {
@@ -86,7 +86,7 @@ class ResultService
 
     public function reopen(GameMatch $match, string $reason, User $actor): MatchReopenLog
     {
-        $match->load('season.tournament', 'participants', 'periods');
+        $match->load('season.gamesEdition', 'participants', 'periods');
 
         if (! Gate::forUser($actor)->allows('reopenMatches', $match->season)) {
             throw new AuthorizationException('No tienes permiso para reabrir partidos de esta temporada.');
@@ -296,7 +296,7 @@ class ResultService
     private function ensureCanManage(GameMatch $match, User $actor): void
     {
         if (! SeasonAccess::manages($actor, $match->season)) {
-            throw new AuthorizationException('Solo el organizador del torneo carga los resultados de este partido.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada carga los resultados de este partido.');
         }
 
         if ($match->season->status === SeasonStatus::Closed) {

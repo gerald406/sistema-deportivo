@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Smoke;
 
+use App\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\URL;
+use Tests\Concerns\BuildsCompetition;
 use Tests\Concerns\CreatesActors;
 use Tests\TestCase;
 
@@ -14,7 +17,7 @@ use Tests\TestCase;
  */
 class RoutesSmokeTest extends TestCase
 {
-    use CreatesActors, RefreshDatabase;
+    use BuildsCompetition, CreatesActors, RefreshDatabase;
 
     /** @return list<string> */
     private function adminRoutes(): array
@@ -23,7 +26,6 @@ class RoutesSmokeTest extends TestCase
             'dashboard',
             'teams.index',
             'players.index',
-            'tournaments.index',
             'seasons.index',
             'season-teams.index',
             'rosters.index',
@@ -66,10 +68,58 @@ class RoutesSmokeTest extends TestCase
         }
     }
 
+    /**
+     * Con una competencia en juego las vistas recorren filas reales: asi se
+     * detecta una relacion o variable mal nombrada que una tabla vacia
+     * esconderia. Se repite con cada rol porque los alcances por rol usan
+     * consultas distintas a las del admin.
+     */
+    public function test_every_screen_renders_with_data_for_each_role(): void
+    {
+        $data = $this->buildCompetition();
+        $delegate = $this->delegate();
+        Team::whereKey($data->homeTeam->id)->update(['delegate_id' => $delegate->id]);
+
+        $actors = ['admin' => $this->admin(), 'organizador' => $data->organizer, 'delegado' => $delegate];
+
+        foreach ($actors as $role => $actor) {
+            foreach ($this->adminRoutes() as $name) {
+                $status = $this->actingAs($actor)->get(route($name))->getStatusCode();
+
+                $this->assertContains($status, [200, 403], "La ruta {$name} devolvió {$status} para el rol {$role}.");
+            }
+        }
+    }
+
+    public function test_pdf_documents_render(): void
+    {
+        $data = $this->buildCompetition();
+        $admin = $this->admin();
+
+        $urls = [
+            'padrón' => route('reports.roster.pdf', ['season_id' => $data->season->id]),
+            'padrón de un equipo' => route('reports.roster.pdf', ['season_id' => $data->season->id, 'season_team_id' => $data->home->id]),
+            'reporte gerencial' => route('reports.managerial.pdf', ['season_id' => $data->season->id]),
+            'carnet' => route('cards.single', $data->homeEntry),
+            'ficha' => route('registrations.single', $data->homeEntry),
+            'fichas del equipo' => route('registrations.team', $data->home),
+        ];
+
+        foreach ($urls as $label => $url) {
+            $response = $this->actingAs($admin)->get($url);
+
+            $this->assertSame(200, $response->getStatusCode(), "El PDF «{$label}» devolvió {$response->getStatusCode()}.");
+            $this->assertStringContainsString('pdf', (string) $response->headers->get('content-type'));
+        }
+    }
+
     public function test_public_pages_load(): void
     {
+        $data = $this->buildCompetition();
+
         $this->get(route('home'))->assertOk();
-        $this->get(route('public.results'))->assertOk();
+        $this->get(route('public.results'))->assertOk()->assertSee($data->edition->name);
+        $this->get(URL::signedRoute('cards.verify', $data->homeEntry))->assertOk()->assertSee($data->edition->name);
     }
 
     public function test_delegate_cannot_open_admin_screens(): void

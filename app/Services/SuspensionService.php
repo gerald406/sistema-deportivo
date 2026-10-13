@@ -83,7 +83,7 @@ class SuspensionService
      */
     public function register(array $data, User $actor): Suspension
     {
-        $match = GameMatch::with('season.tournament')->findOrFail($data['match_id']);
+        $match = GameMatch::with('season.gamesEdition')->findOrFail($data['match_id']);
         $this->ensureCanManage($match, $actor);
         $this->ensureValid($match, $data);
 
@@ -106,7 +106,7 @@ class SuspensionService
     /** Jugador y partido de origen no cambian: solo motivo, fechas y cumplimiento. */
     public function update(Suspension $suspension, array $data, User $actor): Suspension
     {
-        $suspension->load('match.season.tournament');
+        $suspension->load('match.season.gamesEdition');
         $this->ensureCanManage($suspension->match, $actor);
 
         $matches = (int) $data['matches_suspended'];
@@ -129,7 +129,7 @@ class SuspensionService
 
     public function toggleServed(Suspension $suspension, User $actor): Suspension
     {
-        $suspension->load('match.season.tournament');
+        $suspension->load('match.season.gamesEdition');
         $this->ensureCanManage($suspension->match, $actor);
 
         $suspension->update(['is_served' => ! $suspension->is_served]);
@@ -144,7 +144,7 @@ class SuspensionService
      */
     public function delete(Suspension $suspension, User $actor): bool|string
     {
-        $suspension->load('match.season.tournament');
+        $suspension->load('match.season.gamesEdition');
         $this->ensureCanManage($suspension->match, $actor);
 
         $playerId = $suspension->season_team_player_id;
@@ -175,7 +175,7 @@ class SuspensionService
     private function ensureCanManage(GameMatch $match, User $actor): void
     {
         if (! SeasonAccess::manages($actor, $match->season)) {
-            throw new AuthorizationException('Solo el organizador del torneo gestiona las sanciones de esta temporada.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona las sanciones de esta temporada.');
         }
     }
 

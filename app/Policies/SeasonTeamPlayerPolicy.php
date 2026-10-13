@@ -14,7 +14,7 @@ class SeasonTeamPlayerPolicy
     /**
      * El plantel de una inscripcion lo gestionan: su delegado EFECTIVO
      * (SeasonTeam::effectiveDelegate(), regla 5 de CLAUDE.md), el
-     * organizador del torneo y el admin (Gate::before). Que la temporada
+     * organizador de la olimpiada y el admin (Gate::before). Que la temporada
      * no este cerrada lo valida SeasonTeamPlayerService.
      */
     public function viewAny(User $user): bool
@@ -50,7 +50,7 @@ class SeasonTeamPlayerPolicy
 
     /**
      * Generar el carnet (fotocheck) o la ficha de inscripcion de ESTA
-     * inscripcion: admin siempre (Gate::before); el organizador si el torneo
+     * inscripcion: admin siempre (Gate::before); el organizador si la olimpiada
      * de la temporada es suyo; el delegado si es el delegado EFECTIVO del
      * equipo en esa temporada (SeasonTeam::effectiveDelegate()).
      * Es la unica regla para todos los PDFs por jugador: los Controllers
@@ -73,7 +73,7 @@ class SeasonTeamPlayerPolicy
         }
 
         if ($user->hasRole('organizador') && $user->can('seasons.manage')
-            && $seasonTeam->season->tournament->organizer_id === $user->id) {
+            && $seasonTeam->season->gamesEdition->organizer_id === $user->id) {
             return true;
         }
 

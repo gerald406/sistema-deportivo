@@ -15,10 +15,10 @@ use Symfony\Component\HttpFoundation\Response;
  * PDF del Padron de Jugadores; los datos los arma RosterReportService.
  * Autorizacion (los parametros vienen de la URL, se revalidan aqui):
  *   - Un equipo (season_team_id): SeasonTeamPolicy::printRoster, organizador
- *     del torneo o delegado EFECTIVO del equipo. Un season_team_id ajeno da
+ *     de la olimpiada o delegado EFECTIVO del equipo. Un season_team_id ajeno da
  *     403 antes de mirar la temporada.
  *   - Todos los equipos (con o sin categoria): SeasonPolicy::printReports,
- *     admin u organizador del torneo; nunca el delegado.
+ *     admin u organizador de la olimpiada; nunca el delegado.
  */
 class RosterReportController extends Controller
 {
@@ -30,7 +30,7 @@ class RosterReportController extends Controller
             'category_id' => ['nullable', 'integer'],
         ]);
 
-        $season = Season::with('tournament')->findOrFail($validated['season_id']);
+        $season = Season::with('gamesEdition')->findOrFail($validated['season_id']);
         $seasonTeamId = isset($validated['season_team_id']) ? (int) $validated['season_team_id'] : null;
         $categoryId = isset($validated['category_id']) ? (int) $validated['category_id'] : null;
 

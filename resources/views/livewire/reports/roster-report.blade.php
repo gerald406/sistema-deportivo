@@ -17,13 +17,13 @@
         <div class="space-y-4 p-4 sm:p-6">
             <div>
                 <label class="mb-2 block text-sm font-medium text-gray-700">
-                    <i class="fa-solid fa-trophy mr-1 text-yellow-500"></i> Torneo *
+                    <i class="fa-solid fa-trophy mr-1 text-yellow-500"></i> Olimpiada *
                 </label>
-                <select wire:model.live="tournamentId"
+                <select wire:model.live="gamesEditionId"
                         class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    <option value="">-- Seleccione un torneo --</option>
-                    @foreach ($this->tournaments() as $tournament)
-                        <option value="{{ $tournament->id }}">{{ $tournament->name }}{{ $tournament->is_active ? '' : ' (inactivo)' }}</option>
+                    <option value="">-- Seleccione una olimpiada --</option>
+                    @foreach ($this->gamesEditions() as $gamesEdition)
+                        <option value="{{ $gamesEdition->id }}">{{ $gamesEdition->name }}{{ $gamesEdition->is_active ? '' : ' (inactivo)' }}</option>
                     @endforeach
                 </select>
             </div>
@@ -32,9 +32,9 @@
                 <label class="mb-2 block text-sm font-medium text-gray-700">
                     <i class="fa-solid fa-calendar-days mr-1 text-indigo-500"></i> Temporada *
                 </label>
-                <select wire:model.live="seasonId" @disabled($tournamentId === '')
+                <select wire:model.live="seasonId" @disabled($gamesEditionId === '')
                         class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100">
-                    <option value="">{{ $tournamentId === '' ? 'Primero elige el torneo' : '-- Seleccione una temporada --' }}</option>
+                    <option value="">{{ $gamesEditionId === '' ? 'Primero elige la olimpiada' : '-- Seleccione una temporada --' }}</option>
                     @foreach ($this->seasons() as $season)
                         <option value="{{ $season->id }}">{{ $season->name }} ({{ $season->status->label() }})</option>
                     @endforeach

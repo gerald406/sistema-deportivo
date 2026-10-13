@@ -360,7 +360,7 @@ body {
                 ══════════════════════════════════════ --}}
                 <div class="hdr">
                     <div class="hdr-app">{{ config('app.name') }}</div>
-                    <div class="hdr-champ">{{ $card['tournament']->name }} · {{ $card['season']->name }}</div>
+                    <div class="hdr-champ">{{ $card['gamesEdition']->name }} · {{ $card['season']->name }}</div>
                 </div>
                 <div class="bar-gold"></div>
                 <div class="bar-blue"></div>

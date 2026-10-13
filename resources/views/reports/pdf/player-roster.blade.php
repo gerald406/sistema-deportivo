@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Padrón de Jugadores - {{ $tournament->name }} - {{ $season->name }}</title>
+    <title>Padrón de Jugadores - {{ $gamesEdition->name }} - {{ $season->name }}</title>
     <style>
         /* 1. Márgenes de la hoja: Dejamos espacio arriba y abajo para el header y footer fijos */
         @page {
@@ -226,15 +226,15 @@
             <tr>
                 <td class="header-logo-cell">
                     <div class="header-logo-box">
-                        @if(!empty($tournamentLogoBase64))
-                            <img src="{{ $tournamentLogoBase64 }}" alt="Logo del torneo">
+                        @if(!empty($gamesEditionLogoBase64))
+                            <img src="{{ $gamesEditionLogoBase64 }}" alt="Logo de la olimpiada">
                         @else
                             <div class="header-logo-placeholder">Sin&nbsp;logo</div>
                         @endif
                     </div>
                 </td>
                 <td class="header-title">
-                    <h1>{{ $tournament->name }}</h1>
+                    <h1>{{ $gamesEdition->name }}</h1>
                     <h2>
                         Padrón Oficial de Participantes
                         @if($isSingleTeam && $headerTeamName)
@@ -259,8 +259,8 @@
         <div class="info-bar">
             <table>
                 <tr>
-                    <td class="label">Torneo:</td>
-                    <td><strong>{{ $tournament->name }}</strong> &mdash; {{ $season->name }}</td>
+                    <td class="label">Olimpiada:</td>
+                    <td><strong>{{ $gamesEdition->name }}</strong> &mdash; {{ $season->name }}</td>
                     <td class="label" style="text-align: right;">Fecha emisión:</td>
                     <td style="text-align: right;">{{ $generatedAt }}</td>
                 </tr>
@@ -281,7 +281,7 @@
             </div>
         @endif
         <div class="footer-text">
-            {{ config('app.name') }} &bull; Padrón de Jugadores &bull; {{ $tournament->name }} &bull; {{ $season->name }} &bull;
+            {{ config('app.name') }} &bull; Padrón de Jugadores &bull; {{ $gamesEdition->name }} &bull; {{ $season->name }} &bull;
             Generado: {{ $generatedAt }} &bull; Página <span class="page-number"></span>
         </div>
     </footer>
@@ -377,8 +377,8 @@
                                 <div class="signature-box">
                                     <div class="signature-line">
                                         <div class="signature-name">{{ $organizer->name }}</div>
-                                        <div class="signature-role">Organizador del Torneo</div>
-                                        <div class="signature-role">{{ $tournament->name }}</div>
+                                        <div class="signature-role">Organizador de la Olimpiada</div>
+                                        <div class="signature-role">{{ $gamesEdition->name }}</div>
                                     </div>
                                 </div>
                             </td>

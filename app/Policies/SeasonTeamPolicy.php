@@ -15,7 +15,7 @@ class SeasonTeamPolicy
      * "Flujo de permisos" punto 4 de CLAUDE.md. CAMBIO DE REGLA respecto
      * a Fase 5 (antes "el delegado inscribe sus equipos en Borrador", ya
      * OBSOLETA): las inscripciones las crean, editan y retiran SOLO el
-     * organizador del torneo y el admin (Gate::before), en Borrador o En
+     * organizador de la olimpiada y el admin (Gate::before), en Borrador o En
      * curso; nadie en Cerrada. El delegado solo las ve.
      * Las reglas que dependen de la temporada destino (que aun no existe
      * al llamar a create()) las aplica SeasonTeamService.
@@ -42,25 +42,25 @@ class SeasonTeamPolicy
 
     /**
      * Categoria, delegado de temporada y estado de la inscripcion: solo
-     * el organizador del torneo (el delegado no se reasigna a si mismo).
+     * el organizador de la olimpiada (el delegado no se reasigna a si mismo).
      */
     public function update(User $user, SeasonTeam $seasonTeam): bool
     {
-        return $this->isTournamentOrganizer($user, $seasonTeam);
+        return $this->isGamesEditionOrganizer($user, $seasonTeam);
     }
 
     /**
-     * Retirar la inscripcion: solo el organizador del torneo. CAMBIO DE
+     * Retirar la inscripcion: solo el organizador de la olimpiada. CAMBIO DE
      * REGLA: el delegado efectivo ya no puede retirarla (ni en Borrador).
      */
     public function delete(User $user, SeasonTeam $seasonTeam): bool
     {
-        return $this->isTournamentOrganizer($user, $seasonTeam);
+        return $this->isGamesEditionOrganizer($user, $seasonTeam);
     }
 
     /**
      * Padron de Jugadores (PDF) de UNA inscripcion: el organizador del
-     * torneo y el delegado EFECTIVO del equipo (admin por Gate::before).
+     * olimpiada y el delegado EFECTIVO del equipo (admin por Gate::before).
      * Es el mismo alcance de /inscripciones, asi que reutiliza
      * isVisibleTo() en vez de otra regla. El padron de TODOS los equipos de
      * la temporada sigue siendo SeasonPolicy::printReports (sin delegado).
@@ -94,10 +94,10 @@ class SeasonTeamPolicy
         };
     }
 
-    private function isTournamentOrganizer(User $user, SeasonTeam $seasonTeam): bool
+    private function isGamesEditionOrganizer(User $user, SeasonTeam $seasonTeam): bool
     {
         return $user->hasRole('organizador')
             && $user->can('seasons.manage')
-            && $seasonTeam->season->tournament->organizer_id === $user->id;
+            && $seasonTeam->season->gamesEdition->organizer_id === $user->id;
     }
 }

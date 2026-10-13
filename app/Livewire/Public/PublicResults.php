@@ -12,7 +12,7 @@ use Livewire\Component;
 
 /**
  * Resultados publicos (sin login). Adaptado de pichanga/Public/PublicResults
- * SIN la rama futbol/voley: se elige Torneo -> Temporada y cada temporada
+ * SIN la rama futbol/voley: se elige Olimpiada -> Temporada y cada temporada
  * ya sabe su deporte/disciplina.
  *
  * Todas las propiedades publicas vienen del navegador: la temporada se
@@ -24,7 +24,7 @@ class PublicResults extends Component
 {
     public const TABS = ['standings', 'results', 'schedule', 'scorers', 'suspended', 'yellows'];
 
-    public string $tournamentId = '';
+    public string $gamesEditionId = '';
 
     public string $seasonId = '';
 
@@ -35,12 +35,12 @@ class PublicResults extends Component
 
     public function mount(PublicResultsService $public): void
     {
-        $first = $public->visibleTournaments()->first();
-        $this->tournamentId = $first ? (string) $first->id : '';
+        $first = $public->visibleGamesEditions()->first();
+        $this->gamesEditionId = $first ? (string) $first->id : '';
         $this->selectFirstSeason($public);
     }
 
-    public function updatedTournamentId(PublicResultsService $public): void
+    public function updatedGamesEditionId(PublicResultsService $public): void
     {
         $this->selectFirstSeason($public);
     }
@@ -58,13 +58,13 @@ class PublicResults extends Component
 
     public function render(PublicResultsService $public, SeasonOverviewService $overview)
     {
-        $tournaments = $public->visibleTournaments();
-        $seasons = ctype_digit($this->tournamentId) ? $public->seasonsOf((int) $this->tournamentId) : collect();
+        $gamesEditions = $public->visibleGamesEditions();
+        $seasons = ctype_digit($this->gamesEditionId) ? $public->seasonsOf((int) $this->gamesEditionId) : collect();
         $season = ctype_digit($this->seasonId) && $seasons->contains('id', (int) $this->seasonId)
             ? $public->findVisibleSeason((int) $this->seasonId)
             : null;
 
-        $data = ['tournaments' => $tournaments, 'seasons' => $seasons, 'season' => $season, 'tabs' => []];
+        $data = ['gamesEditions' => $gamesEditions, 'seasons' => $seasons, 'season' => $season, 'tabs' => []];
 
         if ($season) {
             $sections = $overview->sections($season);
@@ -133,7 +133,7 @@ class PublicResults extends Component
     private function selectFirstSeason(PublicResultsService $public): void
     {
         /** @var Collection<int, Season> $seasons */
-        $seasons = ctype_digit($this->tournamentId) ? $public->seasonsOf((int) $this->tournamentId) : collect();
+        $seasons = ctype_digit($this->gamesEditionId) ? $public->seasonsOf((int) $this->gamesEditionId) : collect();
         $this->seasonId = $seasons->isNotEmpty() ? (string) $seasons->first()->id : '';
         $this->activeTab = 'standings';
         $this->selectedResultMatchdayId = '';

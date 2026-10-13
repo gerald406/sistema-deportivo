@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * PDF del Reporte Gerencial. Autorizacion: SeasonPolicy::printReports
- * (admin u organizador del torneo); datos: ManagerialReportService.
+ * (admin u organizador de la olimpiada); datos: ManagerialReportService.
  */
 class ManagerialReportController extends Controller
 {
@@ -22,7 +22,7 @@ class ManagerialReportController extends Controller
             'season_id' => ['required', 'integer'],
         ]);
 
-        $season = Season::with('tournament')->findOrFail($validated['season_id']);
+        $season = Season::with('gamesEdition')->findOrFail($validated['season_id']);
         Gate::authorize('printReports', $season);
 
         return $service->pdf($season->id)->stream($service->filename($season->id));

@@ -1,0 +1,211 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Editions;
+
+use App\Models\GamesEdition;
+use App\Models\Season;
+use App\Models\Sport;
+use App\Services\GamesEditionService;
+use App\Services\SeasonService;
+use App\Services\UserAccountService;
+use App\Support\SeasonAccess;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
+use Tests\Concerns\CreatesActors;
+use Tests\TestCase;
+
+/**
+ * F1 (D1, D2): solo el admin crea la olimpiada y asigna organizador; el
+ * organizador asignado la gestiona y nadie mas.
+ */
+class GamesEditionAuthorizationTest extends TestCase
+{
+    use CreatesActors, RefreshDatabase;
+
+    private function payload(array $overrides = []): array
+    {
+        return $overrides + [
+            'name' => 'XXVIII Juegos Deportivos Regionales 2026',
+            'organizer_id' => null,
+            'start_date' => '2026-10-28',
+            'end_date' => '2026-10-30',
+            'host_venue_id' => null,
+            'is_active' => true,
+        ];
+    }
+
+    private function phases(): array
+    {
+        return [['id' => null, 'phase_name' => 'Fase única', 'pts_win' => 3, 'pts_draw' => 1, 'pts_loss' => 0, 'pts_walkover' => -1]];
+    }
+
+    public function test_only_admin_creates_an_edition(): void
+    {
+        $admin = $this->admin();
+        $organizer = $this->organizer();
+        $service = app(GamesEditionService::class);
+
+        $edition = $service->register($this->payload(['organizer_id' => $organizer->id]), $admin);
+        $this->assertSame($organizer->id, $edition->organizer_id);
+
+        $this->expectException(AuthorizationException::class);
+        $service->register($this->payload(['name' => 'Otra', 'organizer_id' => $organizer->id]), $organizer);
+    }
+
+    public function test_organizer_must_be_an_active_organizer_or_admin(): void
+    {
+        $admin = $this->admin();
+        $delegate = $this->delegate();
+        $inactive = $this->organizer(['is_active' => false]);
+        $service = app(GamesEditionService::class);
+
+        foreach ([$delegate->id, $inactive->id, 0] as $organizerId) {
+            try {
+                $service->register($this->payload(['organizer_id' => $organizerId]), $admin);
+                $this->fail("Se aceptó un organizador inválido ({$organizerId}).");
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('form.organizer_id', $e->errors());
+            }
+        }
+
+        $this->assertSame(0, GamesEdition::count());
+    }
+
+    public function test_assigned_organizer_updates_but_cannot_reassign(): void
+    {
+        $organizer = $this->organizer();
+        $other = $this->organizer();
+        $edition = GamesEdition::factory()->create(['organizer_id' => $organizer->id]);
+
+        app(GamesEditionService::class)->update(
+            $edition,
+            $this->payload(['name' => 'Nombre nuevo', 'organizer_id' => $other->id]),
+            $organizer,
+        );
+
+        $edition->refresh();
+        $this->assertSame('Nombre nuevo', $edition->name);
+        $this->assertSame($organizer->id, $edition->organizer_id);
+    }
+
+    public function test_admin_can_reassign_the_organizer(): void
+    {
+        $admin = $this->admin();
+        $other = $this->organizer();
+        $edition = GamesEdition::factory()->create(['organizer_id' => $this->organizer()->id]);
+
+        app(GamesEditionService::class)->update($edition, $this->payload(['organizer_id' => $other->id]), $admin);
+
+        $this->assertSame($other->id, $edition->refresh()->organizer_id);
+    }
+
+    public function test_other_organizer_is_forbidden(): void
+    {
+        $owner = $this->organizer();
+        $intruder = $this->organizer();
+        $edition = GamesEdition::factory()->create(['organizer_id' => $owner->id]);
+        $season = Season::factory()->create(['games_edition_id' => $edition->id]);
+
+        $this->assertTrue($owner->can('update', $edition));
+        $this->assertTrue($owner->can('manage', $edition));
+        $this->assertTrue(SeasonAccess::manages($owner, $season));
+        $this->assertTrue($owner->can('update', $season));
+
+        $this->assertFalse($intruder->can('update', $edition));
+        $this->assertFalse($intruder->can('manage', $edition));
+        $this->assertFalse(SeasonAccess::manages($intruder, $season));
+        $this->assertFalse($intruder->can('update', $season));
+        $this->assertFalse($intruder->can('delete', $season));
+
+        $this->expectException(AuthorizationException::class);
+        app(GamesEditionService::class)->update($edition, $this->payload(['name' => 'Tomada']), $intruder);
+    }
+
+    public function test_delegate_does_not_manage_editions(): void
+    {
+        $delegate = $this->delegate();
+        $edition = GamesEdition::factory()->create();
+
+        $this->assertFalse($delegate->can('viewAny', GamesEdition::class));
+        $this->assertFalse($delegate->can('manage', $edition));
+        $this->actingAs($delegate)->get(route('games-editions.index'))->assertForbidden();
+    }
+
+    public function test_only_admin_deletes_an_edition(): void
+    {
+        $organizer = $this->organizer();
+        $edition = GamesEdition::factory()->create(['organizer_id' => $organizer->id]);
+
+        $this->assertFalse($organizer->can('delete', $edition));
+        $this->assertFalse($organizer->can('create', GamesEdition::class));
+        $this->assertTrue($this->admin()->can('delete', $edition));
+    }
+
+    public function test_season_can_only_be_created_in_own_edition(): void
+    {
+        $organizer = $this->organizer();
+        $own = GamesEdition::factory()->create(['organizer_id' => $organizer->id]);
+        $foreign = GamesEdition::factory()->create();
+        $sport = Sport::factory()->create();
+        $service = app(SeasonService::class);
+
+        $data = ['sport_id' => $sport->id, 'name' => 'Fútbol Libre', 'start_date' => null, 'end_date' => null, 'status' => 'draft', 'is_active' => true];
+
+        $season = $service->register($data + ['games_edition_id' => $own->id], $this->phases(), $organizer);
+        $this->assertSame($own->id, $season->games_edition_id);
+
+        $this->expectException(AuthorizationException::class);
+        $service->register($data + ['games_edition_id' => $foreign->id], $this->phases(), $organizer);
+    }
+
+    public function test_season_cannot_be_moved_to_a_foreign_edition(): void
+    {
+        $organizer = $this->organizer();
+        $own = GamesEdition::factory()->create(['organizer_id' => $organizer->id]);
+        $foreign = GamesEdition::factory()->create();
+        $season = Season::factory()->create(['games_edition_id' => $own->id]);
+
+        $data = ['games_edition_id' => $foreign->id, 'sport_id' => $season->sport_id, 'name' => $season->name, 'start_date' => null, 'end_date' => null, 'status' => 'draft', 'is_active' => true];
+
+        try {
+            app(SeasonService::class)->update($season, $data, $this->phases(), $organizer);
+            $this->fail('Se movió la competencia a una olimpiada ajena.');
+        } catch (AuthorizationException) {
+            $this->assertSame($own->id, $season->refresh()->games_edition_id);
+        }
+    }
+
+    public function test_user_organizing_an_edition_cannot_be_deleted(): void
+    {
+        $admin = $this->admin();
+        $organizer = $this->organizer();
+        GamesEdition::factory()->create(['organizer_id' => $organizer->id]);
+
+        $result = app(UserAccountService::class)->delete($organizer, $admin);
+
+        $this->assertIsString($result);
+        $this->assertDatabaseHas('users', ['id' => $organizer->id]);
+    }
+
+    public function test_organizer_sees_only_own_editions(): void
+    {
+        $organizer = $this->organizer();
+        GamesEdition::factory()->create(['organizer_id' => $organizer->id, 'name' => 'Olimpiada Propia']);
+        GamesEdition::factory()->create(['name' => 'Olimpiada Ajena']);
+
+        $this->actingAs($organizer)->get(route('games-editions.index'))
+            ->assertOk()
+            ->assertSee('Olimpiada Propia')
+            ->assertDontSee('Olimpiada Ajena')
+            ->assertDontSee('wire:click="create"', false);
+
+        $this->actingAs($this->admin())->get(route('games-editions.index'))
+            ->assertOk()
+            ->assertSee('Olimpiada Propia')
+            ->assertSee('Olimpiada Ajena')
+            ->assertSee('wire:click="create"', false);
+    }
+}

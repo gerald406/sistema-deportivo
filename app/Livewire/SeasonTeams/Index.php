@@ -133,7 +133,7 @@ class Index extends Component
     private function formSeason(): ?Season
     {
         return ctype_digit((string) $this->form['season_id'])
-            ? Season::with('tournament')->find($this->form['season_id'])
+            ? Season::with('gamesEdition')->find($this->form['season_id'])
             : null;
     }
 
@@ -165,7 +165,7 @@ class Index extends Component
         return User::role('delegado')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
     }
 
-    /** Solo admin/organizador del torneo eligen delegado de temporada. */
+    /** Solo admin/organizador de la olimpiada eligen delegado de temporada. */
     public function canChooseDelegate(): bool
     {
         $user = auth()->user();
@@ -273,7 +273,7 @@ class Index extends Component
             ->withCount('roster')
             ->with([
                 'team:id,name,logo_path,delegate_id', 'team.delegate:id,name',
-                'season:id,name,status,tournament_id,sport_id', 'season.tournament:id,name,organizer_id', 'season.sport:id,name',
+                'season:id,name,status,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'season.sport:id,name',
                 'category:id,name,gender', 'delegate:id,name',
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder());
@@ -281,11 +281,11 @@ class Index extends Component
         return view('livewire.season-teams.index', [
             'seasonTeams' => $query->paginate($this->perPageLimit()),
             // Solo temporadas con alguna inscripcion visible: el filtro no
-            // debe revelar temporadas de torneos ajenos (el admin ve todas).
-            'filterSeasons' => Season::with('tournament:id,name')
+            // debe revelar temporadas de olimpiadas ajenas (el admin ve todas).
+            'filterSeasons' => Season::with('gamesEdition:id,name')
                 ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('seasonTeams', fn ($st) => $service->scopeVisibleTo($st, $user)))
                 ->orderByDesc('start_date')
-                ->get(['id', 'name', 'tournament_id']),
+                ->get(['id', 'name', 'games_edition_id']),
             'filterCategories' => Category::orderBy('name')->get(['id', 'name', 'gender']),
         ]);
     }
@@ -297,7 +297,7 @@ class Index extends Component
 
     /**
      * Ids que llegan del navegador se buscan acotados al alcance del
-     * usuario (scopeVisibleTo): una inscripcion de otro torneo/equipo da
+     * usuario (scopeVisibleTo): una inscripcion de otra olimpiada/equipo da
      * 404 antes de llegar a la Policy.
      */
     private function findVisibleSeasonTeam(int $id): SeasonTeam

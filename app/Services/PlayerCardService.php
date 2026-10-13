@@ -24,7 +24,7 @@ use Throwable;
  * referencia (pichanga), pero el carnet es de una INSCRIPCION
  * (season_team_player), no de un Player suelto: Player es un catalogo
  * global y el mismo jugador puede estar en temporadas distintas, cada una
- * con su equipo, torneo y organizador.
+ * con su equipo, olimpiada y organizador.
  */
 class PlayerCardService
 {
@@ -36,7 +36,7 @@ class PlayerCardService
     public const RELATIONS = [
         'player',
         'seasonTeam.team',
-        'seasonTeam.season.tournament.organizer',
+        'seasonTeam.season.gamesEdition.organizer',
     ];
 
     /**
@@ -50,22 +50,22 @@ class PlayerCardService
 
         $team = $entry->seasonTeam->team;
         $season = $entry->seasonTeam->season;
-        $tournament = $season->tournament;
-        $organizer = $tournament->organizer;
+        $gamesEdition = $season->gamesEdition;
+        $organizer = $gamesEdition->organizer;
 
         return [
             'entry' => $entry,
             'player' => $entry->player,
             'team' => $team,
             'season' => $season,
-            'tournament' => $tournament,
+            'gamesEdition' => $gamesEdition,
             'organizer' => $organizer,
             'qrCode' => $this->qrDataUri($this->verificationUrl($entry)),
             'issueDate' => now()->format('d/m/Y'),
             'cardNumber' => $this->cardNumber($entry),
             'playerPhotoBase64' => $this->images->toBase64($entry->player->photo_path),
             'teamLogoBase64' => $this->images->toBase64($team->logo_path),
-            // Ni User ni Tournament tienen campo de firma (ver commit de setup):
+            // Ni User ni GamesEdition tienen campo de firma (ver commit de setup):
             // la vista cae a su fallback (solo el nombre del organizador).
             'organizerSignatureBase64' => null,
         ];
@@ -75,7 +75,7 @@ class PlayerCardService
      * Inscripciones (season_team) cuyos carnets/fichas puede generar $user:
      * la MISMA regla que SeasonTeamPlayerPolicy::printCard (managesSeasonTeam),
      * pero en SQL para filtrar listados. Admin: todas; organizador: las de
-     * sus torneos; delegado: donde es el delegado EFECTIVO (el de temporada,
+     * sus olimpiadas; delegado: donde es el delegado EFECTIVO (el de temporada,
      * o el general del club si la inscripcion no tiene uno), igual que
      * SeasonTeam::effectiveDelegate(). Los Controllers igual autorizan cada
      * id con la Policy.
@@ -97,7 +97,7 @@ class PlayerCardService
 
         return $query->where(function (Builder $q) use ($user, $isOrganizer, $isDelegate) {
             if ($isOrganizer) {
-                $q->orWhereHas('season.tournament', fn ($t) => $t->where('organizer_id', $user->id));
+                $q->orWhereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id));
             }
 
             if ($isDelegate) {
@@ -118,7 +118,7 @@ class PlayerCardService
 
     /**
      * Mismo formato que PlayerCardController::generateCardNumber() de la
-     * referencia: CP-<torneo>-<equipo>-<jugador>, cada tramo con 3 digitos.
+     * referencia: CP-<olimpiada>-<equipo>-<jugador>, cada tramo con 3 digitos.
      */
     public function cardNumber(SeasonTeamPlayer $entry): string
     {
@@ -126,7 +126,7 @@ class PlayerCardService
 
         return sprintf(
             'CP-%s-%s-%s',
-            $pad($entry->seasonTeam->season->tournament_id),
+            $pad($entry->seasonTeam->season->games_edition_id),
             $pad($entry->seasonTeam->team_id),
             $pad($entry->player_id),
         );
@@ -184,7 +184,7 @@ class PlayerCardService
             'player' => $player,
             'team' => $seasonTeam->team,
             'season' => $season,
-            'tournament' => $season->tournament,
+            'gamesEdition' => $season->gamesEdition,
             'valid' => $valid,
             'statusLabel' => $statusLabel,
             'maskedDocument' => $dni === '' ? '—' : str_repeat('•', max(0, mb_strlen($dni) - 3)) . mb_substr($dni, -3),

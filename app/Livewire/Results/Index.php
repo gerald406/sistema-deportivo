@@ -119,7 +119,7 @@ class Index extends Component
 
     /**
      * Cargar el resultado: solo quien gestiona la temporada (organizador del
-     * torneo o admin). El delegado ve /resultados en solo lectura.
+     * olimpiada o admin). El delegado ve /resultados en solo lectura.
      */
     public function canManage(GameMatch $match): bool
     {
@@ -134,7 +134,7 @@ class Index extends Component
 
     public function openResult(int $id): void
     {
-        $match = $this->visibleMatches()->with('season.tournament')->findOrFail($id);
+        $match = $this->visibleMatches()->with('season.gamesEdition')->findOrFail($id);
         abort_unless($this->canManage($match), 403);
 
         $this->editingId = $match->id;
@@ -164,7 +164,7 @@ class Index extends Component
 
     public function openReopen(int $id): void
     {
-        $match = $this->visibleMatches()->with('season.tournament')->findOrFail($id);
+        $match = $this->visibleMatches()->with('season.gamesEdition')->findOrFail($id);
         abort_unless($this->canReopen($match), 403);
 
         $this->reopeningId = $match->id;
@@ -214,7 +214,7 @@ class Index extends Component
             ->when(ctype_digit($this->seasonFilter), fn ($q) => $q->where('season_id', (int) $this->seasonFilter))
             ->when(MatchStatus::tryFrom($this->matchStatusFilter), fn ($q, $s) => $q->where('status', $s->value))
             ->with([
-                'season:id,name,status,tournament_id,sport_id', 'season.tournament:id,name,organizer_id', 'season.sport:id,name,format_type',
+                'season:id,name,status,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'season.sport:id,name,format_type',
                 'discipline:id,name,format_type,better_direction,unit_of_measure', 'matchday:id,name',
                 'participants' => ParticipantLabel::eagerLoad(),
             ])

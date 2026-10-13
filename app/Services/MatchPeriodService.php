@@ -110,10 +110,10 @@ class MatchPeriodService
 
     private function ensureEditable(GameMatch $match, User $actor): void
     {
-        $match->load('season.tournament', 'season.sport', 'discipline');
+        $match->load('season.gamesEdition', 'season.sport', 'discipline');
 
         if (! SeasonAccess::manages($actor, $match->season)) {
-            throw new AuthorizationException('Solo el organizador del torneo carga los parciales de este partido.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada carga los parciales de este partido.');
         }
 
         if ($this->matches->formatFor($match->season, $match->discipline) !== SportFormatType::HeadToHead) {

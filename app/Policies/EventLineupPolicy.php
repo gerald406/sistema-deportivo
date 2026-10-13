@@ -12,7 +12,7 @@ use App\Support\SeasonAccess;
 class EventLineupPolicy
 {
     /**
-     * Orden de relevos de una posta: lo cargan el organizador del torneo,
+     * Orden de relevos de una posta: lo cargan el organizador de la olimpiada,
      * el admin y el delegado EFECTIVO del equipo (mismo criterio que el
      * plantel, SeasonTeamPlayerPolicy).
      */

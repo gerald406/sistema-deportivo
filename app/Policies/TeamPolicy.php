@@ -47,7 +47,7 @@ class TeamPolicy
 
     /**
      * El organizador edita solo los equipos a su cargo (inscritos en un
-     * torneo suyo o creados por el): TeamRegistrationService::scopeManagedBy().
+     * olimpiada suya o creados por el): TeamRegistrationService::scopeManagedBy().
      * El delegado conserva la edicion de SU equipo (nombre, logo), pero
      * nunca reasigna delegate_id: eso lo fuerza
      * TeamRegistrationService::resolveDelegateId().

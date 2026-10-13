@@ -1,6 +1,6 @@
 <div class="relative w-full">
 
-    {{-- HEADER PÚBLICO (sin switch futbol/voley: se elige Torneo -> Temporada) --}}
+    {{-- HEADER PÚBLICO (sin switch futbol/voley: se elige Olimpiada -> Temporada) --}}
     <div class="relative mb-10 text-center">
         <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-brand-primary/10 px-5 py-2 text-sm font-bold uppercase tracking-widest text-brand-primary">
             <i class="fa-solid fa-bolt"></i> En vivo
@@ -10,7 +10,7 @@
             Resultados y <span class="text-brand-primary">Programación</span>
         </h1>
 
-        <div wire:loading wire:target="tournamentId, seasonId, setTab, selectedResultMatchdayId" class="absolute left-1/2 mt-4 -translate-x-1/2">
+        <div wire:loading wire:target="gamesEditionId, seasonId, setTab, selectedResultMatchdayId" class="absolute left-1/2 mt-4 -translate-x-1/2">
             <i class="fa-solid fa-circle-notch fa-spin text-2xl text-brand-primary"></i>
         </div>
     </div>
@@ -18,12 +18,12 @@
     {{-- SELECTOR DE TORNEO Y TEMPORADA --}}
     <div class="mx-auto mb-10 grid w-full max-w-3xl grid-cols-1 gap-4 px-4 sm:grid-cols-2 sm:px-0">
         <div class="group relative">
-            <label for="public-tournament" class="sr-only">Torneo</label>
-            <select id="public-tournament" wire:model.live="tournamentId"
+            <label for="public-gamesEdition" class="sr-only">Olimpiada</label>
+            <select id="public-gamesEdition" wire:model.live="gamesEditionId"
                     class="block w-full cursor-pointer appearance-none rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-center text-lg font-bold text-slate-800 shadow-sm transition-all focus:border-brand-primary focus:ring-brand-primary group-hover:border-slate-300">
-                <option value="">-- Elige un torneo --</option>
-                @foreach ($tournaments as $tournament)
-                    <option value="{{ $tournament->id }}">{{ $tournament->name }}</option>
+                <option value="">-- Elige una olimpiada --</option>
+                @foreach ($gamesEditions as $gamesEdition)
+                    <option value="{{ $gamesEdition->id }}">{{ $gamesEdition->name }}</option>
                 @endforeach
             </select>
             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-slate-400 transition-colors group-hover:text-slate-600">
@@ -382,10 +382,10 @@
                 @endif
             </div>
         @endif
-    @elseif ($tournaments->isEmpty())
+    @elseif ($gamesEditions->isEmpty())
         <div class="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white py-16 text-center text-slate-500 shadow-xl shadow-slate-200/50">
             <i class="fa-solid fa-trophy mb-3 text-4xl text-slate-300"></i>
-            <p class="font-medium">Todavía no hay torneos publicados.</p>
+            <p class="font-medium">Todavía no hay olimpiadas publicadas.</p>
         </div>
     @endif
 

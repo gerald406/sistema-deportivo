@@ -16,7 +16,7 @@ class RolePermissionSeeder extends Seeder
             'sports.manage',
             'venues.manage',
             'categories.manage',
-            'tournaments.manage',
+            'editions.manage',
             'seasons.manage',
             'teams.manage',
             'players.manage',
@@ -37,13 +37,13 @@ class RolePermissionSeeder extends Seeder
         // ("Flujo de permisos" punto 3 de CLAUDE.md). Agregado en el fix de
         // permisos; en una BD ya sembrada se aplico con givePermissionTo().
         $organizador->syncPermissions([
-            'tournaments.manage',
+            'editions.manage',
             'seasons.manage',
             'teams.manage',
             'venues.manage',
             'matches.manage',
             // matches.reopen: sin el, SeasonPolicy::reopenMatches nunca deja
-            // al organizador reabrir resultados de SU torneo (solo al admin).
+            // al organizador reabrir resultados de SU olimpiada (solo al admin).
             // Agregado en el fix de reaperturas; en la BD actual se aplico
             // con givePermissionTo().
             'matches.reopen',

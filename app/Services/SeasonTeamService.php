@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Inscripcion de equipos a temporadas (season_team). Reglas confirmadas
  * ("Flujo de permisos" punto 4 de CLAUDE.md):
- *   - Organizador (de ese torneo) y admin: inscriben cualquier equipo, en
+ *   - Organizador (de esa olimpiada) y admin: inscriben cualquier equipo, en
  *     Borrador o En curso, y eligen delegado de temporada.
  *   - CAMBIO DE REGLA: el delegado ya NO inscribe (antes lo hacia con sus
  *     equipos en Borrador). No crea ni edita season_team en ningun estado.
@@ -33,13 +33,13 @@ class SeasonTeamService
      */
     public function register(array $data, User $actor): SeasonTeam
     {
-        $season = Season::with('tournament')->findOrFail($data['season_id']);
+        $season = Season::with('gamesEdition')->findOrFail($data['season_id']);
         $team = Team::findOrFail($data['team_id']);
 
         // Revalidado aqui (no solo en SeasonTeamPolicy): un delegado que
         // llame a save() desde la consola del navegador no inscribe nada.
         if (! $this->isManager($actor, $season)) {
-            throw new AuthorizationException('Solo el organizador del torneo o el administrador pueden inscribir equipos.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada o el administrador pueden inscribir equipos.');
         }
 
         if (! $this->seasonsFor($actor)->contains('id', $season->id)) {
@@ -77,7 +77,7 @@ class SeasonTeamService
     public function update(SeasonTeam $seasonTeam, array $data, User $actor): SeasonTeam
     {
         if (! $this->isManager($actor, $seasonTeam->season)) {
-            throw new AuthorizationException('Solo el organizador del torneo o el administrador pueden editar inscripciones.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada o el administrador pueden editar inscripciones.');
         }
 
         $this->ensureValidSeasonDelegate($data['delegate_id'] ?? null);
@@ -129,7 +129,7 @@ class SeasonTeamService
      * roles). Tambien es la base del alcance de /planteles y /jugadores
      * (SeasonTeamPlayerService::scopeVisibleTo()).
      *   - Admin: todas.
-     *   - Organizador: las de temporadas de un torneo suyo.
+     *   - Organizador: las de temporadas de una olimpiada suya.
      *   - Delegado: las de equipos cuyo delegado EFECTIVO es el
      *     (SeasonTeamPolicy::effectiveDelegateConstraint()).
      *   - Cualquier otro: ninguna.
@@ -149,7 +149,7 @@ class SeasonTeamService
 
         return $query->where(function ($q) use ($actor, $isOrganizer, $isDelegate) {
             if ($isOrganizer) {
-                $q->orWhereHas('season.tournament', fn ($t) => $t->where('organizer_id', $actor->id));
+                $q->orWhereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id));
             }
 
             if ($isDelegate) {
@@ -175,12 +175,12 @@ class SeasonTeamService
         $isOrganizer = $actor->hasRole('organizador') && $actor->can('seasons.manage');
 
         return Season::query()
-            ->with('tournament:id,name,organizer_id')
+            ->with('gamesEdition:id,name,organizer_id')
             ->where('status', '!=', SeasonStatus::Closed->value)
-            // Admin: todas las no cerradas. Organizador: las de sus torneos.
+            // Admin: todas las no cerradas. Organizador: las de sus olimpiadas.
             // Delegado (u otro rol): ninguna, ya no inscribe equipos.
             ->unless($actor->hasRole('admin'), fn ($q) => $isOrganizer
-                ? $q->whereHas('tournament', fn ($t) => $t->where('organizer_id', $actor->id))
+                ? $q->whereHas('gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id))
                 : $q->whereRaw('1 = 0'))
             ->orderByDesc('start_date')
             ->get();
@@ -190,7 +190,7 @@ class SeasonTeamService
      * Autocomplete de equipo al inscribir: los elegibles salen del catalogo
      * GLOBAL de equipos (crece con el sistema, no con la temporada), por
      * eso se buscan server-side (min. 2 letras, max. 10) en vez de listarse
-     * todos. Vacio si $actor no es admin ni organizador de ese torneo.
+     * todos. Vacio si $actor no es admin ni organizador de esa olimpiada.
      */
     public function searchTeams(User $actor, Season $season, string $term): Collection
     {
@@ -212,7 +212,7 @@ class SeasonTeamService
     public function findEligibleTeam(User $actor, Season $season, int $teamId): Team
     {
         if (! $this->isManager($actor, $season)) {
-            throw new AuthorizationException('Solo el organizador del torneo o el administrador pueden inscribir equipos.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada o el administrador pueden inscribir equipos.');
         }
 
         return $this->eligibleTeams($season)->findOrFail($teamId);
@@ -226,13 +226,13 @@ class SeasonTeamService
             ->whereDoesntHave('seasonTeams', fn ($q) => $q->where('season_id', $season->id));
     }
 
-    /** Admin u organizador del torneo de la temporada. */
+    /** Admin u organizador de la olimpiada de la temporada. */
     public function isManager(User $actor, Season $season): bool
     {
         return $actor->hasRole('admin')
             || ($actor->hasRole('organizador')
                 && $actor->can('seasons.manage')
-                && $season->tournament->organizer_id === $actor->id);
+                && $season->gamesEdition->organizer_id === $actor->id);
     }
 
     private function seasonRejectionReason(Season $season): string

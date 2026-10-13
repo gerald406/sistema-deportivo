@@ -31,7 +31,7 @@ use App\Models\SeasonTeam;
  *     corriendo, que en el entorno XAMPP no existe; la tabla quedaria
  *     desactualizada sin aviso.
  *   - Costo: reconstruir una temporada es O(partidos) con 2 consultas;
- *     con el volumen de un torneo es despreciable. Si en Fase 9 crece, se
+ *     con el volumen de una olimpiada es despreciable. Si en Fase 9 crece, se
  *     puede mover a un Job ShouldBeUnique por temporada sin tocar a los
  *     llamadores (solo este metodo).
  *

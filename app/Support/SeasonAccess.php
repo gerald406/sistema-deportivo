@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
 /**
  * Regla compartida por Jornadas, Partidos y Resultados (permiso
  * matches.manage): el admin gestiona cualquier temporada; el organizador
- * solo las de SUS torneos (tournaments.organizer_id).
+ * solo las de SUS olimpiadas (games_editions.organizer_id).
  */
 class SeasonAccess
 {
@@ -24,7 +24,7 @@ class SeasonAccess
 
         return $user->hasRole('organizador')
             && $user->can('matches.manage')
-            && $season->tournament->organizer_id === $user->id;
+            && $season->gamesEdition->organizer_id === $user->id;
     }
 
     /**
@@ -34,9 +34,9 @@ class SeasonAccess
     public static function manageableSeasons(User $user, bool $includeClosed = false): Collection
     {
         return Season::query()
-            ->with(['tournament:id,name,organizer_id', 'sport:id,name,format_type'])
+            ->with(['gamesEdition:id,name,organizer_id', 'sport:id,name,format_type'])
             ->unless($includeClosed, fn ($q) => $q->where('status', '!=', SeasonStatus::Closed->value))
-            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('tournament', fn ($t) => $t->where('organizer_id', $user->id)))
+            ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->orderByDesc('start_date')
             ->get();
     }

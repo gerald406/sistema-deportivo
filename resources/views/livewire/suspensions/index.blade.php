@@ -26,7 +26,7 @@
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="">Todas las temporadas</option>
             @foreach ($this->seasonOptions() as $season)
-                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }}</option>
+                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
         </select>
 
@@ -132,7 +132,7 @@
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <option value="">Selecciona una temporada</option>
                             @foreach ($this->seasonOptions() as $season)
-                                <option value="{{ $season->id }}">{{ $season->tournament->name }} — {{ $season->name }}</option>
+                                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
                             @endforeach
                         </select>
                         @error('form.season_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
