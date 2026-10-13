@@ -47,7 +47,7 @@ Actualizar esta tabla al cerrar cada fase. `Puerta` = resultado de la puerta de 
 | F3 Catálogo y cuadro de puntaje | `F3-catalogo-y-puntajes.md` | 16–17/10 | ✅ | 2026-10-13 · 109 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S1, S2 y S6 confirmados por el cliente |
 | F4 Competencias y plantel | `F4-competencias-y-plantel.md` | 17–19/10 | ✅ | 2026-10-13 · 145 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S3 confirmado el 13/10 |
 | F5 Fases, llaves y podios | `F5-fases-llaves-podios.md` | 20–24/10 | ✅ | 2026-10-13 · 196 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
-| F6 Puntaje general | `F6-puntaje-general.md` | 24–26/10 | ⬜ | — |
+| F6 Puntaje general | `F6-puntaje-general.md` | 24–26/10 | ✅ | 2026-10-13 · 220 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas; suma a mano de 3 podios de Puno verificada en prueba. S4 y S5 confirmados |
 | F7 Producción | `F7-produccion.md` | desde el 17/10, cierre 27/10 | ⬜ | — |
 
 Hitos externos: publicar y abrir a delegados al cerrar F4 (19/10); ciclismo y cierre de
@@ -152,6 +152,7 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | Service | Firma | Fase |
 |---|---|---|
 | `GamesEditionService` | `register(array $data, User $actor): GamesEdition` | F1 |
+| | `scopeVisibleTo()` incluye desde F6 las olimpiadas que el usuario gestiona y aquellas donde es delegado de una delegación inscrita | F6 |
 | | `update(GamesEdition $edition, array $data, User $actor): GamesEdition` | F1 |
 | | `delete(GamesEdition $edition): bool\|string` | F1 |
 | | `organizerCandidates(): Collection` | F1 |

@@ -57,6 +57,14 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
    acumuladas en una competencia que dan 1 partido) y `captain_red_matches` (partidos al capitán
    expulsado). Vacío = la regla no se aplica. Solo `SuspensionService` las interpreta.
 
+10. **Puntaje general = dato derivado.** `AwardService::rebuild()` borra y recalcula
+   `edition_awards` y `games_edition_medals` de la olimpiada: cada podio (de la ÚLTIMA fase de
+   cada competencia activa) suma los puntos de su fila del cuadro; sin fila o sin puntos suma 0.
+   Orden: puntos, luego 1.º, 2.º y 3.º puestos; una delegación descalificada va al final sin
+   posición. Se llama de forma síncrona desde `ResultService`, `DirectPodiumService`,
+   `StageService`, `SeasonService` y `EditionEventService`. `MedalService` ya NO existe. Nunca
+   se escribe en esas tablas desde otro sitio. Pantalla: /reportes/puntaje-general.
+
 ### Flujo de permisos (confirmado por el negocio; el admin conserva bypass total vía `Gate::before`)
 
 Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando botones en Blade.
@@ -246,7 +254,7 @@ Policy, pantalla) y esperar aprobación.
   antes de borrar una inscripción, revisar `eventParticipants()` en el Service.
 - Modelos: `app/Models/` (Sport, Discipline, SportPosition, EventType, Category, Venue,
   GamesEdition, GamesEditionGroup, GamesEditionTeam, GamesEditionEvent, Season, SeasonStage,
-  SeasonStageResult, ScoringConfig, Team, Player, Matchday, GameMatch,
+  SeasonStageResult, EditionAward, ScoringConfig, Team, Player, Matchday, GameMatch,
   EventParticipant, EventLineup, MatchPeriod, MatchEvent, Suspension, MatchReopenLog,
   SeasonStanding, GamesEditionMedal, SeasonTeam, SeasonTeamPlayer)
 - Enums: `app/Enums/`

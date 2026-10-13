@@ -45,8 +45,8 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D15 | Se publica en un hosting (proveedor por definir) | 12/10 |
 | D16 | El buscador de participantes al armar un plantel se limita a los de las delegaciones del usuario. Titular y suplente comparten los participantes que registran; el organizador ve los que registraron los delegados de su olimpiada | 13/10 |
 
-Supuestos míos (cada uno es un valor por defecto editable). **S1, S2, S3 y S6 confirmados por
-el cliente el 13/10**; S4 y S5 siguen pendientes:
+Supuestos míos (cada uno es un valor por defecto editable). **Todos (S1 a S6) confirmados por el
+cliente el 13/10:**
 
 | # | Supuesto | Fase |
 |---|---|---|

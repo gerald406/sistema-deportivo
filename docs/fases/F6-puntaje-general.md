@@ -61,8 +61,8 @@ Para cada competencia activa de la olimpiada, el podio sale de su **última fase
 
 ## Tarea 6.1 — Cálculo
 
-- [ ] **Paso 1.** Migraciones M15 y M16, modelo y factory.
-- [ ] **Paso 2.** Escribir `AwardServiceTest`:
+- [x] **Paso 1.** Migraciones M15 y M16, modelo y factory.
+- [x] **Paso 2.** Escribir `AwardServiceTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -84,15 +84,15 @@ Para cada competencia activa de la olimpiada, el podio sale de su **última fase
 | `test_rebuild_is_idempotent` | Dos `rebuild()` seguidos dejan el mismo contenido |
 | `test_inactive_competition_is_ignored` | Una competencia con `is_active = false` no suma |
 
-- [ ] **Paso 3.** Ejecutar: falla. Implementar `AwardService` y los cinco puntos de llamada. Reemplazar cada uso de `MedalService` y borrarlo. En verde.
-- [ ] **Paso 4.** `php artisan migrate`; `php artisan test`. Commit: `F6: Puntaje general derivado de los podios y del cuadro`.
+- [x] **Paso 3.** Ejecutar: falla. Implementar `AwardService` y los cinco puntos de llamada. Reemplazar cada uso de `MedalService` y borrarlo. En verde.
+- [x] **Paso 4.** `php artisan migrate`; `php artisan test`. Commit: `F6: Puntaje general derivado de los podios y del cuadro`.
 
 ## Tarea 6.2 — Pantallas
 
-- [ ] **Paso 1.** `Reports\GeneralScore`: selector de olimpiada acotado por rol (`GamesEditionService::scopeVisibleTo()`), tabla Pos., Delegación, Serie, Oro, Plata, Bronce, Puntos; al abrir una fila, el detalle de premios. Botón "Recalcular" solo para quien gestiona la olimpiada. Estilos de impresión para sacar la tabla en papel.
-- [ ] **Paso 2.** `Reports\Index`: la sección de medallero enlaza a la pantalla nueva.
-- [ ] **Paso 3.** `Public\PublicResults`: pestaña "Puntaje general" de la olimpiada elegida, sin datos personales.
-- [ ] **Paso 4.** Ruta, menú, prueba de humo. Pruebas añadidas a `AwardServiceTest`:
+- [x] **Paso 1.** `Reports\GeneralScore`: selector de olimpiada acotado por rol (`GamesEditionService::scopeVisibleTo()`), tabla Pos., Delegación, Serie, Oro, Plata, Bronce, Puntos; al abrir una fila, el detalle de premios. Botón "Recalcular" solo para quien gestiona la olimpiada. Estilos de impresión para sacar la tabla en papel.
+- [x] **Paso 2.** `Reports\Index`: la sección de medallero enlaza a la pantalla nueva.
+- [x] **Paso 3.** `Public\PublicResults`: pestaña "Puntaje general" de la olimpiada elegida, sin datos personales.
+- [x] **Paso 4.** Ruta, menú, prueba de humo. Pruebas añadidas a `AwardServiceTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -100,11 +100,11 @@ Para cada competencia activa de la olimpiada, el podio sale de su **última fase
 | `test_public_page_shows_general_score` | La página pública contiene el nombre de la delegación líder y su total |
 | `test_only_manager_can_recalculate` | Llamar a `recalculate` como delegado devuelve 403 |
 
-- [ ] **Paso 5.** `php artisan test`. Commit: `F6: Pantalla y vista pública del puntaje general`.
+- [x] **Paso 5.** `php artisan test`. Commit: `F6: Pantalla y vista pública del puntaje general`.
 
 ## Tarea 6.3 — Documentación
 
-- [ ] `CLAUDE.md`: reemplazar la descripción del medallero; fase marcada. Commit.
+- [x] `CLAUDE.md`: reemplazar la descripción del medallero; fase marcada. Commit.
 
 ## Reglas que cumple
 
@@ -122,3 +122,29 @@ Para cada competencia activa de la olimpiada, el podio sale de su **última fase
 
 G1–G6. Además, comparar a mano: cargar con `Puno2026Seeder` tres podios de prueba y verificar que
 el total de la pantalla coincide con la suma hecha con el cuadro de la pág. 9. Registrar en "Estado".
+
+## Notas de cierre (2026-10-13)
+
+Cambios respecto al plan, hechos al implementar:
+
+- **Llave de 3 participantes.** No tiene partido por el tercer puesto (F5), así que el 3.º es
+  quien perdió la única semifinal. En cualquier otra llave, sin partido por el tercer puesto
+  jugado no hay 3.º (Art. 10).
+- **Puntos de llamada de `rebuild()`.** Además de los del plan: `StageService` (crear, editar o
+  borrar una fase cambia cuál es la última) y `SeasonService::update()` y `delete()`
+  (activar/desactivar una competencia o cambiar su fila). No se llama desde
+  `EditionTeamService::update()` ni desde `EditionEventService::delete()`: el estado de la
+  delegación lo lee `table()` en vivo, y una fila con competencias no se puede borrar.
+- **`GamesEditionService::scopeVisibleTo()`** ahora incluye las olimpiadas que el usuario gestiona
+  y aquellas donde es delegado, aunque su delegación aún no tenga plantel.
+- **`/reportes`** conserva la tabla de posiciones por competencia; el medallero se reemplazó por
+  un enlace a `/reportes/puntaje-general`. Menú: "Puntaje general" y "Posiciones".
+- **Vista pública**: pestaña "Puntaje general" dentro de la competencia elegida (muestra el de
+  su olimpiada). Solo delegaciones y puntos.
+- La comparación a mano que pide la puerta quedó como prueba: `test_puno_table_matches_page_9_sums`
+  (tres podios con los datos de `Puno2026Seeder`: 62, 54, 34 y 12 puntos).
+- Pruebas añadidas fuera de las tablas: llave de 3, enfrentamiento sin fases, solo cuenta la
+  última fase cuando cambian las fases.
+- Los dos commits de la fase no separan limpio cálculo y pantallas (el primero trae solo los
+  archivos nuevos; el segundo, las modificaciones y la baja de `MedalService`). El estado final
+  es el verificado por la puerta.
