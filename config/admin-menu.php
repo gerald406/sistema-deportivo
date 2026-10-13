@@ -32,6 +32,7 @@ return [
                 ['label' => 'Delegaciones inscritas', 'route' => 'edition-teams.index', 'permission' => 'editions.manage'],
                 ['label' => 'Cuadro de puntaje', 'route' => 'edition-events.index', 'permission' => 'editions.manage'],
                 ['label' => 'Competencias', 'route' => 'seasons.index', 'permission' => 'seasons.manage'],
+                ['label' => 'Fases y llaves', 'route' => 'season-stages.index', 'permission' => 'matches.manage'],
             ],
         ],
         [

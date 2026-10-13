@@ -26,6 +26,7 @@ use App\Livewire\Reports\ManagerialReport;
 use App\Livewire\Reports\RosterReport;
 use App\Livewire\Results\Index as ResultsIndex;
 use App\Livewire\Rosters\Index as RostersIndex;
+use App\Livewire\SeasonStages\Index as SeasonStagesIndex;
 use App\Livewire\SeasonTeams\Index as SeasonTeamsIndex;
 use App\Livewire\Seasons\Index as SeasonsIndex;
 use App\Livewire\Suspensions\Index as SuspensionsIndex;
@@ -78,6 +79,10 @@ Route::middleware([
 
     Route::get('/competencias', SeasonsIndex::class)
         ->name('seasons.index');
+
+    // Fases de una competencia: series, fase final, llaves y podio directo.
+    Route::get('/fases', SeasonStagesIndex::class)
+        ->name('season-stages.index');
 
     Route::get('/inscripciones', SeasonTeamsIndex::class)
         ->name('season-teams.index');

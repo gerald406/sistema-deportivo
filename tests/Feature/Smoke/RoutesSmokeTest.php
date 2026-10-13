@@ -49,6 +49,7 @@ class RoutesSmokeTest extends TestCase
             'edition-groups.index',
             'edition-teams.index',
             'edition-events.index',
+            'season-stages.index',
         ];
     }
 

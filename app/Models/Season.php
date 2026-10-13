@@ -69,6 +69,12 @@ class Season extends Model
         return $this->belongsTo(Discipline::class);
     }
 
+    /** Fases de la competencia (series, fase final o final de podio directo). */
+    public function stages(): HasMany
+    {
+        return $this->hasMany(SeasonStage::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function scoringConfigs(): HasMany
     {
         return $this->hasMany(ScoringConfig::class);
