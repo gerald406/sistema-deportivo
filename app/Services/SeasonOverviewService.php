@@ -166,36 +166,70 @@ class SeasonOverviewService
     public function matchRows(Matchday $matchday, bool $onlyDecided): Collection
     {
         return $matchday->matches()
-            ->with(['season.sport', 'discipline', 'venue', 'participants' => ParticipantLabel::eagerLoad()])
+            ->with($this->matchRowRelations())
             ->when($onlyDecided, fn ($q) => $q->whereIn('status', [MatchStatus::Played->value, MatchStatus::Walkover->value]))
             ->when(! $onlyDecided, fn ($q) => $q->where('status', '!=', MatchStatus::Canceled->value))
             ->orderByRaw('scheduled_at IS NULL, scheduled_at')
             ->orderBy('id')
             ->get()
-            ->map(function (GameMatch $match) {
-                $isHeadToHead = $this->matches->formatFor($match->season, $match->discipline) === SportFormatType::HeadToHead;
-                $home = $match->participants->get(0);
-                $away = $match->participants->get(1);
-                $winner = $match->participants->firstWhere('position', 1);
-
-                return [
-                    'id' => $match->id,
-                    'isHeadToHead' => $isHeadToHead && $match->participants->count() === 2,
-                    'home' => $home ? ParticipantLabel::for($home) : '—',
-                    'away' => $away ? ParticipantLabel::for($away) : '—',
-                    'homeScore' => $this->score($home),
-                    'awayScore' => $this->score($away),
-                    'event' => $match->discipline?->name ?? $match->season->sport->name,
-                    'participantsCount' => $match->participants->count(),
-                    'winner' => $winner ? ParticipantLabel::for($winner) : null,
-                    'status' => $match->status,
-                    'venue' => $match->venue,
-                    'scheduledAt' => $match->scheduled_at,
-                ];
-            });
+            ->map(fn (GameMatch $match) => $this->matchRow($match));
     }
 
-    /** Goleadores (event_type 'goal') en partidos no cancelados de la competencia. */
+    /** Relaciones que matchRow() lee: se cargan con ->with() para no consultar por fila. */
+    public function matchRowRelations(): array
+    {
+        return ['season.sport', 'discipline', 'venue', 'participants' => ParticipantLabel::eagerLoad()];
+    }
+
+    /**
+     * Un partido o prueba listo para mostrar. Requiere cargadas las
+     * relaciones de matchRowRelations().
+     *
+     * @return array<string, mixed>
+     */
+    public function matchRow(GameMatch $match): array
+    {
+        $isHeadToHead = $this->matches->formatFor($match->season, $match->discipline) === SportFormatType::HeadToHead;
+        $home = $match->participants->get(0);
+        $away = $match->participants->get(1);
+        $winner = $match->participants->firstWhere('position', 1);
+
+        return [
+            'id' => $match->id,
+            'isHeadToHead' => $isHeadToHead && $match->participants->count() === 2,
+            'home' => $home ? ParticipantLabel::for($home) : '—',
+            'away' => $away ? ParticipantLabel::for($away) : '—',
+            'homeScore' => $this->score($home),
+            'awayScore' => $this->score($away),
+            'event' => $match->discipline?->name ?? $match->season->sport->name,
+            'participantsCount' => $match->participants->count(),
+            'winner' => $winner ? ParticipantLabel::for($winner) : null,
+            // Lado ganador de un enfrentamiento (null = empate o sin resultado).
+            // En un empate ResultService deja a AMBOS en el puesto 1.
+            'winnerSide' => match (true) {
+                $winner === null, $match->participants->where('position', 1)->count() !== 1 => null,
+                $winner->is($home) => 'home',
+                $winner->is($away) => 'away',
+                default => null,
+            },
+            // Desempate de un partido de llave: "Penales 4-3" (sin marcador en el sorteo).
+            'tiebreak' => $match->tiebreak_type
+                ? trim($match->tiebreak_type->label().' '.($home?->tiebreak_score !== null && $away?->tiebreak_score !== null
+                    ? "{$home->tiebreak_score}-{$away->tiebreak_score}" : ''))
+                : null,
+            // Pruebas individuales y postas: los tres primeros con su marca.
+            'podium' => $match->participants->whereNotNull('position')->sortBy('position')->take(3)
+                ->map(fn (EventParticipant $p) => ['position' => $p->position, 'name' => ParticipantLabel::for($p), 'mark' => $this->score($p)])
+                ->values()->all(),
+            'season' => $match->season->name,
+            'sport' => $match->season->sport->name,
+            'round' => $match->round_type,
+            'status' => $match->status,
+            'venue' => $match->venue,
+            'scheduledAt' => $match->scheduled_at,
+        ];
+    }
+
     public function topScorers(Season $season, int $limit): Collection
     {
         return $this->playerEventCounts($season, 'goal')
