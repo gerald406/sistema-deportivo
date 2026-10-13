@@ -9,6 +9,8 @@ use App\Livewire\Admin\Sports\Index as AdminSportsIndex;
 use App\Livewire\Admin\Users\Index as AdminUsersIndex;
 use App\Livewire\Categories\Index as CategoriesIndex;
 use App\Livewire\Dashboard;
+use App\Livewire\EditionGroups\Index as EditionGroupsIndex;
+use App\Livewire\EditionTeams\Index as EditionTeamsIndex;
 use App\Livewire\GamesEditions\Index as GamesEditionsIndex;
 use App\Livewire\MatchEvents\Index as MatchEventsIndex;
 use App\Livewire\Matchdays\Index as MatchdaysIndex;
@@ -61,6 +63,13 @@ Route::middleware([
 
     Route::get('/olimpiadas', GamesEditionsIndex::class)
         ->name('games-editions.index');
+
+    // Series y delegaciones inscritas de la olimpiada elegida (?olimpiada=ID,
+    // ver App\Livewire\Concerns\SelectsEdition). Solo quien gestiona la olimpiada.
+    Route::get('/series', EditionGroupsIndex::class)
+        ->name('edition-groups.index');
+    Route::get('/delegaciones-inscritas', EditionTeamsIndex::class)
+        ->name('edition-teams.index');
 
     Route::get('/temporadas', SeasonsIndex::class)
         ->name('seasons.index');

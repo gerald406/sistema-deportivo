@@ -11,32 +11,25 @@ use App\Services\TeamRegistrationService;
 class TeamPolicy
 {
     /**
-     * El delegado gestiona su(s) propio(s) equipo(s) via delegate_id
-     * (delegado general del club). La precedencia con el delegado de
-     * season_team se resuelve en el contexto de Season/SeasonTeam, no
-     * aqui: esta policy protege el recurso Team en si mismo.
+     * La delegacion (Team) la gestionan el organizador y el admin
+     * (Gate::before). El delegado NO entra a /equipos ni edita su
+     * delegacion: solo registra participantes
+     * (docs/fases/00-especificacion.md, D4). Sus delegados viven en la
+     * inscripcion de la delegacion en la olimpiada (GamesEditionTeam).
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'organizador', 'delegado']);
+        return $this->isOrganizer($user);
     }
 
     public function view(User $user, Team $team): bool
     {
-        if ($this->organizerManages($user, $team)) {
-            return true;
-        }
-
-        // Delegado general o delegado de temporada en alguna inscripcion
-        // (mismo criterio que el listado: TeamRegistrationService::scopeManagedBy).
-        return $user->hasRole('delegado')
-            && ($team->delegate_id === $user->id
-                || $team->seasonTeams()->where('delegate_id', $user->id)->exists());
+        return $this->organizerManages($user, $team);
     }
 
     /**
      * "Flujo de permisos" punto 3 de CLAUDE.md. CAMBIO DE REGLA: antes el
-     * delegado creaba equipos; ahora los crea (y les asigna delegado) el
+     * delegado creaba equipos; ahora los crea el
      * organizador o el admin (Gate::before). El delegado NUNCA crea
      * equipos. TeamRegistrationService::register() lo revalida.
      */
@@ -46,21 +39,13 @@ class TeamPolicy
     }
 
     /**
-     * El organizador edita solo los equipos a su cargo (inscritos en un
-     * olimpiada suya o creados por el): TeamRegistrationService::scopeManagedBy().
-     * El delegado conserva la edicion de SU equipo (nombre, logo), pero
-     * nunca reasigna delegate_id: eso lo fuerza
-     * TeamRegistrationService::resolveDelegateId().
+     * El organizador edita solo las delegaciones a su cargo (inscritas en
+     * una olimpiada suya o creadas por el):
+     * TeamRegistrationService::scopeManagedBy(). El delegado no las edita.
      */
     public function update(User $user, Team $team): bool
     {
-        if ($this->organizerManages($user, $team)) {
-            return true;
-        }
-
-        return $user->hasRole('delegado')
-            && $user->can('teams.manage')
-            && $team->delegate_id === $user->id;
+        return $this->organizerManages($user, $team);
     }
 
     /** Quien no crea equipos (delegado) tampoco los borra; el organizador, solo los suyos. */

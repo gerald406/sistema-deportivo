@@ -48,7 +48,6 @@ class Index extends Component
         'season_id' => '',
         'team_id' => '',
         'category_id' => '',
-        'delegate_id' => '',
         'is_active' => true,
     ];
 
@@ -145,40 +144,6 @@ class Index extends Component
             ->get(['id', 'name', 'gender']);
     }
 
-    /**
-     * Equipo del formulario con su delegado general (teams.delegate_id)
-     * cargado. Sin esto el modal solo conocia el delegado DE TEMPORADA
-     * (season_team.delegate_id) y, cuando era null, no mostraba quien es
-     * el delegado que efectivamente aplica (SeasonTeam::effectiveDelegate()).
-     */
-    public function formTeam(): ?Team
-    {
-        $teamId = $this->editingId
-            ? $this->findVisibleSeasonTeam($this->editingId)->team_id
-            : (ctype_digit((string) $this->form['team_id']) ? (int) $this->form['team_id'] : null);
-
-        return $teamId ? Team::with('delegate:id,name')->find($teamId, ['id', 'name', 'delegate_id']) : null;
-    }
-
-    public function delegateOptions(): Collection
-    {
-        return User::role('delegado')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
-    }
-
-    /** Solo admin/organizador de la olimpiada eligen delegado de temporada. */
-    public function canChooseDelegate(): bool
-    {
-        $user = auth()->user();
-
-        if ($this->editingId) {
-            return $user->can('update', $this->findVisibleSeasonTeam($this->editingId));
-        }
-
-        $season = $this->formSeason();
-
-        return $season ? app(SeasonTeamService::class)->isManager($user, $season) : $user->hasRole('admin');
-    }
-
     public function create(): void
     {
         $this->authorize('create', SeasonTeam::class);
@@ -202,7 +167,6 @@ class Index extends Component
             'season_id' => $seasonTeam->season_id,
             'team_id' => $seasonTeam->team_id,
             'category_id' => $seasonTeam->category_id ?? '',
-            'delegate_id' => $seasonTeam->delegate_id ?? '',
             'is_active' => $seasonTeam->is_active,
         ];
         $this->showModal = true;
@@ -212,7 +176,7 @@ class Index extends Component
     {
         $data = $this->validate($this->rules())['form'];
 
-        foreach (['category_id', 'delegate_id'] as $field) {
+        foreach (['category_id'] as $field) {
             $data[$field] = in_array($data[$field], ['', null], true) ? null : (int) $data[$field];
         }
 
@@ -272,9 +236,9 @@ class Index extends Component
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->withCount('roster')
             ->with([
-                'team:id,name,logo_path,delegate_id', 'team.delegate:id,name',
+                'team:id,name,logo_path',
                 'season:id,name,status,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'season.sport:id,name',
-                'category:id,name,gender', 'delegate:id,name',
+                'category:id,name,gender',
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder());
 
@@ -314,7 +278,6 @@ class Index extends Component
             'season_id' => '',
             'team_id' => '',
             'category_id' => '',
-            'delegate_id' => '',
             'is_active' => true,
         ];
         $this->teamSearch = '';
@@ -331,7 +294,6 @@ class Index extends Component
             'form.season_id' => ['required', 'integer', Rule::exists('seasons', 'id')],
             'form.team_id' => ['required', 'integer', Rule::exists('teams', 'id')],
             'form.category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')],
-            'form.delegate_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'form.is_active' => ['boolean'],
         ];
     }
@@ -342,7 +304,6 @@ class Index extends Component
             'form.season_id' => 'temporada',
             'form.team_id' => 'equipo',
             'form.category_id' => 'categoría',
-            'form.delegate_id' => 'delegado de temporada',
         ];
     }
 }

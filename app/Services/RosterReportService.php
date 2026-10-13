@@ -43,7 +43,7 @@ class RosterReportService
             // Categoria de la inscripcion (division por edad/genero, ej. Sub-17 Damas).
             ->when($categoryId !== null, fn ($q) => $q->where('category_id', $categoryId))
             ->with([
-                'team:id,name,logo_path,delegate_id', 'team.delegate:id,name', 'delegate:id,name',
+                'team:id,name,logo_path', 'season:id,games_edition_id',
                 'roster.player:id,dni,first_name,last_name,birth_date',
             ])
             ->get()
@@ -117,8 +117,8 @@ class RosterReportService
             'seasonTeam' => $seasonTeam,
             'team' => $seasonTeam->team,
             'logoBase64' => $this->images->toBase64($seasonTeam->team->logo_path),
-            // Delegado de la temporada si existe; si no, el general del club.
-            'delegate' => $seasonTeam->effectiveDelegate(),
+            // Firma el delegado titular de la delegacion; si no hay, el suplente.
+            'delegate' => $seasonTeam->delegates()->first(),
             'entries' => $entries,
             'activeCount' => $active,
             'inactiveCount' => $entries->count() - $active,

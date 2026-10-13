@@ -243,9 +243,8 @@ class Index extends Component
             ->when(SeasonTeamPlayerStatus::tryFrom($this->rosterStatusFilter), fn ($q, $s) => $q->where('status', $s->value))
             ->with([
                 'player:id,first_name,last_name,dni,birth_date,photo_path', 'position:id,name',
-                'seasonTeam:id,season_id,team_id,delegate_id,category_id', 'seasonTeam.team:id,name,delegate_id',
+                'seasonTeam:id,season_id,team_id,category_id', 'seasonTeam.team:id,name',
                 'seasonTeam.season:id,name,status,games_edition_id', 'seasonTeam.season.gamesEdition:id,name,organizer_id',
-                'seasonTeam.delegate:id', 'seasonTeam.team.delegate:id',
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('player_last_name');

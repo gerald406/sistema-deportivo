@@ -82,21 +82,16 @@ class User extends Authenticatable
         return $this->hasMany(GamesEdition::class, 'organizer_id');
     }
 
-    /**
-     * Equipos de los que es delegado general (teams.delegate_id, SET NULL).
-     */
-    public function delegatedTeams(): HasMany
+    /** Delegaciones inscritas de las que es delegado titular (SET NULL). */
+    public function delegatedEditionTeams(): HasMany
     {
-        return $this->hasMany(Team::class, 'delegate_id');
+        return $this->hasMany(GamesEditionTeam::class, 'delegate_id');
     }
 
-    /**
-     * Inscripciones de las que es delegado de temporada
-     * (season_team.delegate_id, SET NULL).
-     */
-    public function delegatedSeasonTeams(): HasMany
+    /** Delegaciones inscritas de las que es delegado suplente (SET NULL). */
+    public function substituteEditionTeams(): HasMany
     {
-        return $this->hasMany(SeasonTeam::class, 'delegate_id');
+        return $this->hasMany(GamesEditionTeam::class, 'substitute_delegate_id');
     }
 
     /**

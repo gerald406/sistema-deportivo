@@ -48,6 +48,18 @@ class GamesEdition extends Model
         return $this->hasMany(Season::class);
     }
 
+    /** Series de la olimpiada, en el orden que definio el organizador. */
+    public function groups(): HasMany
+    {
+        return $this->hasMany(GamesEditionGroup::class)->orderBy('sort_order')->orderBy('name');
+    }
+
+    /** Delegaciones inscritas (con su serie y sus delegados). */
+    public function editionTeams(): HasMany
+    {
+        return $this->hasMany(GamesEditionTeam::class);
+    }
+
     public function medals(): HasMany
     {
         return $this->hasMany(GamesEditionMedal::class);

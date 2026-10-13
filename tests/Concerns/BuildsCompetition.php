@@ -7,6 +7,7 @@ namespace Tests\Concerns;
 use App\Models\EventParticipant;
 use App\Models\GameMatch;
 use App\Models\GamesEdition;
+use App\Models\GamesEditionTeam;
 use App\Models\Matchday;
 use App\Models\Player;
 use App\Models\ScoringConfig;
@@ -19,8 +20,9 @@ use App\Models\User;
 
 /**
  * Conjunto minimo de datos de una competencia en juego: olimpiada con su
- * organizador, una competencia de enfrentamiento, dos delegaciones con un
- * participante cada una y un partido pendiente entre ambas. Lo usan la
+ * organizador, una competencia de enfrentamiento, dos delegaciones
+ * inscritas en la olimpiada con un participante cada una y un partido
+ * pendiente entre ambas. Lo usan la
  * prueba de humo (para que las vistas rendericen filas reales) y las
  * pruebas de alcance por rol.
  */
@@ -43,6 +45,8 @@ trait BuildsCompetition
 
         $homeTeam = Team::factory()->create();
         $awayTeam = Team::factory()->create();
+        $this->registerDelegation($edition, $homeTeam);
+        $this->registerDelegation($edition, $awayTeam);
         $home = SeasonTeam::create(['season_id' => $season->id, 'team_id' => $homeTeam->id, 'is_active' => true]);
         $away = SeasonTeam::create(['season_id' => $season->id, 'team_id' => $awayTeam->id, 'is_active' => true]);
 
@@ -70,6 +74,19 @@ trait BuildsCompetition
         return (object) compact(
             'edition', 'organizer', 'season', 'homeTeam', 'awayTeam', 'home', 'away',
             'homeEntry', 'awayEntry', 'matchday', 'match',
+        );
+    }
+
+    /** Inscribe la delegacion en la olimpiada, opcionalmente con sus delegados. */
+    protected function registerDelegation(GamesEdition $edition, Team $team, ?User $delegate = null, ?User $substitute = null, array $attributes = []): GamesEditionTeam
+    {
+        return GamesEditionTeam::updateOrCreate(
+            ['games_edition_id' => $edition->id, 'team_id' => $team->id],
+            $attributes + [
+                'delegate_id' => $delegate?->id,
+                'substitute_delegate_id' => $substitute?->id,
+                'status' => 'registered',
+            ],
         );
     }
 

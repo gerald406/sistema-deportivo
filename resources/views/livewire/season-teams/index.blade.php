@@ -88,10 +88,7 @@
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $seasonTeam->category?->name ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-600">
-                                {{ $seasonTeam->effectiveDelegate()?->name ?? '—' }}
-                                @if ($seasonTeam->delegate_id)
-                                    <span class="block text-xs text-gray-400">de temporada</span>
-                                @endif
+                                {{ $seasonTeam->delegates()->pluck('name')->implode(' / ') ?: '—' }}
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $seasonTeam->roster_count }}</td>
                             <td class="px-4 py-3">
@@ -193,7 +190,6 @@
                                                 wire:click="selectTeam({{ $option->id }})" x-on:click="open = false"
                                                 class="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50">
                                             {{ $option->name }}
-                                            <span class="text-gray-400">· {{ $option->delegate?->name ?? 'sin delegado' }}</span>
                                         </button>
                                     @empty
                                         <p class="px-3 py-2 text-sm text-gray-400">Sin equipos disponibles (activos y no inscritos en esta temporada).</p>
@@ -216,29 +212,6 @@
                     </select>
                     @error('form.category_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
-
-                @php($formTeam = $this->formTeam())
-                @if ($formTeam)
-                    <div class="rounded-lg bg-gray-50 p-3 text-sm">
-                        <p class="text-xs text-gray-500">Delegado general del equipo</p>
-                        <p class="font-medium text-gray-900">{{ $formTeam->delegate?->name ?? 'Sin delegado asignado' }}</p>
-                    </div>
-                @endif
-
-                @if ($this->canChooseDelegate())
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Delegado de temporada <span class="text-gray-400">(opcional)</span></label>
-                        <select wire:model="form.delegate_id"
-                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Usar el delegado general del equipo{{ $formTeam?->delegate ? ' ('.$formTeam->delegate->name.')' : '' }}</option>
-                            @foreach ($this->delegateOptions() as $delegate)
-                                <option value="{{ $delegate->id }}">{{ $delegate->name }}</option>
-                            @endforeach
-                        </select>
-                        <p class="mt-1 text-xs text-gray-400">Si se asigna, reemplaza al delegado general del equipo en esta temporada.</p>
-                        @error('form.delegate_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                @endif
 
                 <label class="flex items-center gap-2">
                     <input type="checkbox" wire:model="form.is_active" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">

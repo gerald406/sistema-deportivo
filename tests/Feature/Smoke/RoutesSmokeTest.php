@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Smoke;
 
-use App\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\URL;
 use Tests\Concerns\BuildsCompetition;
@@ -47,6 +46,8 @@ class RoutesSmokeTest extends TestCase
             'admin.users.index',
             'admin.roles.index',
             'games-editions.index',
+            'edition-groups.index',
+            'edition-teams.index',
         ];
     }
 
@@ -78,7 +79,7 @@ class RoutesSmokeTest extends TestCase
     {
         $data = $this->buildCompetition();
         $delegate = $this->delegate();
-        Team::whereKey($data->homeTeam->id)->update(['delegate_id' => $delegate->id]);
+        $this->registerDelegation($data->edition, $data->homeTeam, $delegate);
 
         $actors = ['admin' => $this->admin(), 'organizador' => $data->organizer, 'delegado' => $delegate];
 

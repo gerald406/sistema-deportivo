@@ -29,7 +29,7 @@ use Illuminate\Validation\ValidationException;
 class SeasonTeamService
 {
     /**
-     * @param array{season_id: int, team_id: int, category_id: int|null, delegate_id: int|null, is_active: bool} $data
+     * @param array{season_id: int, team_id: int, category_id: int|null, is_active: bool} $data
      */
     public function register(array $data, User $actor): SeasonTeam
     {
@@ -56,23 +56,19 @@ class SeasonTeamService
             throw ValidationException::withMessages(['form.team_id' => 'El equipo ya está inscrito en esta temporada.']);
         }
 
-        $this->ensureValidSeasonDelegate($data['delegate_id'] ?? null);
-
         return SeasonTeam::create([
             'season_id' => $season->id,
             'team_id' => $team->id,
             'category_id' => $data['category_id'] ?? null,
-            'delegate_id' => $data['delegate_id'] ?? null,
             'is_active' => $data['is_active'] ?? true,
         ]);
     }
 
     /**
      * Temporada y equipo NO se cambian: una inscripcion a otra temporada
-     * es otra inscripcion (retirar + inscribir). Solo categoria, delegado
-     * de temporada y estado.
+     * es otra inscripcion (retirar + inscribir). Solo categoria y estado.
      *
-     * @param array{category_id: int|null, delegate_id: int|null, is_active: bool} $data
+     * @param array{category_id: int|null, is_active: bool} $data
      */
     public function update(SeasonTeam $seasonTeam, array $data, User $actor): SeasonTeam
     {
@@ -80,11 +76,8 @@ class SeasonTeamService
             throw new AuthorizationException('Solo el organizador de la olimpiada o el administrador pueden editar inscripciones.');
         }
 
-        $this->ensureValidSeasonDelegate($data['delegate_id'] ?? null);
-
         $seasonTeam->update([
             'category_id' => $data['category_id'] ?? null,
-            'delegate_id' => $data['delegate_id'] ?? null,
             'is_active' => $data['is_active'],
         ]);
 
@@ -131,7 +124,7 @@ class SeasonTeamService
      *   - Admin: todas.
      *   - Organizador: las de temporadas de una olimpiada suya.
      *   - Delegado: las de equipos cuyo delegado EFECTIVO es el
-     *     (SeasonTeamPolicy::effectiveDelegateConstraint()).
+     *     (SeasonTeamPolicy::delegateConstraint()).
      *   - Cualquier otro: ninguna.
      */
     public function scopeVisibleTo(Builder $query, User $actor): Builder
@@ -153,7 +146,7 @@ class SeasonTeamService
             }
 
             if ($isDelegate) {
-                $q->orWhere(SeasonTeamPolicy::effectiveDelegateConstraint($actor));
+                $q->orWhere(SeasonTeamPolicy::delegateConstraint($actor));
             }
         });
     }
@@ -202,10 +195,9 @@ class SeasonTeamService
 
         return $this->eligibleTeams($season)
             ->where('name', 'like', "%{$term}%")
-            ->with('delegate:id,name')
             ->orderBy('name')
             ->limit(10)
-            ->get(['id', 'name', 'delegate_id']);
+            ->get(['id', 'name']);
     }
 
     /** Un equipo concreto elegible para $season (el id viene del navegador). */
@@ -242,14 +234,5 @@ class SeasonTeamService
         }
 
         return 'No puedes inscribir equipos en esta temporada.';
-    }
-
-    private function ensureValidSeasonDelegate(?int $delegateId): void
-    {
-        if ($delegateId && ! User::role('delegado')->whereKey($delegateId)->exists()) {
-            throw ValidationException::withMessages([
-                'form.delegate_id' => 'El delegado de temporada debe ser un usuario con rol delegado.',
-            ]);
-        }
     }
 }

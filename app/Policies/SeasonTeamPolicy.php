@@ -41,8 +41,8 @@ class SeasonTeamPolicy
     }
 
     /**
-     * Categoria, delegado de temporada y estado de la inscripcion: solo
-     * el organizador de la olimpiada (el delegado no se reasigna a si mismo).
+     * Categoria y estado de la inscripcion: solo el organizador de la
+     * olimpiada.
      */
     public function update(User $user, SeasonTeam $seasonTeam): bool
     {
@@ -51,7 +51,7 @@ class SeasonTeamPolicy
 
     /**
      * Retirar la inscripcion: solo el organizador de la olimpiada. CAMBIO DE
-     * REGLA: el delegado efectivo ya no puede retirarla (ni en Borrador).
+     * REGLA: el delegado ya no puede retirarla (ni en Borrador).
      */
     public function delete(User $user, SeasonTeam $seasonTeam): bool
     {
@@ -60,7 +60,7 @@ class SeasonTeamPolicy
 
     /**
      * Padron de Jugadores (PDF) de UNA inscripcion: el organizador del
-     * olimpiada y el delegado EFECTIVO del equipo (admin por Gate::before).
+     * olimpiada y los delegados de la delegacion (admin por Gate::before).
      * Es el mismo alcance de /inscripciones, asi que reutiliza
      * isVisibleTo() en vez de otra regla. El padron de TODOS los equipos de
      * la temporada sigue siendo SeasonPolicy::printReports (sin delegado).
@@ -71,25 +71,25 @@ class SeasonTeamPolicy
     }
 
     /**
-     * Restriccion sobre season_team: inscripciones cuyo delegado EFECTIVO
-     * es $user. Replica en SQL la regla de SeasonTeam::effectiveDelegate():
-     * el delegado de la temporada, si existe, tiene precedencia; solo si es
-     * null cuenta el delegado general del club (teams.delegate_id).
+     * Restriccion sobre season_team: inscripciones de una delegacion de la
+     * que $user es delegado titular o suplente EN LA OLIMPIADA de esa
+     * competencia (games_edition_teams). Version SQL de
+     * SeasonTeam::hasDelegate().
      *
-     * Unica version SQL de esa regla: la usan SeasonTeamService::scopeVisibleTo()
-     * y PlayerPolicy::managedRosterConstraint().
+     * Unica version SQL de esa regla: la usan SeasonTeamService::scopeVisibleTo(),
+     * PlayerPolicy::managedRosterConstraint(), DashboardService,
+     * PlayerCardService y el listado de relevos.
      */
-    public static function effectiveDelegateConstraint(User $user): Closure
+    public static function delegateConstraint(User $user): Closure
     {
         return function ($seasonTeam) use ($user) {
-            // where(closure) agrupa el OR entre parentesis: sin esto
-            // romperia la correlacion de un whereHas externo.
-            $seasonTeam->where(function ($q) use ($user) {
-                $q->where('season_team.delegate_id', $user->id)
-                    ->orWhere(function ($q) use ($user) {
-                        $q->whereNull('season_team.delegate_id')
-                            ->whereHas('team', fn ($team) => $team->where('delegate_id', $user->id));
-                    });
+            $seasonTeam->whereExists(function ($sub) use ($user) {
+                $sub->selectRaw('1')
+                    ->from('games_edition_teams as ged')
+                    ->join('seasons as ged_season', 'ged_season.games_edition_id', '=', 'ged.games_edition_id')
+                    ->whereColumn('ged_season.id', 'season_team.season_id')
+                    ->whereColumn('ged.team_id', 'season_team.team_id')
+                    ->where(fn ($d) => $d->where('ged.delegate_id', $user->id)->orWhere('ged.substitute_delegate_id', $user->id));
             });
         };
     }

@@ -28,6 +28,8 @@ return [
             'icon' => 'fa-solid fa-trophy',
             'children' => [
                 ['label' => 'Olimpiadas', 'route' => 'games-editions.index', 'permission' => 'editions.manage'],
+                ['label' => 'Series', 'route' => 'edition-groups.index', 'permission' => 'editions.manage'],
+                ['label' => 'Delegaciones inscritas', 'route' => 'edition-teams.index', 'permission' => 'editions.manage'],
                 ['label' => 'Temporadas', 'route' => 'seasons.index', 'permission' => 'seasons.manage'],
             ],
         ],
@@ -43,7 +45,7 @@ return [
             'label' => 'Equipos',
             'icon' => 'fa-solid fa-people-group',
             'children' => [
-                ['label' => 'Equipos', 'route' => 'teams.index', 'permission' => 'teams.manage'],
+                ['label' => 'Delegaciones', 'route' => 'teams.index', 'permission' => 'teams.manage'],
                 ['label' => 'Jugadores', 'route' => 'players.index', 'permission' => 'players.manage'],
                 // Sin permission: los 3 roles ven inscripciones (SeasonTeamPolicy::viewAny).
                 ['label' => 'Inscripciones', 'route' => 'season-teams.index'],

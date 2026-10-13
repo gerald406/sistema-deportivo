@@ -18,8 +18,7 @@ class RegistrationFormService
 {
     public const RELATIONS = [
         'player',
-        'seasonTeam.team.delegate',
-        'seasonTeam.delegate',
+        'seasonTeam.team',
         'seasonTeam.season.sport',
         'seasonTeam.season.gamesEdition.organizer',
     ];
@@ -47,7 +46,8 @@ class RegistrationFormService
             'season' => $seasonTeam->season,
             'gamesEdition' => $gamesEdition,
             'organizer' => $gamesEdition->organizer,
-            'delegateName' => $seasonTeam->effectiveDelegate()?->name ?? '',
+            // Firma el titular; si no hay, el suplente.
+            'delegateName' => $seasonTeam->delegates()->first()?->name ?? '',
             // User no tiene documento de identidad: la vista muestra "Sin registrar".
             'delegateDni' => '',
             'issueDate' => now()->format('d/m/Y'),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Policies\SeasonTeamPolicy;
 use App\Enums\SeasonStatus;
 use App\Enums\SeasonTeamPlayerStatus;
 use App\Models\SeasonTeam;
@@ -77,7 +78,7 @@ class PlayerCardService
      * pero en SQL para filtrar listados. Admin: todas; organizador: las de
      * sus olimpiadas; delegado: donde es el delegado EFECTIVO (el de temporada,
      * o el general del club si la inscripcion no tiene uno), igual que
-     * SeasonTeam::effectiveDelegate(). Los Controllers igual autorizan cada
+     * SeasonTeam::hasDelegate(). Los Controllers igual autorizan cada
      * id con la Policy.
      */
     public function printableSeasonTeams(User $user): Builder
@@ -89,7 +90,7 @@ class PlayerCardService
         }
 
         $isOrganizer = $user->hasRole('organizador') && $user->can('seasons.manage');
-        $isDelegate = $user->hasRole('delegado') && $user->can('teams.manage');
+        $isDelegate = $user->hasRole('delegado') && $user->can('players.manage');
 
         if (! $isOrganizer && ! $isDelegate) {
             return $query->whereRaw('1 = 0');
@@ -101,9 +102,7 @@ class PlayerCardService
             }
 
             if ($isDelegate) {
-                $q->orWhere(fn ($d) => $d->where('season_team.delegate_id', $user->id)
-                    ->orWhere(fn ($g) => $g->whereNull('season_team.delegate_id')
-                        ->whereHas('team', fn ($t) => $t->where('delegate_id', $user->id))));
+                $q->orWhere(SeasonTeamPolicy::delegateConstraint($user));
             }
         });
     }

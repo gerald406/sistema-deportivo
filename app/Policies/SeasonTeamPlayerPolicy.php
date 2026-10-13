@@ -12,8 +12,9 @@ use App\Services\SeasonTeamPlayerService;
 class SeasonTeamPlayerPolicy
 {
     /**
-     * El plantel de una inscripcion lo gestionan: su delegado EFECTIVO
-     * (SeasonTeam::effectiveDelegate(), regla 5 de CLAUDE.md), el
+     * El plantel de una inscripcion lo gestionan: los delegados titular y
+     * suplente de la delegacion en la olimpiada (SeasonTeam::hasDelegate(),
+     * regla 5 de CLAUDE.md), el
      * organizador de la olimpiada y el admin (Gate::before). Que la temporada
      * no este cerrada lo valida SeasonTeamPlayerService.
      */
@@ -35,7 +36,7 @@ class SeasonTeamPlayerPolicy
     public function create(User $user): bool
     {
         return ($user->hasRole('organizador') && $user->can('seasons.manage'))
-            || ($user->hasRole('delegado') && $user->can('teams.manage'));
+            || ($user->hasRole('delegado') && $user->can('players.manage'));
     }
 
     public function update(User $user, SeasonTeamPlayer $entry): bool
@@ -51,8 +52,8 @@ class SeasonTeamPlayerPolicy
     /**
      * Generar el carnet (fotocheck) o la ficha de inscripcion de ESTA
      * inscripcion: admin siempre (Gate::before); el organizador si la olimpiada
-     * de la temporada es suyo; el delegado si es el delegado EFECTIVO del
-     * equipo en esa temporada (SeasonTeam::effectiveDelegate()).
+     * de la temporada es suyo; el delegado si es titular o suplente de la
+     * delegacion en esa olimpiada (SeasonTeam::hasDelegate()).
      * Es la unica regla para todos los PDFs por jugador: los Controllers
      * llaman a authorize('printCard', ...) en vez de tener cada uno su
      * propio authorizePlayer() privado como en el proyecto de referencia.
@@ -78,7 +79,7 @@ class SeasonTeamPlayerPolicy
         }
 
         return $user->hasRole('delegado')
-            && $user->can('teams.manage')
-            && $seasonTeam->effectiveDelegate()?->id === $user->id;
+            && $user->can('players.manage')
+            && $seasonTeam->hasDelegate($user);
     }
 }

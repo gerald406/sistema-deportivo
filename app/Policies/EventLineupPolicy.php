@@ -18,7 +18,7 @@ class EventLineupPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('matches.manage') || ($user->hasRole('delegado') && $user->can('teams.manage'));
+        return $user->can('matches.manage') || ($user->hasRole('delegado') && $user->can('players.manage'));
     }
 
     /**
@@ -37,7 +37,7 @@ class EventLineupPolicy
 
         return $seasonTeam instanceof SeasonTeam
             && $user->hasRole('delegado')
-            && $user->can('teams.manage')
-            && $seasonTeam->effectiveDelegate()?->id === $user->id;
+            && $user->can('players.manage')
+            && $seasonTeam->hasDelegate($user);
     }
 }

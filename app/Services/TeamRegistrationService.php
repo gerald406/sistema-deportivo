@@ -22,18 +22,17 @@ use Illuminate\Validation\ValidationException;
 class TeamRegistrationService
 {
     /**
-     * @param array{name: string, delegate_id: int|null, is_active: bool} $data
+     * @param array{name: string, is_active: bool, logo_path?: string} $data
      */
     public function register(array $data, User $actor): Team
     {
         // "Flujo de permisos" punto 3 de CLAUDE.md: el delegado NUNCA crea
         // equipos. Se revalida aqui (no solo en TeamPolicy ni ocultando el
         // boton) porque save() es invocable desde la consola del navegador.
-        if (! $this->canAssignDelegate($actor)) {
-            throw new AuthorizationException('Solo el organizador o el administrador pueden crear equipos.');
+        if (! $this->canCreate($actor)) {
+            throw new AuthorizationException('Solo el organizador o el administrador pueden crear delegaciones.');
         }
 
-        $data['delegate_id'] = $this->resolveDelegateId($data, $actor);
         // Deja al equipo "a cargo" de quien lo crea aunque aun no tenga
         // inscripciones (ver scopeManagedBy()).
         $data['created_by'] = $actor->id;
@@ -43,7 +42,10 @@ class TeamRegistrationService
 
     public function update(Team $team, array $data, User $actor): Team
     {
-        $data['delegate_id'] = $this->resolveDelegateId($data, $actor, $team);
+        // Revalidado aqui: el delegado ya no edita su delegacion (D4).
+        if (! $actor->hasRole('admin') && ! $this->manages($actor, $team)) {
+            throw new AuthorizationException('Solo el organizador a cargo o el administrador pueden editar la delegación.');
+        }
 
         $team->update($data);
 
@@ -61,6 +63,10 @@ class TeamRegistrationService
      */
     public function delete(Team $team): bool|string
     {
+        if ($team->editionTeams()->exists()) {
+            return 'No se puede eliminar: la delegación está inscrita en una olimpiada. Desactívala en su lugar.';
+        }
+
         if ($team->seasonTeams()->exists()) {
             return 'No se puede eliminar: el equipo tiene inscripciones en temporadas. Desactívalo en su lugar.';
         }
@@ -83,8 +89,8 @@ class TeamRegistrationService
         return true;
     }
 
-    /** Admin u organizador: crean equipos y eligen su delegado. */
-    public function canAssignDelegate(User $actor): bool
+    /** Admin u organizador: crean delegaciones. */
+    public function canCreate(User $actor): bool
     {
         return $actor->hasRole('admin') || $this->isOrganizer($actor);
     }
@@ -93,7 +99,8 @@ class TeamRegistrationService
      * Equipos que $actor ve en /equipos (union si tiene varios roles).
      *   - Admin: todos.
      *   - Organizador: los "a su cargo" (ver whereOrganizerScope()).
-     *   - Delegado: solo los suyos (ver whereDelegateScope()).
+     *   - Delegado: aquellas de las que es titular o suplente en alguna
+     *     olimpiada (EditionTeamService::scopeDelegatedTo()).
      *   - Cualquier otro: ninguno.
      */
     public function scopeManagedBy(Builder $query, User $actor): Builder
@@ -115,7 +122,7 @@ class TeamRegistrationService
             }
 
             if ($isDelegate) {
-                $q->orWhere(fn ($d) => $this->whereDelegateScope($d, $actor));
+                $q->orWhere(fn ($d) => app(EditionTeamService::class)->scopeDelegatedTo($d, $actor));
             }
         });
     }
@@ -134,81 +141,21 @@ class TeamRegistrationService
     /**
      * Team no se relaciona directo con GamesEdition (un equipo puede estar
      * inscrito en temporadas de varias olimpiadas a la vez): es del organizador
-     * si tiene al menos una inscripcion (season_team) en una temporada de
-     * una olimpiada suya, o si el mismo lo creo (teams.created_by) y aun no lo
+     * si esta inscrito en una olimpiada suya (games_edition_teams), si tiene
+     * al menos una inscripcion (season_team) en una temporada de una
+     * olimpiada suya, o si el mismo lo creo (teams.created_by) y aun no lo
      * inscribe.
      */
     private function whereOrganizerScope(Builder $query, User $actor): Builder
     {
         return $query->where(fn ($q) => $q
             ->where('teams.created_by', $actor->id)
+            ->orWhereHas('editionTeams.edition', fn ($t) => $t->where('organizer_id', $actor->id))
             ->orWhereHas('seasonTeams.season.gamesEdition', fn ($t) => $t->where('organizer_id', $actor->id)));
-    }
-
-    /**
-     * Delegado general del equipo (teams.delegate_id) o delegado DE
-     * TEMPORADA en alguna inscripcion (season_team.delegate_id, que tiene
-     * precedencia segun SeasonTeam::effectiveDelegate()). En el segundo caso
-     * ve el equipo, pero editarlo sigue siendo solo del delegado general
-     * (TeamPolicy::update).
-     */
-    private function whereDelegateScope(Builder $query, User $actor): Builder
-    {
-        return $query->where(fn ($q) => $q
-            ->where('teams.delegate_id', $actor->id)
-            ->orWhereHas('seasonTeams', fn ($st) => $st->where('delegate_id', $actor->id)));
-    }
-
-    /**
-     * Autocomplete de "Delegado responsable": busqueda server-side, nunca
-     * se cargan todos los delegados. Minimo 2 caracteres, maximo 10
-     * resultados.
-     */
-    public function searchDelegates(string $term): Collection
-    {
-        $term = trim($term);
-
-        if (mb_strlen($term) < 2) {
-            return collect();
-        }
-
-        return User::role('delegado')
-            ->where('is_active', true)
-            ->where(fn ($q) => $q->where('name', 'like', "%{$term}%")->orWhere('email', 'like', "%{$term}%"))
-            ->orderBy('name')
-            ->limit(10)
-            ->get(['id', 'name', 'email']);
     }
 
     private function isOrganizer(User $actor): bool
     {
         return $actor->hasRole('organizador') && $actor->can('teams.manage');
-    }
-
-    /**
-     * Un delegado jamas puede asignar (ni reasignar) el delegate_id de
-     * un equipo via el formulario: siempre queda el que ya tenia. Solo
-     * admin u organizador eligen delegado (o lo dejan sin asignar), y
-     * solo entre usuarios con rol delegado.
-     */
-    private function resolveDelegateId(array $data, User $actor, ?Team $team = null): ?int
-    {
-        if (! $this->canAssignDelegate($actor)) {
-            return $team?->delegate_id;
-        }
-
-        if (in_array($data['delegate_id'] ?? null, ['', null], true)) {
-            return null;
-        }
-
-        $delegateId = (int) $data['delegate_id'];
-
-        if (! User::role('delegado')->whereKey($delegateId)->exists()) {
-            throw ValidationException::withMessages([
-                'form.delegate_id' => 'El delegado debe ser un usuario con rol delegado.',
-            ]);
-        }
-
-        return $delegateId;
     }
 }
