@@ -25,22 +25,22 @@ recorra todas las pantallas. Sin esto ninguna fase posterior puede demostrar que
 
 ## Tarea 0.1 — Suite en MySQL
 
-- [ ] **Paso 1.** Crear la base: `/c/xampp/mysql/bin/mysql -u root -e "CREATE DATABASE IF NOT EXISTS laravel_pichangav2_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"`.
-- [ ] **Paso 2.** En `phpunit.xml`: `DB_CONNECTION` = `mysql`, `DB_DATABASE` = `laravel_pichangav2_test`. Quitar `DB_URL`.
-- [ ] **Paso 3.** En `tests/TestCase.php`, `setUp()`: tras `parent::setUp()`, si
+- [x] **Paso 1.** Crear la base: `/c/xampp/mysql/bin/mysql -u root -e "CREATE DATABASE IF NOT EXISTS laravel_pichangav2_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"`.
+- [x] **Paso 2.** En `phpunit.xml`: `DB_CONNECTION` = `mysql`, `DB_DATABASE` = `laravel_pichangav2_test`. Quitar `DB_URL`.
+- [x] **Paso 3.** En `tests/TestCase.php`, `setUp()`: tras `parent::setUp()`, si
   `config('database.connections.'.config('database.default').'.database')` no termina en `_test`,
   `$this->fail('Las pruebas solo corren sobre una base *_test.')`. Protege la base de trabajo
   de `RefreshDatabase`.
-- [ ] **Paso 4.** Ejecutar `php artisan test`. Esperado: las 32 pruebas de Jetstream en verde. Si
+- [x] **Paso 4.** Ejecutar `php artisan test`. Esperado: las 32 pruebas de Jetstream en verde. Si
   alguna falla por una función desactivada (registro público, borrado de cuenta), corregir la
   prueba para que se salte con el mismo criterio `Features::enabled(...)` que usan las demás; no
   se borra ninguna prueba.
-- [ ] **Paso 5.** Commit: `Pruebas: suite sobre MySQL con base laravel_pichangav2_test`.
+- [x] **Paso 5.** Commit: `Pruebas: suite sobre MySQL con base laravel_pichangav2_test`.
 
 ## Tarea 0.2 — Actores y prueba de humo
 
-- [ ] **Paso 1.** Crear `tests/Concerns/CreatesActors.php` con la interfaz de arriba.
-- [ ] **Paso 2.** Escribir `tests/Feature/Smoke/RoutesSmokeTest.php` (usa `RefreshDatabase` y `CreatesActors`):
+- [x] **Paso 1.** Crear `tests/Concerns/CreatesActors.php` con la interfaz de arriba.
+- [x] **Paso 2.** Escribir `tests/Feature/Smoke/RoutesSmokeTest.php` (usa `RefreshDatabase` y `CreatesActors`):
 
 | Prueba | Afirmación |
 |---|---|
@@ -56,9 +56,9 @@ recorra todas las pantallas. Sin esto ninguna fase posterior puede demostrar que
   `reports.index`, `reports.roster`, `reports.managerial`, `categories.index`, `venues.index`,
   `admin.sports.index`, `admin.users.index`, `admin.roles.index`, `games-editions.index`.
   **Cada fase que agrega o quita una ruta actualiza esta lista.**
-- [ ] **Paso 3.** Ejecutar `php artisan test --filter=RoutesSmokeTest`. Esperado: 4 pruebas en verde.
+- [x] **Paso 3.** Ejecutar `php artisan test --filter=RoutesSmokeTest`. Esperado: 4 pruebas en verde.
   Si una pantalla falla con el admin, es un defecto existente: se corrige aquí.
-- [ ] **Paso 4.** Commit: `Pruebas: actores por rol y prueba de humo de rutas`.
+- [x] **Paso 4.** Commit: `Pruebas: actores por rol y prueba de humo de rutas`.
 
 ## Reglas que cumple
 

@@ -41,7 +41,7 @@ Actualizar esta tabla al cerrar cada fase. `Puerta` = resultado de la puerta de 
 
 | Fase | Archivo | Fechas | Estado | Puerta |
 |---|---|---|---|---|
-| F0 Base de pruebas | `F0-base-de-pruebas.md` | 12/10 | ⬜ | — |
+| F0 Base de pruebas | `F0-base-de-pruebas.md` | 12/10 | ✅ | 2026-10-12 · 26 pruebas, 0 fallos (10 omitidas por funciones de Jetstream desactivadas); G1–G4 aprobadas |
 | F1 Olimpiada como eje | `F1-olimpiada-como-eje.md` | 13–14/10 | ⬜ | — |
 | F2 Delegaciones y series | `F2-delegaciones-y-series.md` | 14–16/10 | ⬜ | — |
 | F3 Catálogo y cuadro de puntaje | `F3-catalogo-y-puntajes.md` | 16–17/10 | ⬜ | — |
