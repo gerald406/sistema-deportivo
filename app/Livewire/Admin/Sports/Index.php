@@ -7,11 +7,13 @@ namespace App\Livewire\Admin\Sports;
 use App\Enums\BetterDirection;
 use App\Enums\SportFormatType;
 use App\Enums\UnitOfMeasure;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Discipline;
 use App\Models\Sport;
 use App\Services\SportCatalogService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -22,7 +24,7 @@ use Livewire\WithPagination;
 #[Title('Deportes y disciplinas')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -251,13 +253,7 @@ class Index extends Component
 
     public function render()
     {
-        $sports = Sport::query()
-            ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
-            ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
-            ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
-            ->withCount('disciplines')
-            ->orderBy($this->sortColumn(), $this->sortOrder())
-            ->paginate($this->perPageLimit());
+        $sports = $this->listingQuery()->paginate($this->perPageLimit());
 
         $disciplines = $this->managingSportId
             ? Discipline::where('sport_id', $this->managingSportId)->orderBy('name')->get()
@@ -267,6 +263,42 @@ class Index extends Component
             'sports' => $sports,
             'disciplines' => $disciplines,
         ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        return Sport::query()
+            ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
+            ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
+            ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
+            ->withCount('disciplines')
+            ->orderBy($this->sortColumn(), $this->sortOrder());
+    }
+
+    protected function authorizeExport(): void
+    {
+        // boot() ya exige el rol admin en cada peticion.
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Deportes';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Nombre' => fn (Sport $s) => $s->name,
+            'Formato' => fn (Sport $s) => $s->format_type->label(),
+            'Disciplinas' => fn (Sport $s) => $s->disciplines_count,
+            'Estado' => fn (Sport $s) => $s->is_active ? 'Activo' : 'Inactivo',
+        ];
     }
 
     protected function sortableFields(): array

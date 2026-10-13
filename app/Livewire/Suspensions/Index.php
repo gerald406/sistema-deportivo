@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Suspensions;
 
 use App\Enums\MatchStatus;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\GameMatch;
@@ -14,6 +15,7 @@ use App\Models\Suspension;
 use App\Services\SuspensionService;
 use App\Support\ParticipantLabel;
 use App\Support\SeasonAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -25,7 +27,7 @@ use Livewire\WithPagination;
 #[Title('Sanciones')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -194,10 +196,20 @@ class Index extends Component
 
     public function render()
     {
+        $query = $this->listingQuery();
+
+        return view('livewire.suspensions.index', [
+            'suspensions' => $query->paginate($this->perPageLimit()),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
         $user = auth()->user();
         $term = trim($this->search);
 
-        $query = Suspension::query()
+        return Suspension::query()
             ->select('suspensions.*')
             ->addSelect(['player_last_name' => Player::select('players.last_name')
                 ->join('season_team_player', 'season_team_player.player_id', '=', 'players.id')
@@ -214,10 +226,36 @@ class Index extends Component
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('suspensions.id');
+    }
 
-        return view('livewire.suspensions.index', [
-            'suspensions' => $query->paginate($this->perPageLimit()),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', Suspension::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Sanciones';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Apellidos' => fn (Suspension $s) => $s->seasonTeamPlayer->player->last_name,
+            'Nombres' => fn (Suspension $s) => $s->seasonTeamPlayer->player->first_name,
+            'Delegación' => fn (Suspension $s) => $s->seasonTeamPlayer->seasonTeam->team->name,
+            'Competencia' => fn (Suspension $s) => $s->season->name,
+            'Motivo' => fn (Suspension $s) => $s->reason,
+            'Partidos' => fn (Suspension $s) => $s->matches_suspended,
+            'Origen' => fn (Suspension $s) => "{$s->match->matchday->name} (#{$s->match_id})",
+            'Estado' => fn (Suspension $s) => $s->is_served ? 'Cumplida' : 'Pendiente',
+            'Fecha' => fn (Suspension $s) => $s->created_at,
+        ];
     }
 
     protected function sortableFields(): array

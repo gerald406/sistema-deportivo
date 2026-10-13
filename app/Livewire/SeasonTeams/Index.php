@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\SeasonTeams;
 
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Category;
@@ -12,6 +13,7 @@ use App\Models\SeasonTeam;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\SeasonTeamService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -23,7 +25,7 @@ use Livewire\WithPagination;
 #[Title('Inscripciones')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -226,7 +228,27 @@ class Index extends Component
     {
         $user = auth()->user();
 
-        $query = $service->scopeVisibleTo(SeasonTeam::query(), $user)
+        $query = $this->listingQuery();
+
+        return view('livewire.season-teams.index', [
+            'seasonTeams' => $query->paginate($this->perPageLimit()),
+            // Solo competencias con alguna inscripcion visible: el filtro no
+            // debe revelar competencias de olimpiadas ajenas (el admin ve todas).
+            'filterSeasons' => Season::with('gamesEdition:id,name')
+                ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('seasonTeams', fn ($st) => $service->scopeVisibleTo($st, $user)))
+                ->orderByDesc('start_date')
+                ->get(['id', 'name', 'games_edition_id']),
+            'filterCategories' => Category::orderBy('name')->get(['id', 'name', 'gender']),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        $user = auth()->user();
+        $service = app(SeasonTeamService::class);
+
+        return $service->scopeVisibleTo(SeasonTeam::query(), $user)
             // Alias para poder ordenar por nombre de equipo sin JOIN.
             ->addSelect(['season_team.*', 'team_name' => Team::select('name')->whereColumn('teams.id', 'season_team.team_id')])
             ->when($this->search !== '', fn ($q) => $q->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$this->search}%")))
@@ -241,17 +263,35 @@ class Index extends Component
                 'category:id,name,gender',
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder());
+    }
 
-        return view('livewire.season-teams.index', [
-            'seasonTeams' => $query->paginate($this->perPageLimit()),
-            // Solo competencias con alguna inscripcion visible: el filtro no
-            // debe revelar competencias de olimpiadas ajenas (el admin ve todas).
-            'filterSeasons' => Season::with('gamesEdition:id,name')
-                ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('seasonTeams', fn ($st) => $service->scopeVisibleTo($st, $user)))
-                ->orderByDesc('start_date')
-                ->get(['id', 'name', 'games_edition_id']),
-            'filterCategories' => Category::orderBy('name')->get(['id', 'name', 'gender']),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', SeasonTeam::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Inscripciones';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Delegación' => fn (SeasonTeam $st) => $st->team->name,
+            'Competencia' => fn (SeasonTeam $st) => $st->season->name,
+            'Olimpiada' => fn (SeasonTeam $st) => $st->season->gamesEdition->name,
+            'Deporte' => fn (SeasonTeam $st) => $st->season->sport->name,
+            'Categoría' => fn (SeasonTeam $st) => $st->category?->name,
+            'Delegados' => fn (SeasonTeam $st) => $st->delegates()->pluck('name')->implode(' / '),
+            'Plantel' => fn (SeasonTeam $st) => $st->roster_count,
+            'Estado' => fn (SeasonTeam $st) => $st->is_active ? 'Activa' : 'Inactiva',
+        ];
     }
 
     protected function sortableFields(): array

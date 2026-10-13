@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\Matchdays;
 
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Matchday;
 use App\Services\MatchdayService;
 use App\Support\SeasonAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -20,7 +22,7 @@ use Livewire\WithPagination;
 #[Title('Jornadas')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -158,7 +160,20 @@ class Index extends Component
     {
         $user = auth()->user();
 
-        $query = Matchday::query()
+        $query = $this->listingQuery();
+
+        return view('livewire.matchdays.index', [
+            'matchdays' => $query->paginate($this->perPageLimit()),
+            'filterSeasons' => SeasonAccess::manageableSeasons($user, includeClosed: true),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        $user = auth()->user();
+
+        return Matchday::query()
             // El organizador solo ve jornadas de sus olimpiadas.
             ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
@@ -169,11 +184,37 @@ class Index extends Component
             ->with(['season:id,name,status,games_edition_id,sport_id', 'season.gamesEdition:id,name,organizer_id', 'season.sport:id,name'])
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('id');
+    }
 
-        return view('livewire.matchdays.index', [
-            'matchdays' => $query->paginate($this->perPageLimit()),
-            'filterSeasons' => SeasonAccess::manageableSeasons($user, includeClosed: true),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', Matchday::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Jornadas';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Jornada' => fn (Matchday $m) => $m->name,
+            'Observaciones' => fn (Matchday $m) => $m->observations,
+            'Competencia' => fn (Matchday $m) => $m->season->name,
+            'Olimpiada' => fn (Matchday $m) => $m->season->gamesEdition->name,
+            'Deporte' => fn (Matchday $m) => $m->season->sport->name,
+            'Inicio' => fn (Matchday $m) => $m->start_date,
+            'Fin' => fn (Matchday $m) => $m->end_date,
+            'Partidos' => fn (Matchday $m) => $m->matches_count,
+            'Por jugar' => fn (Matchday $m) => $m->pending_matches_count,
+            'Estado' => fn (Matchday $m) => $m->is_completed ? 'Completada' : 'Por jugar',
+        ];
     }
 
     protected function sortableFields(): array

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Livewire\Categories;
 
 use App\Enums\Gender;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Category;
 use App\Services\CategoryService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -19,7 +21,7 @@ use Livewire\WithPagination;
 #[Title('Categorías')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -148,17 +150,50 @@ class Index extends Component
 
     public function render()
     {
-        $query = Category::query()
+        $query = $this->listingQuery();
+
+        return view('livewire.categories.index', [
+            'categories' => $query->paginate($this->perPageLimit()),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        return Category::query()
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->when(Gender::tryFrom($this->genderFilter), fn ($q, Gender $gender) => $q->where('gender', $gender->value))
             ->withCount('seasonTeams')
             ->orderBy($this->sortColumn(), $this->sortOrder());
+    }
 
-        return view('livewire.categories.index', [
-            'categories' => $query->paginate($this->perPageLimit()),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', Category::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Niveles';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Nombre' => fn (Category $c) => $c->name,
+            'Género' => fn (Category $c) => $c->gender->label(),
+            'Edad mín.' => fn (Category $c) => $c->min_age,
+            'Edad máx.' => fn (Category $c) => $c->max_age,
+            'Inscripciones' => fn (Category $c) => $c->season_teams_count,
+            'Estado' => fn (Category $c) => $c->is_active ? 'Activa' : 'Inactiva',
+        ];
     }
 
     protected function sortableFields(): array

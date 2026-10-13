@@ -31,6 +31,7 @@
             <option value="25">25 por página</option>
             <option value="50">50 por página</option>
         </select>
+        <x-export-button />
     </div>
 
     <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">

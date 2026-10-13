@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\MatchEvents;
 
 use App\Enums\MatchStatus;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\EventType;
@@ -14,6 +15,7 @@ use App\Models\Player;
 use App\Services\MatchEventService;
 use App\Support\ParticipantLabel;
 use App\Support\SeasonAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -25,7 +27,7 @@ use Livewire\WithPagination;
 #[Title('Incidencias')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -185,9 +187,23 @@ class Index extends Component
     public function render()
     {
         $user = auth()->user();
+
+        $query = $this->listingQuery();
+
+        return view('livewire.match-events.index', [
+            'events' => $query->paginate($this->perPageLimit()),
+            'filterSeasons' => SeasonAccess::manageableSeasons($user, includeClosed: true),
+            'filterEventTypes' => EventType::with('sport:id,name')->orderBy('sport_id')->orderBy('name')->get(),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        $user = auth()->user();
         $term = trim($this->search);
 
-        $query = MatchEvent::query()
+        return MatchEvent::query()
             ->select('match_events.*')
             ->addSelect(['player_last_name' => Player::select('players.last_name')
                 ->join('season_team_player', 'season_team_player.player_id', '=', 'players.id')
@@ -203,12 +219,35 @@ class Index extends Component
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('match_events.id');
+    }
 
-        return view('livewire.match-events.index', [
-            'events' => $query->paginate($this->perPageLimit()),
-            'filterSeasons' => SeasonAccess::manageableSeasons($user, includeClosed: true),
-            'filterEventTypes' => EventType::with('sport:id,name')->orderBy('sport_id')->orderBy('name')->get(),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', MatchEvent::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Incidencias';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Min.' => fn (MatchEvent $e) => $e->minute,
+            'Incidencia' => fn (MatchEvent $e) => $e->eventType->name,
+            'Apellidos' => fn (MatchEvent $e) => $e->seasonTeamPlayer->player->last_name,
+            'Nombres' => fn (MatchEvent $e) => $e->seasonTeamPlayer->player->first_name,
+            'Delegación' => fn (MatchEvent $e) => $e->seasonTeamPlayer->seasonTeam->team->name,
+            'Partido' => fn (MatchEvent $e) => $this->matchLabel($e->match),
+            'Estado del partido' => fn (MatchEvent $e) => $e->match->status->label(),
+            'Registrada' => fn (MatchEvent $e) => $e->created_at->format('d/m/Y H:i'),
+        ];
     }
 
     protected function sortableFields(): array

@@ -17,14 +17,17 @@
                     </p>
                 @endif
             </div>
-            <select wire:model.live="seasonId"
-                    class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                @forelse ($this->seasonOptions() as $option)
-                    <option value="{{ $option->id }}">{{ $option->gamesEdition->name }} — {{ $option->name }} ({{ $option->sport->name }})</option>
-                @empty
-                    <option value="">Sin tablas calculadas</option>
-                @endforelse
-            </select>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <select wire:model.live="seasonId"
+                        class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    @forelse ($this->seasonOptions() as $option)
+                        <option value="{{ $option->id }}">{{ $option->gamesEdition->name }} — {{ $option->name }} ({{ $option->sport->name }})</option>
+                    @empty
+                        <option value="">Sin tablas calculadas</option>
+                    @endforelse
+                </select>
+                <x-export-button />
+            </div>
         </div>
 
         <div class="overflow-x-auto">

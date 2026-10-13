@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\ReopenLogs;
 
+use App\Enums\MatchStatus;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\EventParticipant;
@@ -13,6 +15,7 @@ use App\Models\SeasonTeamPlayer;
 use App\Models\User;
 use App\Support\ParticipantLabel;
 use App\Support\SeasonAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -27,7 +30,7 @@ use Livewire\WithPagination;
 #[Title('Reaperturas de partidos')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -102,9 +105,21 @@ class Index extends Component
     public function render()
     {
         $user = auth()->user();
+
+        $query = $this->listingQuery();
+
+        return view('livewire.reopen-logs.index', [
+            'logs' => $query->paginate($this->perPageLimit()),
+            'filterSeasons' => SeasonAccess::manageableSeasons($user, includeClosed: true),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
         $term = trim($this->search);
 
-        $query = $this->baseQuery()
+        return $this->baseQuery()
             ->when($term !== '', fn ($q) => $q->where('reason', 'like', "%{$term}%"))
             ->when(ctype_digit($this->seasonFilter), fn ($q) => $q->whereHas('match', fn ($m) => $m->where('season_id', (int) $this->seasonFilter)))
             ->when(ctype_digit($this->userFilter), fn ($q) => $q->where('user_id', (int) $this->userFilter))
@@ -117,11 +132,36 @@ class Index extends Component
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderByDesc('id');
+    }
 
-        return view('livewire.reopen-logs.index', [
-            'logs' => $query->paginate($this->perPageLimit()),
-            'filterSeasons' => SeasonAccess::manageableSeasons($user, includeClosed: true),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', MatchReopenLog::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Reaperturas';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Fecha' => fn (MatchReopenLog $l) => $l->created_at->format('d/m/Y H:i'),
+            'Partido' => fn (MatchReopenLog $l) => $l->match?->participants->map(fn ($p) => ParticipantLabel::for($p))->join(' vs '),
+            'Olimpiada' => fn (MatchReopenLog $l) => $l->match?->season->gamesEdition->name,
+            'Competencia' => fn (MatchReopenLog $l) => $l->match?->season->name,
+            'Jornada' => fn (MatchReopenLog $l) => $l->match?->matchday->name,
+            'Usuario' => fn (MatchReopenLog $l) => $l->user->name,
+            'Estado previo' => fn (MatchReopenLog $l) => MatchStatus::tryFrom($l->previous_status)?->label() ?? $l->previous_status,
+            'Sanciones borradas' => fn (MatchReopenLog $l) => $l->suspensions_deleted,
+            'Motivo' => fn (MatchReopenLog $l) => $l->reason,
+        ];
     }
 
     protected function sortableFields(): array

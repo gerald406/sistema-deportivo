@@ -52,6 +52,7 @@
             <option value="25">25 por página</option>
             <option value="50">50 por página</option>
         </select>
+        <x-export-button />
     </div>
 
     {{-- Tabla --}}

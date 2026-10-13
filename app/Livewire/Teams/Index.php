@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Teams;
 
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Team;
 use App\Services\TeamRegistrationService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -25,7 +27,7 @@ use Livewire\WithPagination;
 #[Title('Delegaciones')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithFileUploads, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithFileUploads, WithPagination;
 
     public string $search = '';
 
@@ -149,18 +151,46 @@ class Index extends Component
 
     public function render()
     {
-        $service = app(TeamRegistrationService::class);
+        return view('livewire.teams.index', [
+            'teams' => $this->listingQuery()->paginate($this->perPageLimit()),
+        ]);
+    }
 
-        $query = $service->scopeManagedBy(Team::query(), auth()->user())
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        return app(TeamRegistrationService::class)->scopeManagedBy(Team::query(), auth()->user())
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->withCount(['seasonTeams', 'editionTeams'])
             ->orderBy($this->sortColumn(), $this->sortOrder());
+    }
 
-        return view('livewire.teams.index', [
-            'teams' => $query->paginate($this->perPageLimit()),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', Team::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Delegaciones';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Nombre' => fn (Team $t) => $t->name,
+            'Olimpiadas' => fn (Team $t) => $t->edition_teams_count,
+            'Competencias' => fn (Team $t) => $t->season_teams_count,
+            'Estado' => fn (Team $t) => $t->is_active ? 'Activa' : 'Inactiva',
+            'Creado' => fn (Team $t) => $t->created_at,
+        ];
     }
 
     protected function sortableFields(): array

@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Livewire\EditionEvents;
 
 use App\Enums\GenderScope;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\SelectsEdition;
 use App\Models\Category;
 use App\Models\GamesEdition;
 use App\Models\GamesEditionEvent;
 use App\Models\Sport;
 use App\Services\EditionEventService;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -26,7 +28,7 @@ use Livewire\Component;
 #[Title('Cuadro de puntaje')]
 class Index extends Component
 {
-    use SelectsEdition;
+    use ExportsExcel, SelectsEdition;
 
     public bool $showModal = false;
 
@@ -116,18 +118,59 @@ class Index extends Component
     {
         $edition = $this->edition();
 
-        $events = $edition
-            ? $edition->events()->with(['sport:id,name', 'category:id,name'])->get()
-            : collect();
-
         return view('livewire.edition-events.index', [
             'edition' => $edition,
-            'events' => $events,
+            'events' => $this->eventsOf($edition),
             'canEdit' => auth()->user()->hasRole('admin'),
             'sports' => Sport::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => Category::where('is_active', true)->orderBy('min_age')->orderBy('name')->get(['id', 'name']),
             'scopes' => GenderScope::cases(),
         ]);
+    }
+
+    /** Filas del cuadro: las comparten render() y la exportacion a Excel. */
+    private function eventsOf(?GamesEdition $edition): Collection
+    {
+        return $edition
+            ? $edition->events()->with(['sport:id,name', 'category:id,name'])->get()
+            : collect();
+    }
+
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', GamesEdition::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Cuadro de puntaje';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->eventsOf($this->edition());
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'N.º' => fn (GamesEditionEvent $e) => $e->sort_order,
+            'Etiqueta' => fn (GamesEditionEvent $e) => $e->label,
+            'Deporte' => fn (GamesEditionEvent $e) => $e->sport?->name,
+            'Nivel' => fn (GamesEditionEvent $e) => $e->category?->name,
+            'Alcance' => fn (GamesEditionEvent $e) => $e->gender_scope->label(),
+            'Podios' => fn (GamesEditionEvent $e) => $e->gender_scope === GenderScope::Both
+                ? ($e->separate_podiums ? 'Un podio por género' : 'Podio combinado')
+                : null,
+            'Por prueba' => fn (GamesEditionEvent $e) => (bool) $e->per_discipline,
+            '1.º' => fn (GamesEditionEvent $e) => $e->pts_first,
+            '2.º' => fn (GamesEditionEvent $e) => $e->pts_second,
+            '3.º' => fn (GamesEditionEvent $e) => $e->pts_third,
+            'Mín.' => fn (GamesEditionEvent $e) => $e->min_players,
+            'Máx.' => fn (GamesEditionEvent $e) => $e->max_players,
+            'Bloqueante' => fn (GamesEditionEvent $e) => $e->rules_blocking ? 'Sí' : 'Solo advierte',
+            'Activa' => fn (GamesEditionEvent $e) => (bool) $e->is_active,
+        ];
     }
 
     /** El middleware de la ruta no se reaplica en /livewire/update: se revalida en cada accion. */
