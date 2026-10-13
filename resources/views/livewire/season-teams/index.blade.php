@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Inscripciones</h1>
-            <p class="text-sm text-gray-500">Equipos inscritos en cada temporada.</p>
+            <p class="text-sm text-gray-500">Equipos inscritos en cada competencia.</p>
         </div>
 
         @can('create', \App\Models\SeasonTeam::class)
@@ -24,7 +24,7 @@
 
         <select wire:model.live="seasonFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todas las temporadas</option>
+            <option value="">Todas las competencias</option>
             @foreach ($filterSeasons as $season)
                 <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
@@ -61,7 +61,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <x-sortable-th field="team_name" label="Equipo" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Temporada</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Competencia</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Categoría</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Delegado</th>
                         <x-sortable-th field="roster_count" label="Plantel" :sort-field="$sortField" :sort-direction="$sortDirection" />
@@ -139,7 +139,7 @@
 
             <form wire:submit="save" class="mt-4 space-y-4">
                 @if ($editingId)
-                    {{-- Temporada y equipo no se cambian: seria otra inscripcion. --}}
+                    {{-- Competencia y equipo no se cambian: seria otra inscripcion. --}}
                     @php($current = $this->editingSeasonTeam())
                     <div class="rounded-lg bg-gray-50 p-3 text-sm">
                         <p class="font-medium text-gray-900">{{ $current?->team->name }}</p>
@@ -147,10 +147,10 @@
                     </div>
                 @else
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Temporada</label>
+                        <label class="block text-sm font-medium text-gray-700">Competencia</label>
                         <select wire:model.live="form.season_id"
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Selecciona una temporada</option>
+                            <option value="">Selecciona una competencia</option>
                             @foreach ($this->seasonOptions() as $season)
                                 <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }} ({{ $season->status->label() }})</option>
                             @endforeach
@@ -161,13 +161,13 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Equipo</label>
                         {{-- Autocomplete server-side: SeasonTeamService::searchTeams() (activos y
-                             no inscritos en la temporada elegida, máx. 10). --}}
+                             no inscritos en la competencia elegida, máx. 10). --}}
                         <div x-data="{ open: false }" @click.outside="open = false" class="relative mt-1">
                             <div class="relative">
                                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i>
                                 <input type="text" wire:model.live.debounce.300ms="teamSearch" @disabled($form['season_id'] === '')
                                        x-on:focus="open = true" x-on:input="open = true" x-on:keydown.escape="open = false"
-                                       placeholder="{{ $form['season_id'] === '' ? 'Primero elige la temporada' : 'Buscar equipo por nombre (mín. 2 letras)' }}"
+                                       placeholder="{{ $form['season_id'] === '' ? 'Primero elige la competencia' : 'Buscar equipo por nombre (mín. 2 letras)' }}"
                                        autocomplete="off"
                                        @class([
                                            'w-full rounded-lg py-2 pl-8 pr-8 text-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100',
@@ -192,7 +192,7 @@
                                             {{ $option->name }}
                                         </button>
                                     @empty
-                                        <p class="px-3 py-2 text-sm text-gray-400">Sin equipos disponibles (activos y no inscritos en esta temporada).</p>
+                                        <p class="px-3 py-2 text-sm text-gray-400">Sin equipos disponibles (activos y no inscritos en esta competencia).</p>
                                     @endforelse
                                 </div>
                             @endif

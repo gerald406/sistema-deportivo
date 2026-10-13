@@ -12,7 +12,7 @@ class MatchdayPolicy
 {
     /**
      * Jornadas: permiso matches.manage (admin y organizador). El
-     * organizador solo gestiona las de temporadas de sus olimpiadas.
+     * organizador solo gestiona las de competencias de sus olimpiadas.
      */
     public function viewAny(User $user): bool
     {

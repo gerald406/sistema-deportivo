@@ -17,10 +17,10 @@ use Livewire\Component;
 /**
  * Selector de Fichas de Inscripcion. Adaptado de
  * pichanga/PlayerRegistrationSelector: alli Player tiene team_id y Team
- * tiene championship_id; aqui el filtro es Olimpiada -> Temporada -> Equipo
+ * tiene championship_id; aqui el filtro es Olimpiada -> Competencia -> Equipo
  * inscrito (season_team) y lo que se lista son fichas del plantel
- * (season_team_player), porque el mismo jugador puede estar en varias
- * temporadas con distinto equipo.
+ * (season_team_player), porque el mismo participante puede estar en varias
+ * competencias con distinto equipo.
  *
  * Alcance: PlayerCardService::printableSeasonTeams() = la misma regla que
  * SeasonTeamPlayerPolicy::printCard (el delegado ve donde es el delegado

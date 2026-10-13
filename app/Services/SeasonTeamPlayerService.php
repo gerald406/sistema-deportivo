@@ -22,13 +22,13 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Plantel (roster) de un equipo inscrito. Reglas confirmadas (Fase 5):
- *   - Un jugador no puede estar en dos equipos de la misma temporada.
- *   - Edad del jugador a la fecha de inicio de la temporada dentro del
+ *   - Un participante no puede estar en dos equipos de la misma competencia.
+ *   - Edad del participante a la fecha de inicio de la competencia dentro del
  *     rango min/max de la categoria de la inscripcion (si lo tiene).
  *     players no tiene genero: la categoria solo se valida por edad.
  *   - Numero de camiseta unico dentro del equipo; un solo capitan.
- *   - La posicion debe ser del deporte de la temporada (no hay trigger).
- * Decisiones propias: una temporada Cerrada no admite cambios de plantel;
+ *   - La posicion debe ser del deporte de la competencia (no hay trigger).
+ * Decisiones propias: una competencia Cerrada no admite cambios de plantel;
  * si ya hay capitan se rechaza (no se reasigna en silencio).
  */
 class SeasonTeamPlayerService
@@ -49,7 +49,7 @@ class SeasonTeamPlayerService
         $this->ensureSeasonOpen($seasonTeam);
 
         if (! $player->is_active) {
-            throw ValidationException::withMessages(['form.player_id' => 'El jugador está inactivo.']);
+            throw ValidationException::withMessages(['form.player_id' => 'El participante está inactivo.']);
         }
 
         $clash = SeasonTeamPlayer::where('player_id', $player->id)
@@ -60,8 +60,8 @@ class SeasonTeamPlayerService
         if ($clash) {
             throw ValidationException::withMessages([
                 'form.player_id' => $clash->season_team_id === $seasonTeam->id
-                    ? 'El jugador ya está en este plantel.'
-                    : "El jugador ya está inscrito en {$clash->seasonTeam->team->name} en esta temporada.",
+                    ? 'El participante ya está en este plantel.'
+                    : "El participante ya está inscrito en {$clash->seasonTeam->team->name} en esta competencia.",
             ]);
         }
 
@@ -81,12 +81,12 @@ class SeasonTeamPlayerService
     }
 
     /**
-     * Equipo y jugador no se cambian (seria otra ficha): solo datos de la
+     * Equipo y participante no se cambian (seria otra ficha): solo datos de la
      * ficha de plantel.
      */
     public function update(SeasonTeamPlayer $entry, array $data): SeasonTeamPlayer
     {
-        $entry->load('seasonTeam.season'); // load (no loadMissing): el estado de la temporada debe leerse fresco
+        $entry->load('seasonTeam.season'); // load (no loadMissing): el estado de la competencia debe leerse fresco
         $this->ensureSeasonOpen($entry->seasonTeam);
         $this->ensureRosterRules($entry->seasonTeam, $data, $entry->id);
         $this->ensureSuspensionRespected($entry, $data);
@@ -106,27 +106,27 @@ class SeasonTeamPlayerService
     /**
      * match_events, suspensions y event_lineups son RESTRICT sobre la
      * ficha; event_participants (atletismo/ajedrez) no tiene FK real. Un
-     * jugador con historial no se quita: se le cambia el status a Baja.
+     * participante con historial no se quita: se le cambia el status a Baja.
      *
      * Devuelve true o el mensaje exacto de por que no se pudo borrar.
      */
     public function delete(SeasonTeamPlayer $entry): bool|string
     {
-        $entry->load('seasonTeam.season'); // load (no loadMissing): el estado de la temporada debe leerse fresco
+        $entry->load('seasonTeam.season'); // load (no loadMissing): el estado de la competencia debe leerse fresco
 
         if ($entry->seasonTeam->season->status === SeasonStatus::Closed) {
-            return 'No se puede quitar: la temporada está cerrada.';
+            return 'No se puede quitar: la competencia está cerrada.';
         }
 
         if ($entry->matchEvents()->exists() || $entry->suspensions()->exists()
             || $entry->lineups()->exists() || $entry->eventParticipants()->exists()) {
-            return 'No se puede quitar: el jugador ya tiene historial en la temporada. Cámbiale el estado a "Baja" en su lugar.';
+            return 'No se puede quitar: el participante ya tiene historial en la competencia. Cámbiale el estado a "Baja" en su lugar.';
         }
 
         try {
             $entry->delete();
         } catch (QueryException) {
-            return 'No se puede quitar: el jugador tiene historial asociado. Cámbiale el estado a "Baja" en su lugar.';
+            return 'No se puede quitar: el participante tiene historial asociado. Cámbiale el estado a "Baja" en su lugar.';
         }
 
         return true;
@@ -135,9 +135,9 @@ class SeasonTeamPlayerService
     /**
      * Convocados que $actor ve en /planteles: los de inscripciones que ve
      * en /inscripciones (SeasonTeamService::scopeVisibleTo(), misma regla
-     * por construccion). Sin created_by: aqui no se crean jugadores
+     * por construccion). Sin created_by: aqui no se crean participantes
      * sueltos, se convocan a una inscripcion que ya determina el alcance.
-     * Tambien es la base del alcance de /jugadores
+     * Tambien es la base del alcance de /participantes
      * (PlayerRegistrationService::scopeVisibleTo()).
      */
     public function scopeVisibleTo(Builder $query, User $actor): Builder
@@ -158,7 +158,7 @@ class SeasonTeamPlayerService
         return $this->scopeVisibleTo(SeasonTeamPlayer::query(), $actor)->whereKey($entry->id)->exists();
     }
 
-    /** Inscripciones cuyo plantel puede gestionar $actor (temporadas no cerradas). */
+    /** Inscripciones cuyo plantel puede gestionar $actor (competencias no cerradas). */
     public function seasonTeamsFor(User $actor): Collection
     {
         return SeasonTeam::query()
@@ -170,7 +170,7 @@ class SeasonTeamPlayerService
             ->values();
     }
 
-    /** Edad cumplida a la fecha de referencia de la temporada. */
+    /** Edad cumplida a la fecha de referencia de la competencia. */
     public function ageAtSeason(Player $player, SeasonTeam $seasonTeam): ?int
     {
         if (! $player->birth_date) {
@@ -185,7 +185,7 @@ class SeasonTeamPlayerService
     private function ensureSeasonOpen(SeasonTeam $seasonTeam): void
     {
         if ($seasonTeam->season->status === SeasonStatus::Closed) {
-            throw ValidationException::withMessages(['form.season_team_id' => 'La temporada está cerrada: el plantel ya no se modifica.']);
+            throw ValidationException::withMessages(['form.season_team_id' => 'La competencia está cerrada: el plantel ya no se modifica.']);
         }
     }
 
@@ -200,7 +200,7 @@ class SeasonTeamPlayerService
         if ($data['status'] === SeasonTeamPlayerStatus::Active->value
             && $entry->suspensions()->where('is_served', false)->exists()) {
             throw ValidationException::withMessages([
-                'form.status' => 'El jugador tiene sanciones pendientes: no se puede habilitar hasta que se marquen como cumplidas en Sanciones.',
+                'form.status' => 'El participante tiene sanciones pendientes: no se puede habilitar hasta que se marquen como cumplidas en Sanciones.',
             ]);
         }
     }
@@ -216,13 +216,13 @@ class SeasonTeamPlayerService
         $age = $this->ageAtSeason($player, $seasonTeam);
 
         if ($age === null) {
-            throw ValidationException::withMessages(['form.player_id' => 'El jugador no tiene fecha de nacimiento: no se puede validar la categoría.']);
+            throw ValidationException::withMessages(['form.player_id' => 'El participante no tiene fecha de nacimiento: no se puede validar la categoría.']);
         }
 
         if (($category->min_age !== null && $age < $category->min_age) || ($category->max_age !== null && $age > $category->max_age)) {
             $range = ($category->min_age ?? '—') . ' a ' . ($category->max_age ?? '—');
             throw ValidationException::withMessages([
-                'form.player_id' => "El jugador tiene {$age} años al inicio de la temporada; la categoría {$category->name} admite de {$range}.",
+                'form.player_id' => "El participante tiene {$age} años al inicio de la competencia; la categoría {$category->name} admite de {$range}.",
             ]);
         }
     }
@@ -233,7 +233,7 @@ class SeasonTeamPlayerService
             ->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId));
 
         if (($data['shirt_number'] ?? null) !== null && (clone $others)->where('shirt_number', $data['shirt_number'])->exists()) {
-            throw ValidationException::withMessages(['form.shirt_number' => "El número {$data['shirt_number']} ya lo usa otro jugador del equipo."]);
+            throw ValidationException::withMessages(['form.shirt_number' => "El número {$data['shirt_number']} ya lo usa otro participante del equipo."]);
         }
 
         if (! empty($data['is_captain']) && (clone $others)->where('is_captain', true)->exists()) {
@@ -242,7 +242,7 @@ class SeasonTeamPlayerService
 
         if (($data['position_id'] ?? null) !== null
             && ! SportPosition::whereKey($data['position_id'])->where('sport_id', $seasonTeam->season->sport_id)->exists()) {
-            throw ValidationException::withMessages(['form.position_id' => 'La posición no pertenece al deporte de la temporada.']);
+            throw ValidationException::withMessages(['form.position_id' => 'La posición no pertenece al deporte de la competencia.']);
         }
     }
 }

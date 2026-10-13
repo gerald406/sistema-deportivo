@@ -18,10 +18,10 @@ use Illuminate\Validation\ValidationException;
 /**
  * Incidencias de un partido (match_events): goles, tarjetas, puntos de
  * bloqueo, etc. Reglas:
- *   - El tipo de evento debe ser del deporte de la temporada.
- *   - El jugador debe PARTICIPAR en el partido: estar en el plantel de uno
+ *   - El tipo de evento debe ser del deporte de la competencia.
+ *   - El participante debe PARTICIPAR en el partido: estar en el plantel de uno
  *     de los equipos participantes (modo equipos) o ser uno de los
- *     jugadores participantes (modo individual, ej. ajedrez).
+ *     participantes participantes (modo individual, ej. ajedrez).
  *   - Solo con el partido Programado: al cerrar el resultado las
  *     incidencias generan sanciones; con resultado cargado ya son
  *     historial (se corrigen reabriendo el partido).
@@ -81,7 +81,7 @@ class MatchEventService
         return true;
     }
 
-    /** Jugadores que pueden tener incidencias en el partido. */
+    /** Participantes que pueden tener incidencias en el partido. */
     public function eligiblePlayers(GameMatch $match): Collection
     {
         $participants = $match->participants()->get(['participant_type', 'participant_id']);
@@ -119,7 +119,7 @@ class MatchEventService
         }
 
         if (! $this->eligiblePlayers($match)->contains('id', (int) $data['season_team_player_id'])) {
-            throw ValidationException::withMessages(['form.season_team_player_id' => 'El jugador no participa en este partido.']);
+            throw ValidationException::withMessages(['form.season_team_player_id' => 'El participante no participa en este partido.']);
         }
 
         $minute = $data['minute'] ?? null;

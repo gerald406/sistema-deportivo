@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Deportes y disciplinas</h1>
-            <p class="text-sm text-gray-500">Catálogo base del que dependen temporadas y partidos.</p>
+            <p class="text-sm text-gray-500">Catálogo base del que dependen competencias y partidos.</p>
         </div>
         <button wire:click="createSport" type="button"
                 class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">

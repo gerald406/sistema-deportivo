@@ -13,7 +13,7 @@ class GameMatchPolicy
 {
     /**
      * Partidos: gestion con permiso matches.manage (admin y organizador);
-     * el organizador solo los de temporadas de sus olimpiadas. El delegado
+     * el organizador solo los de competencias de sus olimpiadas. El delegado
      * entra en SOLO LECTURA y ve los partidos de su equipo
      * (GameMatchService::scopeVisibleTo()); create/update/delete lo
      * rechazan porque exigen rol organizador (SeasonAccess::manages()).

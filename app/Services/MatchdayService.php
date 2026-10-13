@@ -16,10 +16,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Jornadas (fechas) de una temporada. Reglas:
- *   - Solo en temporadas que $actor gestiona (SeasonAccess) y no Cerradas.
- *   - Las fechas de la jornada deben caer dentro de las de la temporada
- *     (cuando la temporada las tiene).
+ * Jornadas (fechas) de una competencia. Reglas:
+ *   - Solo en competencias que $actor gestiona (SeasonAccess) y no Cerradas.
+ *   - Las fechas de la jornada deben caer dentro de las de la competencia
+ *     (cuando la competencia las tiene).
  *   - No se marca como completada si le quedan partidos pendientes.
  */
 class MatchdayService
@@ -42,8 +42,8 @@ class MatchdayService
     }
 
     /**
-     * La temporada de una jornada no se cambia (sus partidos quedarian en
-     * otra temporada que la de matches.season_id).
+     * La competencia de una jornada no se cambia (sus partidos quedarian en
+     * otra competencia que la de matches.season_id).
      */
     public function update(Matchday $matchday, array $data, User $actor): Matchday
     {
@@ -91,11 +91,11 @@ class MatchdayService
     private function ensureCanSchedule(Season $season, User $actor): void
     {
         if (! SeasonAccess::manages($actor, $season)) {
-            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona las jornadas de esta temporada.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona las jornadas de esta competencia.');
         }
 
         if ($season->status === SeasonStatus::Closed) {
-            throw ValidationException::withMessages(['form.season_id' => 'La temporada está cerrada: no admite cambios en sus jornadas.']);
+            throw ValidationException::withMessages(['form.season_id' => 'La competencia está cerrada: no admite cambios en sus jornadas.']);
         }
     }
 
@@ -111,7 +111,7 @@ class MatchdayService
             if (($season->start_date && $date->lt($season->start_date)) || ($season->end_date && $date->gt($season->end_date))) {
                 $range = ($season->start_date?->format('d/m/Y') ?? '…') . ' - ' . ($season->end_date?->format('d/m/Y') ?? '…');
                 throw ValidationException::withMessages([
-                    "form.$field" => "La fecha de {$label} está fuera de la temporada ({$range}).",
+                    "form.$field" => "La fecha de {$label} está fuera de la competencia ({$range}).",
                 ]);
             }
         }

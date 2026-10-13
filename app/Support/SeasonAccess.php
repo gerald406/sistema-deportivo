@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Regla compartida por Jornadas, Partidos y Resultados (permiso
- * matches.manage): el admin gestiona cualquier temporada; el organizador
+ * matches.manage): el admin gestiona cualquier competencia; el organizador
  * solo las de SUS olimpiadas (games_editions.organizer_id).
  */
 class SeasonAccess
@@ -28,7 +28,7 @@ class SeasonAccess
     }
 
     /**
-     * Temporadas que $user puede programar. Por defecto excluye las
+     * Competencias que $user puede programar. Por defecto excluye las
      * Cerradas (no admiten jornadas ni partidos nuevos).
      */
     public static function manageableSeasons(User $user, bool $includeClosed = false): Collection

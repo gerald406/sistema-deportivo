@@ -61,7 +61,7 @@
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Planteles</h1>
             <p class="text-sm text-gray-500">
-                {{ $cardMode ? 'Modo carnets: marca los jugadores y genera sus fotochecks en un solo PDF.' : 'Jugadores convocados por cada equipo inscrito en una temporada.' }}
+                {{ $cardMode ? 'Modo carnets: marca los participantes y genera sus fotochecks en un solo PDF.' : 'Participantes convocados por cada equipo inscrito en una competencia.' }}
             </p>
         </div>
 
@@ -89,7 +89,7 @@
                 @can('create', \App\Models\SeasonTeamPlayer::class)
                     <button wire:click="create" type="button"
                             class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                        <i class="fa-solid fa-user-plus"></i> Agregar jugador
+                        <i class="fa-solid fa-user-plus"></i> Agregar participante
                     </button>
                 @endcan
             @endif
@@ -101,7 +101,7 @@
         <div class="relative flex-1">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" wire:model.live.debounce.400ms="search"
-                   placeholder="Buscar jugador o DNI..."
+                   placeholder="Buscar participante o DNI..."
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
@@ -144,8 +144,8 @@
                             </th>
                         @endif
                         <x-sortable-th field="shirt_number" label="N°" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <x-sortable-th field="player_last_name" label="Jugador" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Equipo / Temporada</th>
+                        <x-sortable-th field="player_last_name" label="Participante" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Equipo / Competencia</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Posición</th>
                         <x-sortable-th field="status" label="Estado" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="enrolled_at" label="Alta" :sort-field="$sortField" :sort-direction="$sortDirection" />
@@ -218,7 +218,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $cardMode ? 8 : 7 }}" class="px-4 py-10 text-center text-gray-400">No hay jugadores que coincidan con el filtro.</td>
+                            <td colspan="{{ $cardMode ? 8 : 7 }}" class="px-4 py-10 text-center text-gray-400">No hay participantes que coincidan con el filtro.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -237,7 +237,7 @@
 
         <div x-show="show" x-transition class="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <h2 class="text-lg font-semibold text-gray-900">
-                {{ $editingId ? 'Editar ficha de plantel' : 'Agregar jugador al plantel' }}
+                {{ $editingId ? 'Editar ficha de plantel' : 'Agregar participante al plantel' }}
             </h2>
 
             <form wire:submit="save" class="mt-4 space-y-4">
@@ -261,7 +261,7 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Jugador</label>
+                        <label class="block text-sm font-medium text-gray-700">Participante</label>
                         @if ($player = $this->selectedPlayer())
                             <div class="mt-1 flex items-center justify-between rounded-lg bg-indigo-50 px-3 py-2 text-sm">
                                 <span class="font-medium text-indigo-900">{{ $player->fullName() }} <span class="text-indigo-500">· DNI {{ $player->dni }}</span></span>

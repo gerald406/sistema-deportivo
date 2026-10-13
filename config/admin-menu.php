@@ -31,7 +31,7 @@ return [
                 ['label' => 'Series', 'route' => 'edition-groups.index', 'permission' => 'editions.manage'],
                 ['label' => 'Delegaciones inscritas', 'route' => 'edition-teams.index', 'permission' => 'editions.manage'],
                 ['label' => 'Cuadro de puntaje', 'route' => 'edition-events.index', 'permission' => 'editions.manage'],
-                ['label' => 'Temporadas', 'route' => 'seasons.index', 'permission' => 'seasons.manage'],
+                ['label' => 'Competencias', 'route' => 'seasons.index', 'permission' => 'seasons.manage'],
             ],
         ],
         [
@@ -43,11 +43,11 @@ return [
             ],
         ],
         [
-            'label' => 'Equipos',
+            'label' => 'Participantes',
             'icon' => 'fa-solid fa-people-group',
             'children' => [
                 ['label' => 'Delegaciones', 'route' => 'teams.index', 'permission' => 'teams.manage'],
-                ['label' => 'Jugadores', 'route' => 'players.index', 'permission' => 'players.manage'],
+                ['label' => 'Participantes', 'route' => 'players.index', 'permission' => 'players.manage'],
                 // Sin permission: los 3 roles ven inscripciones (SeasonTeamPolicy::viewAny).
                 ['label' => 'Inscripciones', 'route' => 'season-teams.index'],
                 ['label' => 'Planteles', 'route' => 'rosters.index'],
@@ -78,9 +78,9 @@ return [
             'icon' => 'fa-solid fa-chart-line',
             'children' => [
                 ['label' => 'Posiciones y medallero', 'route' => 'reports.index', 'permission' => 'reports.view'],
-                // PDFs por temporada: admin y organizador (SeasonPolicy::printReports).
+                // PDFs por competencia: admin y organizador (SeasonPolicy::printReports).
                 // Padron: tambien el delegado, solo de su equipo (SeasonTeamPolicy::printRoster).
-                ['label' => 'Padrón de jugadores', 'route' => 'reports.roster', 'role' => ['admin', 'organizador', 'delegado']],
+                ['label' => 'Padrón de participantes', 'route' => 'reports.roster', 'role' => ['admin', 'organizador', 'delegado']],
                 ['label' => 'Reporte gerencial', 'route' => 'reports.managerial', 'role' => ['admin', 'organizador']],
             ],
         ],

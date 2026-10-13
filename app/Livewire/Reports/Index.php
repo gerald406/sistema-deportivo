@@ -17,20 +17,20 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * Reportes de SOLO LECTURA: tabla de posiciones de una temporada y
+ * Reportes de SOLO LECTURA: tabla de posiciones de una competencia y
  * medallero de una edicion. Los datos los mantiene el calculo sincrono de
  * StandingService / MedalService; aqui no se escribe nada.
  *
- * Alcance por rol: temporadas via SeasonService::scopeVisibleTo()
+ * Alcance por rol: competencias via SeasonService::scopeVisibleTo()
  * (organizador: sus olimpiadas; delegado: donde su equipo esta inscrito) y
  * ediciones via GamesEditionService::scopeVisibleTo(). La seleccion viene de
- * la URL (?temporada=, ?edicion=), por eso tambien se busca acotada.
+ * la URL (?competencia=, ?edicion=), por eso tambien se busca acotada.
  */
 #[Layout('layouts.admin')]
 #[Title('Reportes')]
 class Index extends Component
 {
-    #[Url(as: 'temporada')]
+    #[Url(as: 'competencia')]
     public string $seasonId = '';
 
     #[Url(as: 'edicion')]
@@ -53,7 +53,7 @@ class Index extends Component
         }
     }
 
-    /** Temporadas que tienen tabla calculada (enfrentamientos por equipos). */
+    /** Competencias que tienen tabla calculada (enfrentamientos por equipos). */
     public function seasonOptions(): Collection
     {
         return app(SeasonService::class)->scopeVisibleTo(Season::query(), auth()->user())

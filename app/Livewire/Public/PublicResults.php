@@ -12,12 +12,12 @@ use Livewire\Component;
 
 /**
  * Resultados publicos (sin login). Adaptado de pichanga/Public/PublicResults
- * SIN la rama futbol/voley: se elige Olimpiada -> Temporada y cada temporada
+ * SIN la rama futbol/voley: se elige Olimpiada -> Competencia y cada competencia
  * ya sabe su deporte/disciplina.
  *
- * Todas las propiedades publicas vienen del navegador: la temporada se
+ * Todas las propiedades publicas vienen del navegador: la competencia se
  * resuelve SOLO entre las visibles (PublicResultsService) y las pestañas
- * solo entre las que esa temporada soporta (SeasonOverviewService::sections,
+ * solo entre las que esa competencia soporta (SeasonOverviewService::sections,
  * el mismo criterio que el Reporte Gerencial).
  */
 class PublicResults extends Component
@@ -77,7 +77,7 @@ class PublicResults extends Component
                 'yellows' => $sections['yellows'],
             ]));
 
-            // Pestaña no soportada por esta temporada (o manipulada): la primera valida.
+            // Pestaña no soportada por esta competencia (o manipulada): la primera valida.
             if (! in_array($this->activeTab, $tabs, true)) {
                 $this->activeTab = $tabs[0];
             }
@@ -100,7 +100,7 @@ class PublicResults extends Component
 
             case 'results':
                 $completed = $overview->completedMatchdays($season);
-                // Respeta la jornada elegida solo si es de ESTA temporada; si no, la mas reciente.
+                // Respeta la jornada elegida solo si es de ESTA competencia; si no, la mas reciente.
                 $matchday = ctype_digit($this->selectedResultMatchdayId)
                     ? $completed->firstWhere('id', (int) $this->selectedResultMatchdayId)
                     : null;

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Verificación de Jugador — {{ config('app.name') }}</title>
+    <title>Verificación de Participante — {{ config('app.name') }}</title>
 
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
@@ -19,8 +19,8 @@
 </head>
 {{-- Destino del QR del carnet (URL firmada, sin login). Diseño EXACTO de
      pichanga/public/player-verify, con los datos de la INSCRIPCIÓN
-     (season_team_player): equipo, temporada, dorsal y posición de esa
-     temporada. PlayerCardService::verificationData() arma los datos. --}}
+     (season_team_player): equipo, competencia, dorsal y posición de esa
+     competencia. PlayerCardService::verificationData() arma los datos. --}}
 <body class="flex min-h-screen items-center justify-center p-4 font-sans antialiased">
 
     <div class="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -29,16 +29,16 @@
         @if ($valid)
             <div class="flex items-center justify-center gap-2 bg-emerald-500 px-4 py-3 text-center text-white">
                 <i class="fa-solid fa-circle-check text-lg"></i>
-                <span class="text-sm font-bold uppercase tracking-wider">Jugador Verificado &amp; Activo</span>
+                <span class="text-sm font-bold uppercase tracking-wider">Participante Verificado &amp; Activo</span>
             </div>
         @else
             <div class="flex items-center justify-center gap-2 bg-red-500 px-4 py-3 text-center text-white">
                 <i class="fa-solid fa-circle-exclamation text-lg"></i>
-                <span class="text-sm font-bold uppercase tracking-wider">Jugador Inhabilitado</span>
+                <span class="text-sm font-bold uppercase tracking-wider">Participante Inhabilitado</span>
             </div>
         @endif
 
-        {{-- ── Cabecera oscura con olimpiada y temporada ─────────── --}}
+        {{-- ── Cabecera oscura con olimpiada y competencia ─────────── --}}
         <div class="bg-slate-800 px-5 py-4 text-center text-white">
             <p class="mb-1 text-xs font-bold uppercase tracking-widest text-blue-300">
                 <i class="fa-solid fa-trophy mr-1"></i>
@@ -48,7 +48,7 @@
             <p class="text-xs text-slate-300">{{ $season->name }}</p>
         </div>
 
-        {{-- ── Foto del jugador (circular) ─────────────────────── --}}
+        {{-- ── Foto del participante (circular) ─────────────────────── --}}
         <div class="flex flex-col items-center px-6 pb-2 pt-5">
             <div @class([
                     'h-28 w-28 overflow-hidden rounded-full border-4 bg-gray-200 shadow-lg',
@@ -64,7 +64,7 @@
                 @endif
             </div>
 
-            {{-- Badge capitán (de esta temporada) --}}
+            {{-- Badge capitán (de esta competencia) --}}
             @if ($entry->is_captain)
                 <span class="mt-2 rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
                     <i class="fa-solid fa-crown mr-1"></i> Capitán
@@ -86,7 +86,7 @@
             </div>
         </div>
 
-        {{-- ── Grid de datos del jugador ────────────────────────── --}}
+        {{-- ── Grid de datos del participante ────────────────────────── --}}
         <div class="px-6 pb-5 pt-3">
             <div class="grid grid-cols-2 gap-3">
 

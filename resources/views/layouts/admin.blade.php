@@ -68,7 +68,7 @@
            como expresion), asi que un onclick="..." no la encuentra.
          - @js() escapa comillas/HTML para el atributo, y titleText (no
            title) evita que SweetAlert interprete el nombre como HTML:
-           ambos cierran un XSS almacenado via nombres de equipo/jugador.
+           ambos cierran un XSS almacenado via nombres de equipo/participante.
          - Este texto va en comentario Blade y NO en comentario JS: Blade
            compila las directivas aunque esten dentro de un comentario
            JS, y un ejemplo con variables inexistentes tumba el layout. --}}

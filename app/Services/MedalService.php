@@ -30,7 +30,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  *   - Enfrentamientos: solo la ronda "final" da oro (ganador) y plata
  *     (perdedor); cada perdedor de "semifinal" recibe bronce. Una final o
  *     semifinal empatada no da medallas. Aplica a equipos y a partidas
- *     individuales (el jugador aporta a su equipo).
+ *     individuales (el participante aporta a su equipo).
  */
 class MedalService
 {

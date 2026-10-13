@@ -70,7 +70,7 @@ body {
 
 /* ────────────────────────────────────────────────────────────────
    ② NOMBRE DEL EQUIPO
-   Reemplaza la antigua badge "CARNET DE JUGADOR"
+   Reemplaza la antigua badge "CARNET DE PARTICIPANTE"
    ──────────────────────────────────────────────────────────────── */
 .team-section {
     background: #1a5699;
@@ -107,7 +107,7 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ③ FOTO DEL JUGADOR
+   ③ FOTO DEL PARTICIPANTE
    Proporción 3:4 — Marco con borde azul
    ──────────────────────────────────────────────────────────────── */
 .photo-wrap {
@@ -159,7 +159,7 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ④ NOMBRE COMPLETO DEL JUGADOR + DNI
+   ④ NOMBRE COMPLETO DEL PARTICIPANTE + DNI
    El DNI reemplaza el antiguo número de camiseta (p-dorsal).
    Layout via <table> HTML (DomPDF-safe).
    ──────────────────────────────────────────────────────────────── */
@@ -355,7 +355,7 @@ body {
 
                 {{-- ══════════════════════════════════════
                     ② NOMBRE DEL EQUIPO
-                    Reemplaza la antigua badge "CARNET DE JUGADOR"
+                    Reemplaza la antigua badge "CARNET DE PARTICIPANTE"
                 ══════════════════════════════════════ --}}
                 <div class="team-section">
                     @if (! empty($teamLogoBase64))
@@ -377,7 +377,7 @@ body {
                 </div>
 
                 {{-- ══════════════════════════════════════
-                    ③ FOTO DEL JUGADOR
+                    ③ FOTO DEL PARTICIPANTE
                 ══════════════════════════════════════ --}}
                 <div class="photo-wrap">
                     <div class="photo-frame">
@@ -394,7 +394,7 @@ body {
                 </div>
 
                 {{-- ══════════════════════════════════════
-                    ④ NOMBRE DEL JUGADOR + DNI
+                    ④ NOMBRE DEL PARTICIPANTE + DNI
                     • DNI reemplaza el número de camiseta
                     • Posición (izq.) | DNI badge (der.)
                 ══════════════════════════════════════ --}}

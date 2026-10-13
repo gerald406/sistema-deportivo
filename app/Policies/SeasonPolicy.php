@@ -28,7 +28,7 @@ class SeasonPolicy
 
     /**
      * "Flujo de permisos" punto 2 de CLAUDE.md: el organizador crea
-     * temporadas SOLO dentro de una olimpiada que el admin le asigno. Aqui aun
+     * competencias SOLO dentro de una olimpiada que el admin le asigno. Aqui aun
      * no se conoce la olimpiada destino, asi que se exige tener al menos uno;
      * que el games_edition_id enviado sea suyo lo revalida
      * SeasonService::ensureCanUseGamesEdition().
@@ -55,7 +55,7 @@ class SeasonPolicy
     }
 
     /**
-     * Reportes PDF de la temporada (Padron de Jugadores, Reporte Gerencial):
+     * Reportes PDF de la competencia (Padron de Participantes, Reporte Gerencial):
      * el admin (Gate::before) y el organizador de la olimpiada. El delegado no:
      * el padron trae documentos y fechas de nacimiento de todos los equipos.
      */
@@ -67,8 +67,8 @@ class SeasonPolicy
 
     /**
      * Accion especifica del negocio (no un CRUD generico): reabrir un
-     * partido cerrado de la temporada. Se deja aqui porque la decision
-     * de "quien puede reabrir" es a nivel de temporada/olimpiada, no de
+     * partido cerrado de la competencia. Se deja aqui porque la decision
+     * de "quien puede reabrir" es a nivel de competencia/olimpiada, no de
      * partido individual.
      */
     public function reopenMatches(User $user, Season $season): bool

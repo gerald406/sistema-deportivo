@@ -1,6 +1,6 @@
 <div class="relative w-full">
 
-    {{-- HEADER PÚBLICO (sin switch futbol/voley: se elige Olimpiada -> Temporada) --}}
+    {{-- HEADER PÚBLICO (sin switch futbol/voley: se elige Olimpiada -> Competencia) --}}
     <div class="relative mb-10 text-center">
         <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-brand-primary/10 px-5 py-2 text-sm font-bold uppercase tracking-widest text-brand-primary">
             <i class="fa-solid fa-bolt"></i> En vivo
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    {{-- SELECTOR DE TORNEO Y TEMPORADA --}}
+    {{-- SELECTOR DE OLIMPIADA Y COMPETENCIA --}}
     <div class="mx-auto mb-10 grid w-full max-w-3xl grid-cols-1 gap-4 px-4 sm:grid-cols-2 sm:px-0">
         <div class="group relative">
             <label for="public-gamesEdition" class="sr-only">Olimpiada</label>
@@ -32,13 +32,13 @@
         </div>
 
         <div class="group relative">
-            <label for="public-season" class="sr-only">Temporada</label>
+            <label for="public-season" class="sr-only">Competencia</label>
             <select id="public-season" wire:model.live="seasonId" @disabled($seasons->isEmpty())
                     class="block w-full cursor-pointer appearance-none rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-center text-lg font-bold text-slate-800 shadow-sm transition-all focus:border-brand-primary focus:ring-brand-primary disabled:cursor-not-allowed disabled:bg-slate-100 group-hover:border-slate-300">
                 @forelse ($seasons as $option)
                     <option value="{{ $option->id }}">{{ $option->name }} · {{ $option->sport->name }}{{ $option->status === \App\Enums\SeasonStatus::Closed ? ' (cerrada)' : '' }}</option>
                 @empty
-                    <option value="">Sin temporadas públicas</option>
+                    <option value="">Sin competencias públicas</option>
                 @endforelse
             </select>
             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-slate-400 transition-colors group-hover:text-slate-600">
@@ -48,7 +48,7 @@
     </div>
 
     @if ($season)
-        {{-- NAVEGADOR DE TABS: solo las que esta temporada soporta (SeasonOverviewService::sections) --}}
+        {{-- NAVEGADOR DE TABS: solo las que esta competencia soporta (SeasonOverviewService::sections) --}}
         @php
             $tabStyles = [
                 'standings' => ['Posiciones', 'fa-solid fa-ranking-star', 'bg-brand-primary text-white shadow-lg shadow-brand-primary/30 scale-105'],
@@ -288,7 +288,7 @@
             </div>
         @endif
 
-        {{-- (4) TAB: GOLEADORES (solo si la temporada los soporta) --}}
+        {{-- (4) TAB: GOLEADORES (solo si la competencia los soporta) --}}
         @if ($activeTab === 'scorers')
             <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
                 <div class="border-b border-slate-200 bg-slate-50 px-6 py-5">
@@ -322,7 +322,7 @@
         @if ($activeTab === 'suspended')
             <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
                 <div class="border-b border-red-600 bg-red-500 px-6 py-5">
-                    <h3 class="font-display text-xl font-bold text-white"><i class="fa-solid fa-ban mr-2 text-red-200"></i> Jugadores Suspendidos</h3>
+                    <h3 class="font-display text-xl font-bold text-white"><i class="fa-solid fa-ban mr-2 text-red-200"></i> Participantes Suspendidos</h3>
                 </div>
                 @if ($suspensions->count() > 0)
                     <div class="divide-y divide-slate-100">
@@ -340,7 +340,7 @@
                         @endforeach
                     </div>
                 @else
-                    <div class="py-16 text-center text-slate-500"><p>No hay jugadores suspendidos.</p></div>
+                    <div class="py-16 text-center text-slate-500"><p>No hay participantes suspendidos.</p></div>
                 @endif
             </div>
         @endif
@@ -352,7 +352,7 @@
                     <h3 class="font-display text-xl font-bold text-white"><i class="fa-regular fa-square mr-2 text-yellow-100"></i> Alerta de Amarillas</h3>
                     {{-- La referencia decia "la sancion se activa al acumular 3": en este sistema las
                          amarillas no se acumulan (la doble amarilla en un partido es una roja). --}}
-                    <p class="mt-1 text-xs text-yellow-50">Jugadores con 2 o más amarillas en la temporada. Las amarillas no se acumulan: la doble amarilla en un mismo partido es roja.</p>
+                    <p class="mt-1 text-xs text-yellow-50">Participantes con 2 o más amarillas en la competencia. Las amarillas no se acumulan: la doble amarilla en un mismo partido es roja.</p>
                 </div>
                 @if ($yellowCardRisks->count() > 0)
                     <div class="divide-y divide-slate-100">
@@ -378,7 +378,7 @@
                         @endforeach
                     </div>
                 @else
-                    <div class="py-16 text-center text-slate-500"><p>No hay jugadores con 2 o más amarillas.</p></div>
+                    <div class="py-16 text-center text-slate-500"><p>No hay participantes con 2 o más amarillas.</p></div>
                 @endif
             </div>
         @endif

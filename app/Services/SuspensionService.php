@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  *     roja por doble amarilla (red_card_indirect) genera una sancion de
  *     1 partido. Las amarillas no se acumulan.
  *   - Manuales: el organizador crea/edita/borra y marca como cumplidas.
- *   - Mientras un jugador tenga sanciones pendientes su ficha de plantel
+ *   - Mientras un participante tenga sanciones pendientes su ficha de plantel
  *     queda "Suspendido"; al no tener ninguna pendiente vuelve a
  *     "Habilitado". Solo se toca el estado si era Habilitado/Suspendido
  *     (un Lesionado o de Baja conserva su estado).
@@ -33,7 +33,7 @@ class SuspensionService
 
     /**
      * Genera las sanciones automaticas de un partido cerrado. Idempotente:
-     * no duplica si ya existe una sancion del mismo jugador, partido y
+     * no duplica si ya existe una sancion del mismo participante, partido y
      * motivo (p. ej. al re-cerrar tras una reapertura).
      *
      * @return int sanciones creadas
@@ -64,7 +64,7 @@ class SuspensionService
 
     /**
      * Borra las sanciones NO cumplidas originadas en un partido (lo usa la
-     * reapertura) y reajusta el estado de esos jugadores.
+     * reapertura) y reajusta el estado de esos participantes.
      *
      * @return int sanciones borradas
      */
@@ -103,7 +103,7 @@ class SuspensionService
         });
     }
 
-    /** Jugador y partido de origen no cambian: solo motivo, fechas y cumplimiento. */
+    /** Participante y partido de origen no cambian: solo motivo, fechas y cumplimiento. */
     public function update(Suspension $suspension, array $data, User $actor): Suspension
     {
         $suspension->load('match.season.gamesEdition');
@@ -175,7 +175,7 @@ class SuspensionService
     private function ensureCanManage(GameMatch $match, User $actor): void
     {
         if (! SeasonAccess::manages($actor, $match->season)) {
-            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona las sanciones de esta temporada.');
+            throw new AuthorizationException('Solo el organizador de la olimpiada gestiona las sanciones de esta competencia.');
         }
     }
 
@@ -187,7 +187,7 @@ class SuspensionService
 
         if (! SeasonTeamPlayer::whereKey($data['season_team_player_id'])
             ->whereHas('seasonTeam', fn ($q) => $q->where('season_id', $match->season_id))->exists()) {
-            throw ValidationException::withMessages(['form.season_team_player_id' => 'El jugador no pertenece a un plantel de esta temporada.']);
+            throw ValidationException::withMessages(['form.season_team_player_id' => 'El participante no pertenece a un plantel de esta competencia.']);
         }
 
         if (mb_strlen(trim((string) $data['reason'])) < 3) {

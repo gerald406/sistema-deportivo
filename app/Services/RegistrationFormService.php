@@ -10,8 +10,8 @@ use App\Models\SeasonTeamPlayer;
  * Datos de la Ficha de Inscripcion (reports.pdf.jugador-inscripcion).
  * Equivale a PlayerRegistrationController::prepareRegistrationData() de la
  * referencia, pero fuera del Controller y sobre la inscripcion
- * (season_team_player): equipo, temporada, olimpiada, organizador y delegado
- * EFECTIVO de esa temporada. Reusa el numero de carnet de PlayerCardService
+ * (season_team_player): equipo, competencia, olimpiada, organizador y delegado
+ * EFECTIVO de esa competencia. Reusa el numero de carnet de PlayerCardService
  * y las imagenes de PdfImageService (el helper imageToBase64 compartido).
  */
 class RegistrationFormService

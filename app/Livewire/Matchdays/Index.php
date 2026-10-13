@@ -73,7 +73,7 @@ class Index extends Component
         $this->resetPage();
     }
 
-    /** Temporadas (no cerradas) en las que el usuario puede crear jornadas. */
+    /** Competencias (no cerradas) en las que el usuario puede crear jornadas. */
     public function seasonOptions(): Collection
     {
         return SeasonAccess::manageableSeasons(auth()->user());
@@ -217,7 +217,7 @@ class Index extends Component
     protected function validationAttributes(): array
     {
         return [
-            'form.season_id' => 'temporada',
+            'form.season_id' => 'competencia',
             'form.name' => 'nombre',
             'form.start_date' => 'fecha de inicio',
             'form.end_date' => 'fecha de fin',

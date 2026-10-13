@@ -21,10 +21,10 @@ use Illuminate\Support\Facades\URL;
 use Throwable;
 
 /**
- * Carnets / fotochecks de jugador. Diseno tomado del proyecto de
+ * Carnets / fotochecks de participante. Diseno tomado del proyecto de
  * referencia (pichanga), pero el carnet es de una INSCRIPCION
  * (season_team_player), no de un Player suelto: Player es un catalogo
- * global y el mismo jugador puede estar en temporadas distintas, cada una
+ * global y el mismo participante puede estar en competencias distintas, cada una
  * con su equipo, olimpiada y organizador.
  */
 class PlayerCardService
@@ -76,7 +76,7 @@ class PlayerCardService
      * Inscripciones (season_team) cuyos carnets/fichas puede generar $user:
      * la MISMA regla que SeasonTeamPlayerPolicy::printCard (managesSeasonTeam),
      * pero en SQL para filtrar listados. Admin: todas; organizador: las de
-     * sus olimpiadas; delegado: donde es el delegado EFECTIVO (el de temporada,
+     * sus olimpiadas; delegado: donde es el delegado EFECTIVO (el de competencia,
      * o el general del club si la inscripcion no tiene uno), igual que
      * SeasonTeam::hasDelegate(). Los Controllers igual autorizan cada
      * id con la Policy.
@@ -117,7 +117,7 @@ class PlayerCardService
 
     /**
      * Mismo formato que PlayerCardController::generateCardNumber() de la
-     * referencia: CP-<olimpiada>-<equipo>-<jugador>, cada tramo con 3 digitos.
+     * referencia: CP-<olimpiada>-<equipo>-<participante>, cada tramo con 3 digitos.
      */
     public function cardNumber(SeasonTeamPlayer $entry): string
     {
@@ -133,7 +133,7 @@ class PlayerCardService
 
     /**
      * URL publica del QR. Firmada: la referencia usa /player/verify/{id}
-     * sin firma, lo que permite recorrer ids y listar jugadores (a veces
+     * sin firma, lo que permite recorrer ids y listar participantes (a veces
      * menores de edad). Con la firma solo abre quien tiene el carnet.
      */
     public function verificationUrl(SeasonTeamPlayer $entry): string
@@ -144,15 +144,15 @@ class PlayerCardService
     /**
      * Datos de la pagina publica de verificacion (a la que apunta el QR),
      * con los campos del diseno de la referencia (pichanga/player-verify):
-     * posicion y dorsal DE LA TEMPORADA, estado, documento y fecha de
+     * posicion y dorsal DE LA COMPETENCIA, estado, documento y fecha de
      * nacimiento + edad (el arbitro coteja la categoria por edad).
      *
      * El documento va ENMASCARADO (ultimos 3 digitos): la referencia lo
      * mostraba completo y en Carnets se pidio no exponerlo en la vista
      * publica. La URL esta firmada (solo la abre quien tiene el carnet).
      *
-     * Vigente = ficha Habilitada, inscripcion activa, jugador activo y
-     * temporada no cerrada.
+     * Vigente = ficha Habilitada, inscripcion activa, participante activo y
+     * competencia no cerrada.
      *
      * @return array<string, mixed>
      */
@@ -170,7 +170,7 @@ class PlayerCardService
             && $season->status !== SeasonStatus::Closed;
 
         $statusLabel = match (true) {
-            $season->status === SeasonStatus::Closed => 'Temporada cerrada',
+            $season->status === SeasonStatus::Closed => 'Competencia cerrada',
             ! $seasonTeam->is_active || ! $player->is_active => 'Inscripción inactiva',
             default => $entry->status->label(),
         };

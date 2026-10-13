@@ -15,13 +15,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * Zona publica (sin login): que olimpiadas/temporadas se muestran.
+ * Zona publica (sin login): que olimpiadas/competencias se muestran.
  *
  * DECISION (Paso 0 de la parte publica): no hay flag is_public. Es publico
- * todo lo ACTIVO: olimpiada is_active + temporada is_active + estado En curso
- * o Cerrada. Las temporadas en Borrador no se publican (se estan armando:
+ * todo lo ACTIVO: olimpiada is_active + competencia is_active + estado En curso
+ * o Cerrada. Las competencias en Borrador no se publican (se estan armando:
  * inscripciones y fixture incompletos). Para ocultar algo, se desactiva el
- * olimpiada o la temporada, que ya existe en los CRUDs.
+ * olimpiada o la competencia, que ya existe en los CRUDs.
  */
 class PublicResultsService
 {
@@ -34,7 +34,7 @@ class PublicResultsService
             ->whereHas('gamesEdition', fn ($t) => $t->where('is_active', true));
     }
 
-    /** Olimpiadas con al menos una temporada publica. */
+    /** Olimpiadas con al menos una competencia publica. */
     public function visibleGamesEditions(): Collection
     {
         return GamesEdition::query()
@@ -43,7 +43,7 @@ class PublicResultsService
             ->get(['id', 'name', 'logo']);
     }
 
-    /** Temporadas publicas de una olimpiada: primero las En curso, luego las mas recientes. */
+    /** Competencias publicas de una olimpiada: primero las En curso, luego las mas recientes. */
     public function seasonsOf(int $gamesEditionId): Collection
     {
         return $this->visibleSeasons()
@@ -70,7 +70,7 @@ class PublicResultsService
         ];
     }
 
-    /** Una temporada solo si es publica (los ids vienen del navegador). */
+    /** Una competencia solo si es publica (los ids vienen del navegador). */
     public function findVisibleSeason(?int $seasonId): ?Season
     {
         return $seasonId ? $this->visibleSeasons()->with('gamesEdition', 'sport')->find($seasonId) : null;

@@ -17,15 +17,15 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Filtros del Padron de Jugadores (PDF). Adaptado de
+ * Filtros del Padron de Participantes (PDF). Adaptado de
  * pichanga/RosterReport sin el selector de deporte: aqui no hay tablas por
  * deporte, la Season ya sabe el suyo. El equipo se elige entre las
- * INSCRIPCIONES (season_team) de la temporada, porque Team es un catalogo
+ * INSCRIPCIONES (season_team) de la competencia, porque Team es un catalogo
  * global sin olimpiada propia.
  *
  * Alcance por rol: las opciones salen de las inscripciones que el usuario
  * ve en /inscripciones (SeasonTeamService::scopeVisibleTo()). El delegado
- * solo ve olimpiadas/temporadas/categorias donde su equipo esta inscrito y
+ * solo ve olimpiadas/competencias/categorias donde su equipo esta inscrito y
  * debe elegir su equipo (no hay "todos los equipos" para el).
  *
  * Solo arma la URL del PDF: RosterReportController la revalida
@@ -33,7 +33,7 @@ use Livewire\Component;
  * estas propiedades vienen del navegador.
  */
 #[Layout('layouts.admin')]
-#[Title('Padrón de Jugadores')]
+#[Title('Padrón de Participantes')]
 class RosterReport extends Component
 {
     public string $gamesEditionId = '';
@@ -92,7 +92,7 @@ class RosterReport extends Component
             ->get(['id', 'name', 'is_active', 'organizer_id']);
     }
 
-    /** Temporadas de la olimpiada; si no lo gestiona, solo donde su equipo esta inscrito. */
+    /** Competencias de la olimpiada; si no lo gestiona, solo donde su equipo esta inscrito. */
     public function seasons(): Collection
     {
         $gamesEdition = $this->selectedGamesEdition();
@@ -105,7 +105,7 @@ class RosterReport extends Component
             : collect();
     }
 
-    /** Categorias de las inscripciones visibles de la temporada elegida. */
+    /** Categorias de las inscripciones visibles de la competencia elegida. */
     public function categories(): Collection
     {
         $season = $this->selectedSeason();
@@ -123,7 +123,7 @@ class RosterReport extends Component
         return Category::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'gender']);
     }
 
-    /** Inscripciones activas y visibles de la temporada (y categoria, si se eligio). */
+    /** Inscripciones activas y visibles de la competencia (y categoria, si se eligio). */
     public function seasonTeams(): Collection
     {
         $season = $this->selectedSeason();

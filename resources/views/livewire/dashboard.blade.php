@@ -11,7 +11,7 @@
          Cada tarjeta enlaza al modulo que la origina (si existe la ruta). --}}
     @php($tiles = [
         ['key' => 'activeGamesEditions', 'label' => 'Olimpiadas activas', 'icon' => 'fa-trophy', 'tone' => 'bg-amber-100 text-amber-600', 'route' => 'games-editions.index'],
-        ['key' => 'activeSeasons', 'label' => 'Temporadas en curso', 'icon' => 'fa-calendar-days', 'tone' => 'bg-indigo-100 text-indigo-600', 'route' => 'seasons.index'],
+        ['key' => 'activeSeasons', 'label' => 'Competencias en curso', 'icon' => 'fa-calendar-days', 'tone' => 'bg-indigo-100 text-indigo-600', 'route' => 'seasons.index'],
         ['key' => 'todayMatches', 'label' => 'Partidos de hoy', 'icon' => 'fa-futbol', 'tone' => 'bg-sky-100 text-sky-600', 'route' => 'matches.index'],
         ['key' => 'activeTeams', 'label' => 'Equipos activos', 'icon' => 'fa-people-group', 'tone' => 'bg-emerald-100 text-emerald-600', 'route' => 'teams.index'],
     ])

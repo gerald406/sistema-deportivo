@@ -22,7 +22,7 @@
 
         <select wire:model.live="seasonFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todas las temporadas</option>
+            <option value="">Todas las competencias</option>
             @foreach ($filterSeasons as $season)
                 <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach

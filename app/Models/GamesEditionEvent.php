@@ -9,6 +9,7 @@ use App\Enums\GenderScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Fila del cuadro de puntaje de una olimpiada: un deporte o actividad en
@@ -66,6 +67,12 @@ class GamesEditionEvent extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** Competencias generadas desde esta fila. */
+    public function seasons(): HasMany
+    {
+        return $this->hasMany(Season::class, 'games_edition_event_id');
     }
 
     /**

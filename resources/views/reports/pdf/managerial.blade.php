@@ -5,11 +5,11 @@
 
     SECCIONES:
     1. Resultados de la última jornada completada + sus observaciones
-    2. Tabla de posiciones (solo si la temporada tiene enfrentamientos: $showStandings)
+    2. Tabla de posiciones (solo si la competencia tiene enfrentamientos: $showStandings)
     3. Programación de la próxima jornada + sus observaciones
     4. Tabla de goleadores (Top 20) (solo si $showScorers)
-    5. Jugadores con sanciones pendientes
-    6. Jugadores con 2+ tarjetas amarillas
+    5. Participantes con sanciones pendientes
+    6. Participantes con 2+ tarjetas amarillas
 
     Lo que en la referencia era un if por deporte (sport === 'volley') aquí lo deciden los
     datos (ManagerialReportService): el formato efectivo de los partidos
@@ -214,7 +214,7 @@
     {{-- ENCABEZADO --}}
     <div class="header">
         <h1>{{ config('app.name') }}</h1>
-        <h2>Reporte Gerencial de la Temporada</h2>
+        <h2>Reporte Gerencial de la Competencia</h2>
         <div class="subtitle">Documento generado automáticamente</div>
     </div>
 
@@ -419,7 +419,7 @@
                     <tr>
                         <th style="width: 30px;" class="text-center">Pos</th>
                         <th style="width: 50px; text-align: center;">Dorsal</th>
-                        <th>Jugador</th>
+                        <th>Participante</th>
                         <th>Equipo</th>
                         <th style="width: 60px; text-align: center;">Goles</th>
                     </tr>
@@ -437,23 +437,23 @@
                 </tbody>
             </table>
         @else
-            <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay goles registrados en esta temporada.</div>
+            <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay goles registrados en esta competencia.</div>
         @endif
     @endif
 
 
     {{-- ============================================ --}}
-    {{-- SECCIÓN 5: SANCIONES PENDIENTES (si el deporte genera sanciones o la temporada ya tiene) --}}
+    {{-- SECCIÓN 5: SANCIONES PENDIENTES (si el deporte genera sanciones o la competencia ya tiene) --}}
     {{-- ============================================ --}}
     @if($showSuspensions)
-    <div class="section-title">Jugadores Suspendidos (Sanciones Activas)</div>
+    <div class="section-title">Participantes Suspendidos (Sanciones Activas)</div>
 
     @if($suspensions->count() > 0)
         <table class="data-table">
             <thead>
                 <tr>
                     <th style="width: 30px;" class="text-center">#</th>
-                    <th>Jugador</th>
+                    <th>Participante</th>
                     <th>Equipo</th>
                     <th>Motivo</th>
                     <th style="width: 100px;">Partido Origen</th>
@@ -476,17 +476,17 @@
             </tbody>
         </table>
     @else
-        <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay jugadores suspendidos actualmente.</div>
+        <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay participantes suspendidos actualmente.</div>
     @endif
     @endif
 
 
     {{-- ============================================ --}}
-    {{-- SECCIÓN 6: JUGADORES CON 2+ AMARILLAS (si el deporte registra amarillas) --}}
+    {{-- SECCIÓN 6: PARTICIPANTES CON 2+ AMARILLAS (si el deporte registra amarillas) --}}
     {{-- ============================================ --}}
     @if($showYellows)
     <div class="section-title mt-10">
-        Jugadores con Acumulación de Tarjetas Amarillas (2+)
+        Participantes con Acumulación de Tarjetas Amarillas (2+)
         <span class="section-subtitle">&mdash; En observación</span>
     </div>
 
@@ -496,7 +496,7 @@
                 <tr>
                     <th style="width: 30px;" class="text-center">#</th>
                     <th style="width: 50px; text-align: center;">Dorsal</th>
-                    <th>Jugador</th>
+                    <th>Participante</th>
                     <th>Equipo</th>
                     <th style="width: 100px; text-align: center;">Total Amarillas</th>
                     <th style="width: 100px; text-align: center;">Estado</th>
@@ -517,7 +517,7 @@
             </tbody>
         </table>
     @else
-        <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay jugadores con acumulación de tarjetas amarillas.</div>
+        <div class="empty-message" style="border: 1px solid #e5e7eb; border-top: none;">No hay participantes con acumulación de tarjetas amarillas.</div>
     @endif
     @endif
 

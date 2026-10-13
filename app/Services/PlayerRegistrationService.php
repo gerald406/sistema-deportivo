@@ -30,7 +30,7 @@ class PlayerRegistrationService
     }
 
     /**
-     * Sin soft deletes, un jugador con historial (season_team_player,
+     * Sin soft deletes, un participante con historial (season_team_player,
      * RESTRICT) no se puede borrar fisicamente. Se detecta antes de
      * intentarlo en vez de dejar que MySQL truene con un error 1451.
      *
@@ -39,13 +39,13 @@ class PlayerRegistrationService
     public function delete(Player $player): bool|string
     {
         if ($player->seasonTeamPlayers()->exists()) {
-            return 'No se puede eliminar: el jugador tiene inscripciones registradas. Desactívalo en su lugar.';
+            return 'No se puede eliminar: el participante tiene inscripciones registradas. Desactívalo en su lugar.';
         }
 
         try {
             $player->delete();
         } catch (QueryException) {
-            return 'No se puede eliminar: el jugador tiene historial asociado. Desactívalo en su lugar.';
+            return 'No se puede eliminar: el participante tiene historial asociado. Desactívalo en su lugar.';
         }
 
         // Sin esto la foto queda huerfana en storage/app/public/players.
@@ -57,7 +57,7 @@ class PlayerRegistrationService
     }
 
     /**
-     * Jugadores que $actor ve en /jugadores (union si tiene varios roles).
+     * Participantes que $actor ve en /participantes (union si tiene varios roles).
      * Player es un catalogo global: el alcance no es un where directo sino
      * via su roster: es visible si tiene al menos un convocado visible en
      * /planteles (SeasonTeamPlayerService::scopeVisibleTo(): organizador ->
@@ -65,7 +65,7 @@ class PlayerRegistrationService
      *   - Admin: todos.
      *   - Organizador o delegado: tambien los que el mismo creo
      *     (players.created_by) y aun no tienen roster; sin esto el delegado
-     *     perderia de vista (y no podria corregir) un jugador recien creado
+     *     perderia de vista (y no podria corregir) un participante recien creado
      *     antes de inscribirlo en /planteles.
      *   - Cualquier otro: ninguno.
      */
@@ -85,7 +85,7 @@ class PlayerRegistrationService
     }
 
     /**
-     * El jugador esta dentro del alcance de $actor (lo usa
+     * El participante esta dentro del alcance de $actor (lo usa
      * PlayerPolicy::view): misma regla que scopeVisibleTo(), aplicada a un
      * solo registro.
      */

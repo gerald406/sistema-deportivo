@@ -2,9 +2,9 @@
     <div>
         <h1 class="flex items-center gap-2 text-2xl font-semibold text-gray-900">
             <i class="fa-solid fa-id-card text-indigo-600"></i>
-            Padrón de Jugadores
+            Padrón de Participantes
         </h1>
-        <p class="mt-1 text-sm text-gray-500">Genera un PDF con el plantel de cada equipo inscrito en una temporada.</p>
+        <p class="mt-1 text-sm text-gray-500">Genera un PDF con el plantel de cada equipo inscrito en una competencia.</p>
 
         <button wire:click="toggleFilters" type="button"
                 class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-200 sm:hidden">
@@ -30,11 +30,11 @@
 
             <div>
                 <label class="mb-2 block text-sm font-medium text-gray-700">
-                    <i class="fa-solid fa-calendar-days mr-1 text-indigo-500"></i> Temporada *
+                    <i class="fa-solid fa-calendar-days mr-1 text-indigo-500"></i> Competencia *
                 </label>
                 <select wire:model.live="seasonId" @disabled($gamesEditionId === '')
                         class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100">
-                    <option value="">{{ $gamesEditionId === '' ? 'Primero elige la olimpiada' : '-- Seleccione una temporada --' }}</option>
+                    <option value="">{{ $gamesEditionId === '' ? 'Primero elige la olimpiada' : '-- Seleccione una competencia --' }}</option>
                     @foreach ($this->seasons() as $season)
                         <option value="{{ $season->id }}">{{ $season->name }} ({{ $season->status->label() }})</option>
                     @endforeach
@@ -84,7 +84,7 @@
                     <button type="button" disabled
                             class="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-gray-300 px-6 py-3 font-bold text-gray-500 sm:w-auto">
                         <i class="fa-solid fa-file-pdf text-lg"></i>
-                        {{ $seasonId === '' ? 'Selecciona una temporada' : 'Selecciona tu equipo' }}
+                        {{ $seasonId === '' ? 'Selecciona una competencia' : 'Selecciona tu equipo' }}
                     </button>
                 @endif
             </div>
@@ -97,8 +97,8 @@
         <ul class="ml-5 mt-2 list-disc">
             <li>Plantel de cada equipo inscrito (o solo el elegido), ordenado por dorsal</li>
             <li>Documento, apellidos y nombres, fecha de nacimiento y dorsal</li>
-            <li>Conteo de jugadores activos e inactivos por equipo</li>
-            <li>Firmas del delegado del equipo en la temporada y del organizador</li>
+            <li>Conteo de participantes activos e inactivos por equipo</li>
+            <li>Firmas del delegado del equipo en la competencia y del organizador</li>
         </ul>
     </div>
 </div>

@@ -1,17 +1,39 @@
 <div class="space-y-6">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Temporadas</h1>
-            <p class="text-sm text-gray-500">Cada temporada es un deporte dentro de una olimpiada, con sus fases de puntaje.</p>
+            <h1 class="text-2xl font-semibold text-gray-900">Competencias</h1>
+            <p class="text-sm text-gray-500">Cada competencia es un deporte en un nivel y género de la olimpiada. Se generan desde el cuadro de puntaje.</p>
         </div>
 
-        @can('create', \App\Models\Season::class)
-            <button wire:click="create" type="button"
-                    class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                <i class="fa-solid fa-plus"></i> Nueva temporada
-            </button>
-        @endcan
+        @if ($edition)
+            @can('manage', $edition)
+                <div class="flex flex-wrap gap-2">
+                    <button type="button"
+                            x-on:click="Swal.fire({
+                                title: 'Generar competencias',
+                                text: 'Se crearán las competencias que falten según el cuadro de puntaje. Las que ya existen no se modifican.',
+                                icon: 'question', showCancelButton: true,
+                                confirmButtonText: 'Generar', cancelButtonText: 'Cancelar', confirmButtonColor: '#4f46e5',
+                            }).then((r) => { if (r.isConfirmed) $wire.generate() })"
+                            class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Generar competencias
+                    </button>
+                    <button wire:click="create" type="button"
+                            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                        <i class="fa-solid fa-plus"></i> Nueva competencia
+                    </button>
+                </div>
+            @endcan
+        @endif
     </div>
+
+    <x-edition-picker :options="$this->editionOptions()" />
+
+    @if (! $edition)
+        <div class="rounded-xl bg-white p-10 text-center text-gray-400 shadow-sm ring-1 ring-gray-900/5">
+            No tienes ninguna olimpiada a tu cargo.
+        </div>
+    @else
 
     {{-- Filtros --}}
     <div class="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 lg:flex-row lg:items-center">
@@ -22,19 +44,27 @@
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
-        <select wire:model.live="gamesEditionFilter"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todas las olimpiadas</option>
-            @foreach ($this->gamesEditionFilterOptions() as $gamesEdition)
-                <option value="{{ $gamesEdition->id }}">{{ $gamesEdition->name }}</option>
-            @endforeach
-        </select>
-
         <select wire:model.live="sportFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="">Todos los deportes</option>
             @foreach ($filterSports as $sport)
                 <option value="{{ $sport->id }}">{{ $sport->name }}</option>
+            @endforeach
+        </select>
+
+        <select wire:model.live="categoryFilter"
+                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <option value="">Todos los niveles</option>
+            @foreach ($filterCategories as $category)
+                <option value="{{ $category->id }}">{{ $category->name }}</option>
+            @endforeach
+        </select>
+
+        <select wire:model.live="genderFilter"
+                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <option value="">Damas y varones</option>
+            @foreach ($this->genderOptions() as $option)
+                <option value="{{ $option->value }}">{{ $option->label() }}</option>
             @endforeach
         </select>
 
@@ -61,11 +91,11 @@
             <table class="w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50">
                     <tr>
-                        <x-sortable-th field="name" label="Temporada" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Olimpiada / Deporte</th>
+                        <x-sortable-th field="name" label="Competencia" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Deporte / Nivel</th>
                         <x-sortable-th field="start_date" label="Inicio" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="end_date" label="Fin" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <x-sortable-th field="season_teams_count" label="Equipos" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                        <x-sortable-th field="season_teams_count" label="Delegaciones" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="status" label="Estado" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="is_active" label="Activa" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3"></th>
@@ -81,8 +111,8 @@
                                 </p>
                             </td>
                             <td class="px-4 py-3 text-gray-600">
-                                <p>{{ $season->gamesEdition->name }}</p>
-                                <p class="text-xs text-gray-400">{{ $season->sport->name }}</p>
+                                <p>{{ $season->sport->name }}{{ $season->discipline ? ' — '.$season->discipline->name : '' }}</p>
+                                <p class="text-xs text-gray-400">{{ $season->category?->name ?? 'Sin nivel' }}{{ $season->gender ? ' · '.$season->gender->label() : '' }}</p>
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $season->start_date?->format('d/m/Y') ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-600">{{ $season->end_date?->format('d/m/Y') ?? '—' }}</td>
@@ -116,7 +146,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-10 text-center text-gray-400">No hay temporadas que coincidan con el filtro.</td>
+                            <td colspan="8" class="px-4 py-10 text-center text-gray-400">No hay competencias que coincidan con el filtro. Usa «Generar competencias» para crearlas desde el cuadro de puntaje.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -128,6 +158,8 @@
         </div>
     </div>
 
+    @endif
+
     {{-- Modal crear/editar (Season + sub-formulario de fases de puntaje) --}}
     <div x-data="{ show: @entangle('showModal') }" x-show="show" x-cloak
          class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -135,22 +167,11 @@
 
         <div x-show="show" x-transition class="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <h2 class="text-lg font-semibold text-gray-900">
-                {{ $editingId ? 'Editar temporada' : 'Nueva temporada' }}
+                {{ $editingId ? 'Editar competencia' : 'Nueva competencia' }}
             </h2>
 
             <form wire:submit="save" class="mt-4 space-y-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Olimpiada</label>
-                        <select wire:model="form.games_edition_id"
-                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Selecciona una olimpiada</option>
-                            @foreach ($this->gamesEditionOptions() as $gamesEdition)
-                                <option value="{{ $gamesEdition->id }}">{{ $gamesEdition->name }}{{ $gamesEdition->is_active ? '' : ' (inactiva)' }}</option>
-                            @endforeach
-                        </select>
-                        @error('form.games_edition_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Deporte</label>
                         <select wire:model="form.sport_id"
@@ -162,11 +183,44 @@
                         </select>
                         @error('form.sport_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nivel <span class="font-normal text-gray-400">(opcional)</span></label>
+                        <select wire:model="form.category_id"
+                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">Sin nivel</option>
+                            @foreach ($this->categoryOptions() as $category)
+                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('form.category_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Género <span class="font-normal text-gray-400">(opcional)</span></label>
+                        <select wire:model="form.gender"
+                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">Sin género</option>
+                            @foreach ($this->genderOptions() as $option)
+                                <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                            @endforeach
+                        </select>
+                        @error('form.gender') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Fila del cuadro de puntaje <span class="font-normal text-gray-400">(opcional)</span></label>
+                        <select wire:model="form.games_edition_event_id"
+                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">Ninguna (no suma al puntaje general)</option>
+                            @foreach ($this->eventOptions() as $event)
+                                <option value="{{ $event->id }}">{{ $event->label }}</option>
+                            @endforeach
+                        </select>
+                        @error('form.games_edition_event_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Nombre</label>
-                    <input type="text" wire:model="form.name" placeholder="Ej: Apertura 2027"
+                    <input type="text" wire:model="form.name" placeholder="Ej: Fútbol Libre Varones"
                            class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                     @error('form.name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -201,7 +255,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-semibold text-gray-700">Fases de puntaje</p>
-                            <p class="text-xs text-gray-500">Puntos que suma un equipo por resultado en cada fase.</p>
+                            <p class="text-xs text-gray-500">Puntos que suma una delegación por resultado en cada fase.</p>
                         </div>
                         <button type="button" wire:click="addPhase"
                                 class="text-xs font-semibold text-indigo-600 hover:text-indigo-500">

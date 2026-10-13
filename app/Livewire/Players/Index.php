@@ -18,7 +18,7 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 #[Layout('layouts.admin')]
-#[Title('Jugadores')]
+#[Title('Participantes')]
 class Index extends Component
 {
     use LimitsPerPage, Sortable, WithFileUploads, WithPagination;
@@ -124,7 +124,7 @@ class Index extends Component
 
         $this->showModal = false;
         $this->resetForm();
-        $this->dispatch('toast', type: 'success', message: 'Jugador guardado correctamente.');
+        $this->dispatch('toast', type: 'success', message: 'Participante guardado correctamente.');
     }
 
     public function delete(int $id, PlayerRegistrationService $service): void
@@ -140,7 +140,7 @@ class Index extends Component
             return;
         }
 
-        $this->dispatch('toast', type: 'success', message: 'Jugador eliminado.');
+        $this->dispatch('toast', type: 'success', message: 'Participante eliminado.');
     }
 
     public function closeModal(): void
@@ -183,7 +183,7 @@ class Index extends Component
 
     /**
      * Ids que llegan del navegador se buscan acotados al alcance del
-     * usuario (scopeVisibleTo): quien mande el id de un jugador fuera de
+     * usuario (scopeVisibleTo): quien mande el id de un participante fuera de
      * su olimpiada/equipo recibe 404 antes de llegar a la Policy.
      */
     private function findVisiblePlayer(int $id): Player

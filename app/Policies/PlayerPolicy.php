@@ -16,11 +16,11 @@ class PlayerPolicy
      * verifica de dos formas, cualquiera basta:
      *   1) Roster vigente: Player -> SeasonTeamPlayer -> SeasonTeam -> delegados de la
      *      delegacion en la olimpiada (SeasonTeamPolicy::delegateConstraint()).
-     *   2) created_by: el delegado que registro el jugador en el catalogo,
-     *      necesario porque un jugador recien creado puede no tener
+     *   2) created_by: el delegado que registro el participante en el catalogo,
+     *      necesario porque un participante recien creado puede no tener
      *      todavia ninguna inscripcion (la inscripcion es Fase 5).
-     * Esto evita el IDOR de "cualquier delegado edita cualquier jugador"
-     * y respeta que un jugador puede estar en el roster de varios
+     * Esto evita el IDOR de "cualquier delegado edita cualquier participante"
+     * y respeta que un participante puede estar en el roster de varios
      * equipos historicamente.
      */
     public function viewAny(User $user): bool
@@ -29,7 +29,7 @@ class PlayerPolicy
     }
 
     /**
-     * Mismo alcance que el listado de /jugadores (una sola fuente de
+     * Mismo alcance que el listado de /participantes (una sola fuente de
      * verdad): PlayerRegistrationService::scopeVisibleTo(). El admin pasa
      * por Gate::before.
      */

@@ -5,8 +5,8 @@
 <title>Ficha de Inscripción</title>
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   FICHA DE INSCRIPCIÓN — A4, 1 jugador por página, B/N
-   Versión compacta: garantiza 1 sola hoja por jugador.
+   FICHA DE INSCRIPCIÓN — A4, 1 participante por página, B/N
+   Versión compacta: garantiza 1 sola hoja por participante.
    ═══════════════════════════════════════════════════════════════ */
 
 @page { size: 210mm 297mm; margin: 10mm 14mm; }
@@ -286,7 +286,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
     </table>
 
     {{-- ══════════════════════════════════════
-         CABECERA: LOGO DEL TORNEO (IZQ) · TORNEO/TEMPORADA · LOGO DEL EQUIPO (DER)
+         CABECERA: LOGO DE LA OLIMPIADA (IZQ) · OLIMPIADA/COMPETENCIA · LOGO DEL EQUIPO (DER)
     ══════════════════════════════════════ --}}
     <div class="hdr-main">
         <table class="hdr-main-tbl">
@@ -327,7 +327,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
     <table class="section-title-tbl">
         <tr>
             <td class="section-num">1</td>
-            <td class="section-title-text">Datos del Equipo y del Jugador</td>
+            <td class="section-title-text">Datos del Equipo y del Participante</td>
         </tr>
     </table>
 
@@ -340,7 +340,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
                         <td class="info-value">{{ $card['team']->name }}</td>
                     </tr>
                     <tr>
-                        <td class="info-label">Código del Jugador</td>
+                        <td class="info-label">Código del Participante</td>
                         <td class="info-value info-code">{{ $card['cardNumber'] }}</td>
                     </tr>
                     <tr>
@@ -361,23 +361,23 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
             <td class="photo-cell">
                 <div class="photo-box">
                     @if(!empty($card['playerPhotoBase64']))
-                        <img src="{{ $card['playerPhotoBase64'] }}" alt="Foto del jugador">
+                        <img src="{{ $card['playerPhotoBase64'] }}" alt="Foto del participante">
                     @else
                         <div class="photo-placeholder">SIN<br>FOTOGRAFÍA</div>
                     @endif
                 </div>
-                <div class="photo-caption">Foto del jugador</div>
+                <div class="photo-caption">Foto del participante</div>
             </td>
         </tr>
     </table>
 
     {{-- ══════════════════════════════════════
-         SECCIÓN 2: COMPROMISO DEL JUGADOR
+         SECCIÓN 2: COMPROMISO DEL PARTICIPANTE
     ══════════════════════════════════════ --}}
     <table class="section-title-tbl">
         <tr>
             <td class="section-num">2</td>
-            <td class="section-title-text">Compromiso del Jugador</td>
+            <td class="section-title-text">Compromiso del Participante</td>
         </tr>
     </table>
 
@@ -401,7 +401,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
                 <div class="sign-space"></div>
                 <div class="sign-line">
                     <div class="sign-name">{{ mb_strtoupper($card['player']->fullName()) }}</div>
-                    <div class="sign-role">Firma del Jugador</div>
+                    <div class="sign-role">Firma del Participante</div>
                 </div>
             </td>
         </tr>
@@ -418,7 +418,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
     </table>
 
     <p class="guarantee-note">
-        La promoción y su Presidente y/o Delegado se hacen responsables de la identidad del jugador firmante en esta ficha de inscripción y lo autorizan a registrarse oficialmente como su jugador.
+        La promoción y su Presidente y/o Delegado se hacen responsables de la identidad del participante firmante en esta ficha de inscripción y lo autorizan a registrarse oficialmente como su participante.
     </p>
 
     <table class="data-tbl" style="margin-top:2mm;">
@@ -466,7 +466,7 @@ table.data-tbl td { padding: 0 0 1.8mm 0; vertical-align: bottom; }
     </table>
 
     <p class="guarantee-note">
-        El jugador firmante de esta Ficha de Inscripción queda registrado oficialmente en el "{{ $card['gamesEdition']->name }}".
+        El participante firmante de esta Ficha de Inscripción queda registrado oficialmente en el "{{ $card['gamesEdition']->name }}".
     </p>
 
     <table class="sign-tbl single">

@@ -89,7 +89,7 @@ class Index extends Component
         return SeasonAccess::manageableSeasons(auth()->user(), includeClosed: true);
     }
 
-    /** Partidos no cancelados de la temporada elegida (origen de la sancion). */
+    /** Partidos no cancelados de la competencia elegida (origen de la sancion). */
     public function matchOptions(): Collection
     {
         return ctype_digit((string) $this->form['season_id'])
@@ -101,7 +101,7 @@ class Index extends Component
             : collect();
     }
 
-    /** Planteles de la temporada elegida. */
+    /** Planteles de la competencia elegida. */
     public function playerOptions(): Collection
     {
         return ctype_digit((string) $this->form['season_id'])
@@ -232,7 +232,7 @@ class Index extends Component
         $this->resetErrorBag();
     }
 
-    /** Reglas de negocio (jugador de la temporada, partido no cancelado): SuspensionService. */
+    /** Reglas de negocio (participante de la competencia, partido no cancelado): SuspensionService. */
     private function rules(): array
     {
         return [
@@ -248,9 +248,9 @@ class Index extends Component
     protected function validationAttributes(): array
     {
         return [
-            'form.season_id' => 'temporada',
+            'form.season_id' => 'competencia',
             'form.match_id' => 'partido de origen',
-            'form.season_team_player_id' => 'jugador',
+            'form.season_team_player_id' => 'participante',
             'form.reason' => 'motivo',
             'form.matches_suspended' => 'partidos de sanción',
         ];

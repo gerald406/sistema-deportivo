@@ -95,7 +95,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Jugadores que registro (players.created_by, SET NULL).
+     * Participantes que registro (players.created_by, SET NULL).
      */
     public function createdPlayers(): HasMany
     {

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Padrón de Jugadores - {{ $gamesEdition->name }} - {{ $season->name }}</title>
+    <title>Padrón de Participantes - {{ $gamesEdition->name }} - {{ $season->name }}</title>
     <style>
         /* 1. Márgenes de la hoja: Dejamos espacio arriba y abajo para el header y footer fijos */
         @page {
@@ -281,7 +281,7 @@
             </div>
         @endif
         <div class="footer-text">
-            {{ config('app.name') }} &bull; Padrón de Jugadores &bull; {{ $gamesEdition->name }} &bull; {{ $season->name }} &bull;
+            {{ config('app.name') }} &bull; Padrón de Participantes &bull; {{ $gamesEdition->name }} &bull; {{ $season->name }} &bull;
             Generado: {{ $generatedAt }} &bull; Página <span class="page-number"></span>
         </div>
     </footer>
@@ -315,7 +315,7 @@
                     </table>
                 </div>
 
-                <!-- Tabla de Jugadores (plantel de la temporada) -->
+                <!-- Tabla de Participantes (plantel de la competencia) -->
                 <table class="players-table">
                     <thead>
                         <tr>
@@ -340,7 +340,7 @@
                         @empty
                             <tr>
                                 <td colspan="5" style="text-align: center; color: #9ca3af; padding: 15px;">
-                                    No hay jugadores inscritos en este equipo.
+                                    No hay participantes inscritos en este equipo.
                                 </td>
                             </tr>
                         @endforelse
@@ -348,7 +348,7 @@
                 </table>
 
                 <div class="team-footer">
-                    Total jugadores: <strong>{{ $block['entries']->count() }}</strong>
+                    Total participantes: <strong>{{ $block['entries']->count() }}</strong>
                     @if($block['activeCount'] > 0)
                         | <span class="active-count">Activos: {{ $block['activeCount'] }}</span>
                     @endif
@@ -357,7 +357,7 @@
                     @endif
                 </div>
 
-                <!-- Firmas: delegado efectivo de la temporada (si hay) + organizador -->
+                <!-- Firmas: delegado efectivo de la competencia (si hay) + organizador -->
                 <div class="signature-section">
                     <table style="width: 100%; border: none; border-collapse: collapse;">
                         <tr>

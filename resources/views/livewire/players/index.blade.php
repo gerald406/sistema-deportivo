@@ -1,14 +1,14 @@
 <div class="space-y-6">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Jugadores</h1>
+            <h1 class="text-2xl font-semibold text-gray-900">Participantes</h1>
             <p class="text-sm text-gray-500">Catálogo global de deportistas.</p>
         </div>
 
         @can('create', \App\Models\Player::class)
             <button wire:click="create" type="button"
                     class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                <i class="fa-solid fa-plus"></i> Nuevo jugador
+                <i class="fa-solid fa-plus"></i> Nuevo participante
             </button>
         @endcan
     </div>
@@ -90,7 +90,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-10 text-center text-gray-400">No hay jugadores que coincidan con el filtro.</td>
+                            <td colspan="6" class="px-4 py-10 text-center text-gray-400">No hay participantes que coincidan con el filtro.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -109,7 +109,7 @@
 
         <div x-show="show" x-transition class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <h2 class="text-lg font-semibold text-gray-900">
-                {{ $editingId ? 'Editar jugador' : 'Nuevo jugador' }}
+                {{ $editingId ? 'Editar participante' : 'Nuevo participante' }}
             </h2>
 
             <form wire:submit="save" class="mt-4 space-y-4">

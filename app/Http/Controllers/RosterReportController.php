@@ -12,11 +12,11 @@ use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * PDF del Padron de Jugadores; los datos los arma RosterReportService.
+ * PDF del Padron de Participantes; los datos los arma RosterReportService.
  * Autorizacion (los parametros vienen de la URL, se revalidan aqui):
  *   - Un equipo (season_team_id): SeasonTeamPolicy::printRoster, organizador
  *     de la olimpiada o delegado EFECTIVO del equipo. Un season_team_id ajeno da
- *     403 antes de mirar la temporada.
+ *     403 antes de mirar la competencia.
  *   - Todos los equipos (con o sin categoria): SeasonPolicy::printReports,
  *     admin u organizador de la olimpiada; nunca el delegado.
  */
@@ -37,7 +37,7 @@ class RosterReportController extends Controller
         if ($seasonTeamId !== null) {
             $seasonTeam = SeasonTeam::findOrFail($seasonTeamId);
             Gate::authorize('printRoster', $seasonTeam);
-            // Que sea de esa temporada lo valida RosterReportService (404).
+            // Que sea de esa competencia lo valida RosterReportService (404).
         } else {
             Gate::authorize('printReports', $season);
         }

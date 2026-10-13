@@ -50,10 +50,17 @@ class EditionEventService
         return $event;
     }
 
-    /** Devuelve true o el mensaje exacto para el toast. */
+    /**
+     * seasons.games_edition_event_id es RESTRICT: una fila con competencias
+     * no se borra. Devuelve true o el mensaje exacto para el toast.
+     */
     public function delete(GamesEditionEvent $event, User $actor): bool|string
     {
         $this->ensureAdmin($actor);
+
+        if ($event->seasons()->exists()) {
+            return 'No se puede eliminar: la fila ya tiene competencias. Desactívala en su lugar.';
+        }
 
         try {
             $event->delete();

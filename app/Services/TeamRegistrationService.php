@@ -68,7 +68,7 @@ class TeamRegistrationService
         }
 
         if ($team->seasonTeams()->exists()) {
-            return 'No se puede eliminar: el equipo tiene inscripciones en temporadas. Desactívalo en su lugar.';
+            return 'No se puede eliminar: el equipo tiene inscripciones en competencias. Desactívalo en su lugar.';
         }
 
         if ($team->medals()->exists()) {
@@ -140,9 +140,9 @@ class TeamRegistrationService
 
     /**
      * Team no se relaciona directo con GamesEdition (un equipo puede estar
-     * inscrito en temporadas de varias olimpiadas a la vez): es del organizador
+     * inscrito en competencias de varias olimpiadas a la vez): es del organizador
      * si esta inscrito en una olimpiada suya (games_edition_teams), si tiene
-     * al menos una inscripcion (season_team) en una temporada de una
+     * al menos una inscripcion (season_team) en una competencia de una
      * olimpiada suya, o si el mismo lo creo (teams.created_by) y aun no lo
      * inscribe.
      */

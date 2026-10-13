@@ -81,7 +81,7 @@ class Index extends Component
         $this->form['event_type_id'] = '';
     }
 
-    /** Partidos Programados, de temporadas que el usuario gestiona y cuyo deporte tiene tipos de incidencia. */
+    /** Partidos Programados, de competencias que el usuario gestiona y cuyo deporte tiene tipos de incidencia. */
     public function matchOptions(): Collection
     {
         $seasonIds = SeasonAccess::manageableSeasons(auth()->user())->pluck('id');
@@ -223,7 +223,7 @@ class Index extends Component
         $this->resetErrorBag();
     }
 
-    /** Reglas de negocio (tipo del deporte, jugador participante): MatchEventService. */
+    /** Reglas de negocio (tipo del deporte, participante participante): MatchEventService. */
     private function rules(): array
     {
         return [
@@ -238,7 +238,7 @@ class Index extends Component
     {
         return [
             'form.match_id' => 'partido',
-            'form.season_team_player_id' => 'jugador',
+            'form.season_team_player_id' => 'participante',
             'form.event_type_id' => 'tipo de incidencia',
             'form.minute' => 'minuto',
         ];

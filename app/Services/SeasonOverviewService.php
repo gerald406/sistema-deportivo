@@ -20,21 +20,21 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * Resumen de una temporada: que secciones tienen sentido y sus datos.
+ * Resumen de una competencia: que secciones tienen sentido y sus datos.
  * UNICA fuente de verdad para la zona publica (Public\PublicResults) y el
  * Reporte Gerencial (ManagerialReportService): ambos muestran lo mismo con
  * el mismo criterio.
  *
- * CRITERIO DE SECCIONES (por temporada, desde los datos; nunca por nombre
+ * CRITERIO DE SECCIONES (por competencia, desde los datos; nunca por nombre
  * de deporte ni un booleano "futbol/voley"):
- *   - Posiciones: la temporada tiene enfrentamientos (formato efectivo
+ *   - Posiciones: la competencia tiene enfrentamientos (formato efectivo
  *     discipline.format_type ?? sport.format_type = head_to_head, el mismo
  *     de Partidos). Individual y postas alimentan el medallero, no la tabla.
  *   - Goleadores: hay enfrentamientos Y el deporte define el tipo de
  *     incidencia 'goal' (futbol si; voley, ajedrez y atletismo no).
  *   - Amarillas: el deporte define 'yellow_card'.
  *   - Suspendidos: el deporte define alguna incidencia que genera sancion
- *     automatica (SuspensionService::AUTO_CODES) O la temporada ya tiene
+ *     automatica (SuspensionService::AUTO_CODES) O la competencia ya tiene
  *     sanciones registradas (las manuales existen en cualquier deporte,
  *     p. ej. atletismo).
  */
@@ -195,7 +195,7 @@ class SeasonOverviewService
             });
     }
 
-    /** Goleadores (event_type 'goal') en partidos no cancelados de la temporada. */
+    /** Goleadores (event_type 'goal') en partidos no cancelados de la competencia. */
     public function topScorers(Season $season, int $limit): Collection
     {
         return $this->playerEventCounts($season, 'goal')
@@ -206,7 +206,7 @@ class SeasonOverviewService
     }
 
     /**
-     * Jugadores con 2+ amarillas. Las amarillas NO se acumulan en este
+     * Participantes con 2+ amarillas. Las amarillas NO se acumulan en este
      * sistema (la doble amarilla en un partido es su propio evento
      * red_card_indirect): es una alerta; 'suspended' = ya tiene una sancion
      * pendiente.

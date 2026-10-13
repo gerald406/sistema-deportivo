@@ -118,7 +118,7 @@ class Index extends Component
     }
 
     /**
-     * Cargar el resultado: solo quien gestiona la temporada (organizador del
+     * Cargar el resultado: solo quien gestiona la competencia (organizador del
      * olimpiada o admin). El delegado ve /resultados en solo lectura.
      */
     public function canManage(GameMatch $match): bool

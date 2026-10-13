@@ -53,7 +53,7 @@ class Index extends Component
     #[Url(as: 'carnets')]
     public bool $cardMode = false;
 
-    /** Buscador de jugadores dentro del modal (catalogo global). */
+    /** Buscador de participantes dentro del modal (catalogo global). */
     public string $playerSearch = '';
 
     public array $form = [
@@ -108,7 +108,7 @@ class Index extends Component
         return app(SeasonTeamPlayerService::class)->seasonTeamsFor(auth()->user());
     }
 
-    /** Jugadores activos del catalogo global que coinciden con la busqueda. */
+    /** Participantes activos del catalogo global que coinciden con la busqueda. */
     public function playerOptions(): Collection
     {
         if (mb_strlen(trim($this->playerSearch)) < 2) {
@@ -137,7 +137,7 @@ class Index extends Component
         $this->playerSearch = '';
     }
 
-    /** Posiciones del deporte de la temporada de la inscripcion elegida. */
+    /** Posiciones del deporte de la competencia de la inscripcion elegida. */
     public function positionOptions(): Collection
     {
         $seasonTeam = $this->formSeasonTeam();
@@ -216,7 +216,7 @@ class Index extends Component
             return;
         }
 
-        $this->dispatch('toast', type: 'success', message: 'Jugador quitado del plantel.');
+        $this->dispatch('toast', type: 'success', message: 'Participante quitado del plantel.');
     }
 
     public function closeModal(): void
@@ -318,7 +318,7 @@ class Index extends Component
     {
         return [
             'form.season_team_id' => 'equipo inscrito',
-            'form.player_id' => 'jugador',
+            'form.player_id' => 'participante',
             'form.shirt_number' => 'número de camiseta',
             'form.enrolled_at' => 'fecha de alta',
         ];

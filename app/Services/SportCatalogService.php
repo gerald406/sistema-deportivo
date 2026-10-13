@@ -34,7 +34,7 @@ class SportCatalogService
 
     /**
      * disciplines y seasons usan RESTRICT sobre sport_id (sin soft
-     * deletes): un deporte con disciplinas o temporadas no se puede
+     * deletes): un deporte con disciplinas o competencias no se puede
      * borrar. Se detecta antes de intentarlo en vez de dejar que MySQL
      * truene con un 1451. (sport_positions y event_types son CASCADE.)
      *
@@ -47,7 +47,7 @@ class SportCatalogService
         }
 
         if ($sport->seasons()->exists()) {
-            return 'No se puede eliminar: el deporte tiene temporadas registradas. Desactívalo en su lugar.';
+            return 'No se puede eliminar: el deporte tiene competencias registradas. Desactívalo en su lugar.';
         }
 
         try {

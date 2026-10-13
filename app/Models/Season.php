@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Gender;
 use App\Enums\SeasonStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +17,11 @@ class Season extends Model
 
     protected $fillable = [
         'games_edition_id',
+        'games_edition_event_id',
         'sport_id',
+        'category_id',
+        'discipline_id',
+        'gender',
         'name',
         'start_date',
         'end_date',
@@ -29,6 +34,7 @@ class Season extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'gender' => Gender::class,
             'status' => SeasonStatus::class,
             'is_active' => 'boolean',
         ];
@@ -43,6 +49,24 @@ class Season extends Model
     public function sport(): BelongsTo
     {
         return $this->belongsTo(Sport::class);
+    }
+
+    /** Fila del cuadro de puntaje de la que salio (puntos y topes de plantel). */
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(GamesEditionEvent::class, 'games_edition_event_id');
+    }
+
+    /** Nivel (Libre, Master, Super Master): fija la edad minima del plantel. */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /** Prueba, cuando la competencia es de una sola (atletismo). */
+    public function discipline(): BelongsTo
+    {
+        return $this->belongsTo(Discipline::class);
     }
 
     public function scoringConfigs(): HasMany

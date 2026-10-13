@@ -17,7 +17,7 @@ class SeasonTeamPolicy
      * OBSOLETA): las inscripciones las crean, editan y retiran SOLO el
      * organizador de la olimpiada y el admin (Gate::before), en Borrador o En
      * curso; nadie en Cerrada. El delegado solo las ve.
-     * Las reglas que dependen de la temporada destino (que aun no existe
+     * Las reglas que dependen de la competencia destino (que aun no existe
      * al llamar a create()) las aplica SeasonTeamService.
      */
     public function viewAny(User $user): bool
@@ -59,11 +59,11 @@ class SeasonTeamPolicy
     }
 
     /**
-     * Padron de Jugadores (PDF) de UNA inscripcion: el organizador del
+     * Padron de Participantes (PDF) de UNA inscripcion: el organizador del
      * olimpiada y los delegados de la delegacion (admin por Gate::before).
      * Es el mismo alcance de /inscripciones, asi que reutiliza
      * isVisibleTo() en vez de otra regla. El padron de TODOS los equipos de
-     * la temporada sigue siendo SeasonPolicy::printReports (sin delegado).
+     * la competencia sigue siendo SeasonPolicy::printReports (sin delegado).
      */
     public function printRoster(User $user, SeasonTeam $seasonTeam): bool
     {

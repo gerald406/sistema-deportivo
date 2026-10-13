@@ -59,7 +59,7 @@ Route::middleware([
     Route::get('/equipos', TeamsIndex::class)
         ->name('teams.index');
 
-    Route::get('/jugadores', PlayersIndex::class)
+    Route::get('/participantes', PlayersIndex::class)
         ->name('players.index');
 
     Route::get('/olimpiadas', GamesEditionsIndex::class)
@@ -76,7 +76,7 @@ Route::middleware([
     Route::get('/puntajes', EditionEventsIndex::class)
         ->name('edition-events.index');
 
-    Route::get('/temporadas', SeasonsIndex::class)
+    Route::get('/competencias', SeasonsIndex::class)
         ->name('seasons.index');
 
     Route::get('/inscripciones', SeasonTeamsIndex::class)

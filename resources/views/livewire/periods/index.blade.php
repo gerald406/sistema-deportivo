@@ -9,13 +9,13 @@
         <div class="relative flex-1">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" wire:model.live.debounce.400ms="search"
-                   placeholder="Buscar equipo o jugador..."
+                   placeholder="Buscar equipo o participante..."
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
         <select wire:model.live="seasonFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todas las temporadas</option>
+            <option value="">Todas las competencias</option>
             @foreach ($filterSeasons as $season)
                 <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach

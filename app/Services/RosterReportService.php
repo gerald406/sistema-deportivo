@@ -13,11 +13,11 @@ use Barryvdh\DomPDF\PDF as DomPdf;
 use Illuminate\Support\Collection;
 
 /**
- * Padron de Jugadores de una temporada. Equivalente a
+ * Padron de Participantes de una competencia. Equivalente a
  * pichanga ReportService::generateRosterPdf() sin la rama football/volley
  * (un solo modelo para todos los deportes) y leyendo el plantel de la
  * inscripcion (season_team_player), no Team->players: el dorsal, el
- * capitan y el estado son POR TEMPORADA.
+ * capitan y el estado son POR COMPETENCIA.
  *
  * No autoriza: RosterReportController lo hace (SeasonTeamPolicy::printRoster
  * para un equipo, SeasonPolicy::printReports para todos) antes de llamar aqui.
@@ -38,7 +38,7 @@ class RosterReportService
 
         $seasonTeams = $season->seasonTeams()
             ->where('is_active', true)
-            // Acotado a la temporada: un season_team_id de otra temporada da 404.
+            // Acotado a la competencia: un season_team_id de otra competencia da 404.
             ->when($seasonTeamId !== null, fn ($q) => $q->whereKey($seasonTeamId))
             // Categoria de la inscripcion (division por edad/genero, ej. Sub-17 Damas).
             ->when($categoryId !== null, fn ($q) => $q->where('category_id', $categoryId))
@@ -51,11 +51,11 @@ class RosterReportService
             ->values();
 
         if ($seasonTeamId !== null && $seasonTeams->isEmpty()) {
-            abort(404, 'El equipo no está inscrito en esta temporada.');
+            abort(404, 'El equipo no está inscrito en esta competencia.');
         }
 
         if ($categoryId !== null && $seasonTeams->isEmpty()) {
-            abort(404, 'No hay equipos inscritos en esa categoría en esta temporada.');
+            abort(404, 'No hay equipos inscritos en esa categoría en esta competencia.');
         }
 
         $teams = $seasonTeams->map(fn (SeasonTeam $st) => $this->teamBlock($st));

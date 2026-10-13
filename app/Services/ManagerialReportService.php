@@ -9,7 +9,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPdf;
 
 /**
- * Reporte Gerencial de una temporada. Equivalente a
+ * Reporte Gerencial de una competencia. Equivalente a
  * pichanga ReportService::generateManagerialPdf() sin ramas por deporte.
  *
  * Que secciones se muestran y sus datos salen de SeasonOverviewService, el

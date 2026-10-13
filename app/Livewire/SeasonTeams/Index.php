@@ -84,7 +84,7 @@ class Index extends Component
         $this->resetPage();
     }
 
-    /** Al cambiar de temporada en el modal se reinicia el equipo elegido. */
+    /** Al cambiar de competencia en el modal se reinicia el equipo elegido. */
     public function updatedFormSeasonId(): void
     {
         $this->clearTeam();
@@ -101,7 +101,7 @@ class Index extends Component
         return app(SeasonTeamService::class)->seasonsFor(auth()->user());
     }
 
-    /** Max. 10 equipos elegibles para la temporada elegida que coinciden con lo escrito. */
+    /** Max. 10 equipos elegibles para la competencia elegida que coinciden con lo escrito. */
     public function teamResults(): Collection
     {
         $season = $this->formSeason();
@@ -244,8 +244,8 @@ class Index extends Component
 
         return view('livewire.season-teams.index', [
             'seasonTeams' => $query->paginate($this->perPageLimit()),
-            // Solo temporadas con alguna inscripcion visible: el filtro no
-            // debe revelar temporadas de olimpiadas ajenas (el admin ve todas).
+            // Solo competencias con alguna inscripcion visible: el filtro no
+            // debe revelar competencias de olimpiadas ajenas (el admin ve todas).
             'filterSeasons' => Season::with('gamesEdition:id,name')
                 ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('seasonTeams', fn ($st) => $service->scopeVisibleTo($st, $user)))
                 ->orderByDesc('start_date')
@@ -285,7 +285,7 @@ class Index extends Component
     }
 
     /**
-     * Las reglas de negocio (quien inscribe que equipo en que temporada)
+     * Las reglas de negocio (quien inscribe que equipo en que competencia)
      * viven en SeasonTeamService; aqui solo formato y existencia.
      */
     private function rules(): array
@@ -301,7 +301,7 @@ class Index extends Component
     protected function validationAttributes(): array
     {
         return [
-            'form.season_id' => 'temporada',
+            'form.season_id' => 'competencia',
             'form.team_id' => 'equipo',
             'form.category_id' => 'categoría',
         ];

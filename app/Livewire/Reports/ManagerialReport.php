@@ -12,7 +12,7 @@ use Livewire\Component;
 
 /**
  * Filtro del Reporte Gerencial (PDF). Adaptado de pichanga/ManagerialReport:
- * solo pide la Temporada (no deporte + campeonato por separado): la Season
+ * solo pide la Competencia (no deporte + campeonato por separado): la Season
  * ya sabe su deporte y su olimpiada. Mismo alcance que la referencia: el admin
  * ve todas, el organizador solo las de sus olimpiadas.
  *
@@ -37,7 +37,7 @@ class ManagerialReport extends Component
         $this->showInfo = ! $this->showInfo;
     }
 
-    /** Temporadas agrupables por olimpiada; organizador: solo las de sus olimpiadas. */
+    /** Competencias agrupables por olimpiada; organizador: solo las de sus olimpiadas. */
     public function seasons(): Collection
     {
         $user = auth()->user();

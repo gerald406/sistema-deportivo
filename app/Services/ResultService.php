@@ -89,7 +89,7 @@ class ResultService
         $match->load('season.gamesEdition', 'participants', 'periods');
 
         if (! Gate::forUser($actor)->allows('reopenMatches', $match->season)) {
-            throw new AuthorizationException('No tienes permiso para reabrir partidos de esta temporada.');
+            throw new AuthorizationException('No tienes permiso para reabrir partidos de esta competencia.');
         }
 
         if (! in_array($match->status, [MatchStatus::Played, MatchStatus::Walkover], true)) {
@@ -97,7 +97,7 @@ class ResultService
         }
 
         if ($match->season->status === SeasonStatus::Closed) {
-            throw ValidationException::withMessages(['reason' => 'La temporada está cerrada: sus partidos no se reabren.']);
+            throw ValidationException::withMessages(['reason' => 'La competencia está cerrada: sus partidos no se reabren.']);
         }
 
         if (mb_strlen(trim($reason)) < 5) {
@@ -300,7 +300,7 @@ class ResultService
         }
 
         if ($match->season->status === SeasonStatus::Closed) {
-            throw ValidationException::withMessages(['result' => 'La temporada está cerrada.']);
+            throw ValidationException::withMessages(['result' => 'La competencia está cerrada.']);
         }
     }
 }

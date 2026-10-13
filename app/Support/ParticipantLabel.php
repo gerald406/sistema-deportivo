@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
  * Nombre legible de un participante polimorfico (equipo inscrito o
- * jugador del plantel). Compartido por Partidos, Parciales, Resultados e
+ * participante del plantel). Compartido por Partidos, Parciales, Resultados e
  * Incidencias.
  */
 class ParticipantLabel

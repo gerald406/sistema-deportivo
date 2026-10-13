@@ -18,13 +18,13 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Inscripcion de equipos a temporadas (season_team). Reglas confirmadas
+ * Inscripcion de equipos a competencias (season_team). Reglas confirmadas
  * ("Flujo de permisos" punto 4 de CLAUDE.md):
  *   - Organizador (de esa olimpiada) y admin: inscriben cualquier equipo, en
- *     Borrador o En curso, y eligen delegado de temporada.
+ *     Borrador o En curso, y eligen delegado de competencia.
  *   - CAMBIO DE REGLA: el delegado ya NO inscribe (antes lo hacia con sus
  *     equipos en Borrador). No crea ni edita season_team en ningun estado.
- *   - Nadie inscribe en una temporada Cerrada.
+ *   - Nadie inscribe en una competencia Cerrada.
  */
 class SeasonTeamService
 {
@@ -53,7 +53,7 @@ class SeasonTeamService
         }
 
         if (SeasonTeam::where('season_id', $season->id)->where('team_id', $team->id)->exists()) {
-            throw ValidationException::withMessages(['form.team_id' => 'El equipo ya está inscrito en esta temporada.']);
+            throw ValidationException::withMessages(['form.team_id' => 'El equipo ya está inscrito en esta competencia.']);
         }
 
         return SeasonTeam::create([
@@ -65,7 +65,7 @@ class SeasonTeamService
     }
 
     /**
-     * Temporada y equipo NO se cambian: una inscripcion a otra temporada
+     * Competencia y equipo NO se cambian: una inscripcion a otra competencia
      * es otra inscripcion (retirar + inscribir). Solo categoria y estado.
      *
      * @param array{category_id: int|null, is_active: bool} $data
@@ -89,7 +89,7 @@ class SeasonTeamService
      *   programado en algun partido, borrar dejaria participaciones
      *   huerfanas. Se bloquea explicitamente.
      * - El roster (season_team_player) se borra en CASCADE, pero si algun
-     *   jugador tiene goles/sanciones/relevos, esas FKs son RESTRICT y
+     *   participante tiene goles/sanciones/relevos, esas FKs son RESTRICT y
      *   MySQL lo rechaza: se captura y se devuelve un mensaje claro.
      * - season_standings se va en CASCADE (es un dato calculado).
      *
@@ -98,14 +98,14 @@ class SeasonTeamService
     public function delete(SeasonTeam $seasonTeam): bool|string
     {
         if ($seasonTeam->eventParticipants()->exists()) {
-            return 'No se puede retirar: el equipo ya está programado en partidos de la temporada. Desactiva la inscripción en su lugar.';
+            return 'No se puede retirar: el equipo ya está programado en partidos de la competencia. Desactiva la inscripción en su lugar.';
         }
 
         $rosterIds = $seasonTeam->roster()->pluck('id');
 
         if ($rosterIds->isNotEmpty()
             && EventParticipant::where('participant_type', 'season_team_player')->whereIn('participant_id', $rosterIds)->exists()) {
-            return 'No se puede retirar: jugadores del equipo ya compitieron en la temporada. Desactiva la inscripción en su lugar.';
+            return 'No se puede retirar: participantes del equipo ya compitieron en la competencia. Desactiva la inscripción en su lugar.';
         }
 
         try {
@@ -119,10 +119,10 @@ class SeasonTeamService
 
     /**
      * Inscripciones que $actor ve en /inscripciones (union si tiene varios
-     * roles). Tambien es la base del alcance de /planteles y /jugadores
+     * roles). Tambien es la base del alcance de /planteles y /participantes
      * (SeasonTeamPlayerService::scopeVisibleTo()).
      *   - Admin: todas.
-     *   - Organizador: las de temporadas de una olimpiada suya.
+     *   - Organizador: las de competencias de una olimpiada suya.
      *   - Delegado: las de equipos cuyo delegado EFECTIVO es el
      *     (SeasonTeamPolicy::delegateConstraint()).
      *   - Cualquier otro: ninguna.
@@ -161,7 +161,7 @@ class SeasonTeamService
     }
 
     /**
-     * Temporadas en las que $actor puede inscribir equipos.
+     * Competencias en las que $actor puede inscribir equipos.
      */
     public function seasonsFor(User $actor): Collection
     {
@@ -181,7 +181,7 @@ class SeasonTeamService
 
     /**
      * Autocomplete de equipo al inscribir: los elegibles salen del catalogo
-     * GLOBAL de equipos (crece con el sistema, no con la temporada), por
+     * GLOBAL de equipos (crece con el sistema, no con la competencia), por
      * eso se buscan server-side (min. 2 letras, max. 10) en vez de listarse
      * todos. Vacio si $actor no es admin ni organizador de esa olimpiada.
      */
@@ -210,7 +210,7 @@ class SeasonTeamService
         return $this->eligibleTeams($season)->findOrFail($teamId);
     }
 
-    /** Activos y aun no inscritos en esa temporada (no se duplica la inscripcion). */
+    /** Activos y aun no inscritos en esa competencia (no se duplica la inscripcion). */
     private function eligibleTeams(Season $season): Builder
     {
         return Team::query()
@@ -218,7 +218,7 @@ class SeasonTeamService
             ->whereDoesntHave('seasonTeams', fn ($q) => $q->where('season_id', $season->id));
     }
 
-    /** Admin u organizador de la olimpiada de la temporada. */
+    /** Admin u organizador de la olimpiada de la competencia. */
     public function isManager(User $actor, Season $season): bool
     {
         return $actor->hasRole('admin')
@@ -230,9 +230,9 @@ class SeasonTeamService
     private function seasonRejectionReason(Season $season): string
     {
         if ($season->status === SeasonStatus::Closed) {
-            return 'La temporada está cerrada: no admite inscripciones.';
+            return 'La competencia está cerrada: no admite inscripciones.';
         }
 
-        return 'No puedes inscribir equipos en esta temporada.';
+        return 'No puedes inscribir equipos en esta competencia.';
     }
 }

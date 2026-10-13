@@ -37,8 +37,8 @@ class Player extends Model
     }
 
     /**
-     * Quien registro el jugador en el catalogo global. Usado por
-     * PlayerPolicy mientras el jugador todavia no tiene ninguna
+     * Quien registro el participante en el catalogo global. Usado por
+     * PlayerPolicy mientras el participante todavia no tiene ninguna
      * inscripcion (season_team_player) que determine a que equipo
      * pertenece.
      */

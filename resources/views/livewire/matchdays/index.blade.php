@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Jornadas</h1>
-            <p class="text-sm text-gray-500">Fechas o rondas de cada temporada; agrupan los partidos.</p>
+            <p class="text-sm text-gray-500">Fechas o rondas de cada competencia; agrupan los partidos.</p>
         </div>
 
         @can('create', \App\Models\Matchday::class)
@@ -24,7 +24,7 @@
 
         <select wire:model.live="seasonFilter"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Todas las temporadas</option>
+            <option value="">Todas las competencias</option>
             @foreach ($filterSeasons as $season)
                 <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
             @endforeach
@@ -53,7 +53,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <x-sortable-th field="name" label="Jornada" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Temporada</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Competencia</th>
                         <x-sortable-th field="start_date" label="Inicio" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="end_date" label="Fin" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="matches_count" label="Partidos" :sort-field="$sortField" :sort-direction="$sortDirection" />
@@ -130,16 +130,16 @@
 
             <form wire:submit="save" class="mt-4 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Temporada</label>
+                    <label class="block text-sm font-medium text-gray-700">Competencia</label>
                     @if ($editingId)
-                        {{-- La temporada no se cambia: sus partidos quedarían desalineados. --}}
+                        {{-- La competencia no se cambia: sus partidos quedarían desalineados. --}}
                         <p class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
                             {{ \App\Models\Matchday::with('season.gamesEdition')->find($editingId)?->season->name }}
                         </p>
                     @else
                         <select wire:model="form.season_id"
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Selecciona una temporada</option>
+                            <option value="">Selecciona una competencia</option>
                             @foreach ($this->seasonOptions() as $season)
                                 <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }} ({{ $season->sport->name }})</option>
                             @endforeach
