@@ -184,6 +184,11 @@ Para implementar o retomar una fase se usa la skill `implementar-fase`
 Las pruebas corren sobre MySQL en la base `laravel_pichangav2_test` (`phpunit.xml`);
 `tests/TestCase.php` aborta si la base no termina en `_test`.
 
+Producción (F7, parcial): guía en `docs/despliegue.md`. Respaldo con `php artisan db:backup`
+(`storage/app/backups/`, nunca en git: tiene datos personales). La aplicación corre en hora
+`America/Lima` y fuerza HTTPS cuando `APP_ENV=production`. Falta desplegar y el simulacro: están
+bloqueados hasta que el cliente elija hosting.
+
 ## Rediseño "Ediciones flexibles" — diseño original (referencia historica)
 
 Motivo: sistematizar un evento real (XXVIII Juegos Deportivos Regionales de Docentes de IES/EES

@@ -48,7 +48,7 @@ Actualizar esta tabla al cerrar cada fase. `Puerta` = resultado de la puerta de 
 | F4 Competencias y plantel | `F4-competencias-y-plantel.md` | 17–19/10 | ✅ | 2026-10-13 · 145 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S3 confirmado el 13/10 |
 | F5 Fases, llaves y podios | `F5-fases-llaves-podios.md` | 20–24/10 | ✅ | 2026-10-13 · 196 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
 | F6 Puntaje general | `F6-puntaje-general.md` | 24–26/10 | ✅ | 2026-10-13 · 220 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas; suma a mano de 3 podios de Puno verificada en prueba. S4 y S5 confirmados |
-| F7 Producción | `F7-produccion.md` | desde el 17/10, cierre 27/10 | ⬜ | — |
+| F7 Producción | `F7-produccion.md` | desde el 17/10, cierre 27/10 | 🟡 parcial | 2026-10-13 · 229 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G4 y cachés de producción aprobados en local; respaldo y restauración probados en local. **Falta, y depende del hosting:** desplegar, repetir la restauración allí y los 10 pasos del simulacro |
 
 Hitos externos: publicar y abrir a delegados al cerrar F4 (19/10); ciclismo y cierre de
 inscripciones el 23/10 (necesita podio directo de F5); evento 28–30/10.
@@ -268,6 +268,18 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | `tests/Feature/Stages/YellowCardSuspensionTest.php` | F5 |
 | `tests/Feature/Scores/AwardServiceTest.php` | F6 |
 | `tests/Feature/Smoke/ProductionConfigTest.php` | F7 |
+
+### Comandos y configuración de producción (F7)
+
+| Elemento | Qué hace |
+|---|---|
+| `php artisan db:backup [--prune-only]` (`app/Console/Commands/BackupDatabase.php`) | Volcado con `mysqldump` a `storage/app/backups/respaldo-AAAA-MM-DD_HHMMSS.sql.gz`; conserva los `BACKUP_KEEP` más recientes |
+| `config/backup.php` | `mysqldump` (`MYSQLDUMP_PATH`), `directory`, `keep` |
+| `scripts/backup-db.sh` | Envoltura para el cron del hosting |
+| `routes/console.php` | `Schedule::command('db:backup')->dailyAt('23:00')` |
+| `config/app.php` | `timezone` = `America/Lima` (`APP_TIMEZONE`); `trusted_proxies` (`TRUSTED_PROXIES`); `locale` por defecto `es` |
+| `AppServiceProvider::configureProduction()` | HTTPS forzado en producción; proxies de confianza |
+| `docs/despliegue.md` | Guía de despliegue, respaldo, restauración y tabla del simulacro |
 
 ## Foco de revisión
 
