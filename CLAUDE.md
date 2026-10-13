@@ -42,6 +42,21 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
    de su fila del cuadro. Las evalúa `RosterRuleService`; **advierten** salvo que la fila tenga
    `rules_blocking`. Ningún otro Service reimplementa estas reglas.
 
+8. **Fases, llaves y podios.** Una competencia tiene fases (`SeasonStage`): de **partidos**
+   (llave de eliminación simple) o de **podio directo** (solo 1.º, 2.º y 3.º, `SeasonStageResult`).
+   - `StageService::createStandardStages()`: enfrentamiento → una fase por serie + "Fase final"
+     con tercer puesto; cualquier otro formato → "Final" de podio directo.
+   - `BracketService::generate()` arma la llave con byes para los primeros de la lista y crea
+     todos los partidos enlazados (`next_match_id`); `advance()` mueve al ganador (y al perdedor
+     al partido por el tercer puesto) desde `ResultService::afterResultChanged()`.
+   - Un partido de llave (`matches.season_stage_id`) **no admite empate**: exige vía de desempate
+     y lado ganador (`TiebreakType`). Fuera de una llave el empate sigue permitido.
+   - No se reabre un partido si la ronda siguiente ya se jugó (`BracketService::ensureCanReopen()`).
+   - Las gestiona quien gestiona la competencia (`SeasonAccess::manages()`), pantalla /fases.
+9. **Sanciones = datos de la olimpiada.** `games_editions.yellow_cards_limit` (amarillas
+   acumuladas en una competencia que dan 1 partido) y `captain_red_matches` (partidos al capitán
+   expulsado). Vacío = la regla no se aplica. Solo `SuspensionService` las interpreta.
+
 ### Flujo de permisos (confirmado por el negocio; el admin conserva bypass total vía `Gate::before`)
 
 Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando botones en Blade.
@@ -230,7 +245,8 @@ Policy, pantalla) y esperar aprobación.
 - `event_participants` es polimórfica **sin FK real** hacia `season_team`/`season_team_player`:
   antes de borrar una inscripción, revisar `eventParticipants()` en el Service.
 - Modelos: `app/Models/` (Sport, Discipline, SportPosition, EventType, Category, Venue,
-  GamesEdition, GamesEditionGroup, GamesEditionTeam, GamesEditionEvent, Season, ScoringConfig, Team, Player, Matchday, GameMatch,
+  GamesEdition, GamesEditionGroup, GamesEditionTeam, GamesEditionEvent, Season, SeasonStage,
+  SeasonStageResult, ScoringConfig, Team, Player, Matchday, GameMatch,
   EventParticipant, EventLineup, MatchPeriod, MatchEvent, Suspension, MatchReopenLog,
   SeasonStanding, GamesEditionMedal, SeasonTeam, SeasonTeamPlayer)
 - Enums: `app/Enums/`

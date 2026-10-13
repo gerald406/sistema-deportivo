@@ -46,7 +46,7 @@ Actualizar esta tabla al cerrar cada fase. `Puerta` = resultado de la puerta de 
 | F2 Delegaciones y series | `F2-delegaciones-y-series.md` | 14–16/10 | ✅ | 2026-10-12 · 90 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
 | F3 Catálogo y cuadro de puntaje | `F3-catalogo-y-puntajes.md` | 16–17/10 | ✅ | 2026-10-13 · 109 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S1, S2 y S6 confirmados por el cliente |
 | F4 Competencias y plantel | `F4-competencias-y-plantel.md` | 17–19/10 | ✅ | 2026-10-13 · 145 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas. S3 confirmado el 13/10 |
-| F5 Fases, llaves y podios | `F5-fases-llaves-podios.md` | 20–24/10 | ⬜ | — |
+| F5 Fases, llaves y podios | `F5-fases-llaves-podios.md` | 20–24/10 | ✅ | 2026-10-13 · 196 pruebas, 0 fallos (10 omitidas de Jetstream); G1–G6 aprobadas |
 | F6 Puntaje general | `F6-puntaje-general.md` | 24–26/10 | ⬜ | — |
 | F7 Producción | `F7-produccion.md` | desde el 17/10, cierre 27/10 | ⬜ | — |
 
@@ -169,8 +169,10 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | `SeasonTeamPlayerService` | `registerInCompetition(Season $season, Team $team, array $data, User $actor): SeasonTeamPlayer`; `canRegisterFor(User, Season, Team): bool`; `competitionsFor(User): Collection`; `delegationsFor(User, Season): Collection`. Se eliminan `seasonTeamsFor()` y `ageAtSeason()` | F4 |
 | `PlayerRegistrationService` | `setDocumentsVerified(Player $player, bool $verified, User $actor): Player`; `canVerifyDocuments(User, Player): bool`. `register()`/`update()` solo aceptan los campos del formulario | F4 |
 | `StageService` | `register(Season $season, array $data, User $actor): SeasonStage`; `update(SeasonStage $stage, array $data, User $actor): SeasonStage`; `delete(SeasonStage $stage, User $actor): bool\|string`; `createStandardStages(Season $season, User $actor): Collection`; `winners(SeasonStage $stage): Collection` | F5 |
-| `BracketService` | `generate(SeasonStage $stage, array $seasonTeamIdsInSeedOrder, User $actor): Collection`; `advance(GameMatch $match): void` | F5 |
-| `DirectPodiumService` | `save(SeasonStage $stage, array $places, User $actor): void` (`$places`: `[1 => ['team_id' => int, 'season_team_player_id' => ?int], ...]`) | F5 |
+| `BracketService` | `generate(SeasonStage $stage, array $seasonTeamIdsInSeedOrder, User $actor): Collection`; `advance(GameMatch $match): void`; `clear(SeasonStage $stage, User $actor): bool\|string`; `ensureCanReopen(GameMatch $match): void`; `seedOrder(int $size): array`; constante `REOPEN_BLOCKED` | F5 |
+| `DirectPodiumService` | `save(SeasonStage $stage, array $places, User $actor): void` (`$places`: por puesto, una fila `['team_id' => int, 'season_team_player_id' => ?int]` o una lista de filas si el puesto es compartido; guardar reemplaza el podio). Constante `PLACES` | F5 |
+| `SuspensionService` | constantes `YELLOW_CODE`, `YELLOW_ACCUMULATION_REASON`; `generateForMatch()` aplica `yellow_cards_limit` y `captain_red_matches` de la olimpiada | F5 |
+| `ResultService` | `close()` acepta `tiebreak_type`, `tiebreak_winner_side`, `tiebreak_home`, `tiebreak_away`; errores de desempate en la clave `tiebreak` | F5 |
 | `AwardService` | `rebuild(GamesEdition $edition): void`; `table(GamesEdition $edition): Collection`; `detail(GamesEdition $edition, Team $team): Collection` | F6 |
 
 ### Policies (`app/Policies`)
@@ -258,6 +260,7 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | `tests/Feature/Editions/Puno2026SeederTest.php` | F3 |
 | `tests/Feature/Competitions/CompetitionGeneratorTest.php` | F4 |
 | `tests/Feature/Competitions/RosterRuleTest.php` | F4 |
+| `tests/Concerns/BuildsBracket.php` (trait: `bootCompetition()`, `stage()`, `entrants()`, `bracket()`, `close()`, `reopen()`, `seats()`, `cardEvent()`) | F5 |
 | `tests/Feature/Stages/BracketTest.php` | F5 |
 | `tests/Feature/Stages/DirectPodiumTest.php` | F5 |
 | `tests/Feature/Stages/TiebreakTest.php` | F5 |

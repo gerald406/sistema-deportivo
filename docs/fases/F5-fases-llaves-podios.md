@@ -85,8 +85,8 @@ la fase.
 
 ## Tarea 5.1 — Fases y podio directo
 
-- [ ] **Paso 1.** Migraciones M11 y M13, enum `StageMode`, modelos y factories.
-- [ ] **Paso 2.** Escribir `DirectPodiumTest`:
+- [x] **Paso 1.** Migraciones M11 y M13, enum `StageMode`, modelos y factories.
+- [x] **Paso 2.** Escribir `DirectPodiumTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -102,14 +102,14 @@ la fase.
 | `test_only_edition_manager_records` | Delegado y otro organizador: `AuthorizationException` |
 | `test_stage_with_podium_is_not_deleted` | `StageService::delete()` devuelve un string |
 
-- [ ] **Paso 3.** Ejecutar: falla. Implementar `StageService` y `DirectPodiumService`. En verde.
-- [ ] **Paso 4.** `SeasonStages\Index`: selector de competencia; lista de fases; botones "Crear fases estándar", "Nueva fase", "Registrar podio" (modal con tres bloques de puesto y búsqueda de delegación y participante). Ruta, menú "Fases y llaves", prueba de humo.
-- [ ] **Paso 5.** `php artisan migrate`; `php artisan test`. Commit: `F5: Fases de competencia y podio directo`.
+- [x] **Paso 3.** Ejecutar: falla. Implementar `StageService` y `DirectPodiumService`. En verde.
+- [x] **Paso 4.** `SeasonStages\Index`: selector de competencia; lista de fases; botones "Crear fases estándar", "Nueva fase", "Registrar podio" (modal con tres bloques de puesto y búsqueda de delegación y participante). Ruta, menú "Fases y llaves", prueba de humo.
+- [x] **Paso 5.** `php artisan migrate`; `php artisan test`. Commit: `F5: Fases de competencia y podio directo`.
 
 ## Tarea 5.2 — Llaves
 
-- [ ] **Paso 1.** Migración M12 (incluye ampliar el enum `round_type` y revisar que los triggers de disciplina sigan válidos), enum `RoundType::ThirdPlace`, modelo `GameMatch`.
-- [ ] **Paso 2.** Escribir `BracketTest`:
+- [x] **Paso 1.** Migración M12 (incluye ampliar el enum `round_type` y revisar que los triggers de disciplina sigan válidos), enum `RoundType::ThirdPlace`, modelo `GameMatch`.
+- [x] **Paso 2.** Escribir `BracketTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -126,13 +126,13 @@ la fase.
 | `test_series_winner_is_reported` | `StageService::winners()` devuelve al ganador de la final de la serie |
 | `test_only_edition_manager_generates` | `AuthorizationException` |
 
-- [ ] **Paso 3.** Ejecutar: falla. Implementar `BracketService` y enganchar `advance()` en `ResultService::afterResultChanged()`. En verde.
-- [ ] **Paso 4.** `SeasonStages\Index`: botón "Generar llave" (lista ordenable de participantes; para una serie, precargada con las delegaciones de esa serie que tienen plantel; para la fase final, con `winners()` de cada serie) y vista de la llave por rondas.
-- [ ] **Paso 5.** `php artisan migrate`; `php artisan test`. Commit: `F5: Llaves de eliminación simple con byes, avance y tercer puesto`.
+- [x] **Paso 3.** Ejecutar: falla. Implementar `BracketService` y enganchar `advance()` en `ResultService::afterResultChanged()`. En verde.
+- [x] **Paso 4.** `SeasonStages\Index`: botón "Generar llave" (lista ordenable de participantes; para una serie, precargada con las delegaciones de esa serie que tienen plantel; para la fase final, con `winners()` de cada serie) y vista de la llave por rondas.
+- [x] **Paso 5.** `php artisan migrate`; `php artisan test`. Commit: `F5: Llaves de eliminación simple con byes, avance y tercer puesto`.
 
 ## Tarea 5.3 — Desempates
 
-- [ ] **Paso 1.** Escribir `TiebreakTest`:
+- [x] **Paso 1.** Escribir `TiebreakTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -143,13 +143,13 @@ la fase.
 | `test_draw_is_still_allowed_outside_brackets` | Partido sin fase, 1–1: se cierra como empate |
 | `test_reopening_clears_the_tiebreak` | Tras reabrir, `tiebreak_type` y `tiebreak_score` quedan nulos |
 
-- [ ] **Paso 2.** Ejecutar: falla. Implementar en `ResultService` y en el modal de `Results\Index` (bloque "Desempate" visible solo si el marcador está empatado y el partido es de llave). En verde.
-- [ ] **Paso 3.** Commit: `F5: Desempate por tiempo extra, penales, tiros libres o sorteo`.
+- [x] **Paso 2.** Ejecutar: falla. Implementar en `ResultService` y en el modal de `Results\Index` (bloque "Desempate" visible solo si el marcador está empatado y el partido es de llave). En verde.
+- [x] **Paso 3.** Commit: `F5: Desempate por tiempo extra, penales, tiros libres o sorteo`.
 
 ## Tarea 5.4 — Sanciones
 
-- [ ] **Paso 1.** Migración M14; campos en `GamesEditions\Index` ("Amarillas para suspensión", "Partidos de sanción al capitán expulsado"), ambos opcionales.
-- [ ] **Paso 2.** Escribir `YellowCardSuspensionTest`:
+- [x] **Paso 1.** Migración M14; campos en `GamesEditions\Index` ("Amarillas para suspensión", "Partidos de sanción al capitán expulsado"), ambos opcionales.
+- [x] **Paso 2.** Escribir `YellowCardSuspensionTest`:
 
 | Prueba | Afirmación |
 |---|---|
@@ -162,12 +162,12 @@ la fase.
 | `test_captain_red_card_uses_configured_matches` | Capitán con roja y `captain_red_matches = 2`: sanción de 2; no capitán: 1 |
 | `test_red_card_default_is_one_match_for_everyone` | Con el campo nulo, capitán y no capitán: 1 |
 
-- [ ] **Paso 3.** Ejecutar: falla. Implementar en `SuspensionService`. En verde. Actualizar `Puno2026Seeder`.
-- [ ] **Paso 4.** `php artisan migrate`; `php artisan test`. Commit: `F5: Acumulación de amarillas y sanción al capitán, configurables`.
+- [x] **Paso 3.** Ejecutar: falla. Implementar en `SuspensionService`. En verde. Actualizar `Puno2026Seeder`.
+- [x] **Paso 4.** `php artisan migrate`; `php artisan test`. Commit: `F5: Acumulación de amarillas y sanción al capitán, configurables`.
 
 ## Tarea 5.5 — Documentación
 
-- [ ] `CLAUDE.md`: fases, llaves, desempates y la nota de `SuspensionService`. Commit.
+- [x] `CLAUDE.md`: fases, llaves, desempates y la nota de `SuspensionService`. Commit.
 
 ## Reglas que cumple
 
@@ -185,3 +185,37 @@ la fase.
 ## Puerta de F5
 
 G1–G6. Registrar en "Estado".
+
+## Notas de cierre (2026-10-13)
+
+Cambios respecto al plan, hechos al implementar:
+
+- **Orden de los cruces.** Se usa el reparto habitual de cabezas de serie (`seedOrder()`:
+  1-8, 4-5, 2-7, 3-6) en vez de emparejar en fila: el 1.º y el 2.º de la lista no se cruzan hasta
+  la final y quien descansa enfrenta al ganador de un partido previo. Con 5 participantes: juegan
+  4.º y 5.º; el ganador va contra el 1.º; el 2.º y el 3.º se enfrentan.
+- **Tercer puesto con 3 participantes.** No se crea partido: solo hay una semifinal real y el
+  tercero es quien la perdió. El partido por el tercer puesto existe desde 4 participantes.
+- **`BracketService::clear()`** (no previsto): borra la llave de una fase si ningún partido tiene
+  resultado, incidencias ni sanciones, para poder rehacer el sorteo.
+- **Participantes de la llave = delegaciones** (`season_team`), también en ajedrez y tenis de
+  mesa (1 participante por delegación según el cuadro).
+- **`winners()`** devuelve al ganador de la final de la fase y, si `qualifiers >= 2`, también al
+  finalista. Más de 2 clasificados por serie no está soportado en la precarga.
+- **Medallero existente (`MedalService`)**: con fases, solo la última fase de la competencia da
+  medallas (la final de una serie clasifica, no premia), el partido por el tercer puesto da el
+  bronce y, si existe, perder la semifinal ya no lo da. F6 lo reemplaza por el puntaje general.
+- **Amarillas**: se compara lo que el participante debe (`total / límite`) con las sanciones por
+  acumulación que ya tiene en la competencia; así no duplica al re-cerrar ni depende del orden.
+- En `/resultados`, un partido de llave que aún espera a un participante no abre el formulario.
+- El mensaje del trigger de disciplina ya no se muestra tal cual (decía "temporada").
+- La olimpiada de Puno ya existente en la base de trabajo recibió `yellow_cards_limit = 2` y
+  `captain_red_matches = 2` con una actualización puntual (el seeder solo los fija al crearla).
+- Pruebas añadidas fuera de las tablas: reglas de las fases, misma delegación dos veces en el
+  podio, pantallas con una llave a medio jugar, medallas solo de la fase final, marcador del
+  desempate coherente con el ganador, dos participantes contados por separado, y las de pantalla.
+
+Limitaciones conocidas:
+
+- Los podios directos todavía no suman a ningún medallero ni puntaje: eso es F6.
+- La llave no programa fecha, hora ni sede: se editan en /partidos.
