@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\Fortify\ResetUserPassword;
+use App\Actions\Fortify\UpdateUserPassword;
+use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -24,6 +27,14 @@ class FortifyServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Sin estos tres enlaces Fortify no puede resolver sus contratos y
+        // las pantallas de perfil, cambio y restablecimiento de contraseña
+        // fallan con BindingResolutionException. No se enlaza la creacion
+        // de usuarios: el registro publico esta desactivado.
+        Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
+        Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
+        Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+
         /**
          * Autenticacion custom: ademas de validar el password, bloquea el
          * login si is_active = false. Regla de negocio: sin soft deletes,
