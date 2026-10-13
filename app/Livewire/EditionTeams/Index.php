@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\EditionTeams;
 
 use App\Enums\EditionTeamStatus;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\SelectsEdition;
 use App\Livewire\Concerns\Sortable;
@@ -12,6 +13,7 @@ use App\Models\GamesEdition;
 use App\Models\GamesEditionTeam;
 use App\Services\DelegateAccountService;
 use App\Services\EditionTeamService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -27,7 +29,7 @@ use Livewire\WithPagination;
 #[Title('Delegaciones inscritas')]
 class Index extends Component
 {
-    use LimitsPerPage, SelectsEdition, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, SelectsEdition, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -223,25 +225,57 @@ class Index extends Component
     {
         $edition = $this->edition();
 
-        $entries = $edition
-            ? GamesEditionTeam::query()
-                ->where('games_edition_teams.games_edition_id', $edition->id)
-                ->join('teams', 'teams.id', '=', 'games_edition_teams.team_id')
-                ->leftJoin('games_edition_groups', 'games_edition_groups.id', '=', 'games_edition_teams.group_id')
-                ->select('games_edition_teams.*', 'teams.name as team_name', 'games_edition_groups.sort_order as group_order')
-                ->when($this->search !== '', fn ($q) => $q->where('teams.name', 'like', "%{$this->search}%"))
-                ->when(ctype_digit($this->groupFilter), fn ($q) => $q->where('games_edition_teams.group_id', (int) $this->groupFilter))
-                ->when(EditionTeamStatus::tryFrom($this->statusFilter), fn ($q, EditionTeamStatus $s) => $q->where('games_edition_teams.status', $s->value))
-                ->with(['team:id,name,logo_path', 'group:id,name', 'delegate:id,name,email', 'substituteDelegate:id,name,email'])
-                ->orderBy($this->sortColumn(), $this->sortOrder())
-                ->orderBy('teams.name')
-                ->paginate($this->perPageLimit())
-            : null;
-
         return view('livewire.edition-teams.index', [
             'edition' => $edition,
-            'entries' => $entries,
+            'entries' => $edition ? $this->listingQuery($edition)->paginate($this->perPageLimit()) : null,
         ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(GamesEdition $edition): Builder
+    {
+        return GamesEditionTeam::query()
+            ->where('games_edition_teams.games_edition_id', $edition->id)
+            ->join('teams', 'teams.id', '=', 'games_edition_teams.team_id')
+            ->leftJoin('games_edition_groups', 'games_edition_groups.id', '=', 'games_edition_teams.group_id')
+            ->select('games_edition_teams.*', 'teams.name as team_name', 'games_edition_groups.sort_order as group_order')
+            ->when($this->search !== '', fn ($q) => $q->where('teams.name', 'like', "%{$this->search}%"))
+            ->when(ctype_digit($this->groupFilter), fn ($q) => $q->where('games_edition_teams.group_id', (int) $this->groupFilter))
+            ->when(EditionTeamStatus::tryFrom($this->statusFilter), fn ($q, EditionTeamStatus $s) => $q->where('games_edition_teams.status', $s->value))
+            ->with(['team:id,name,logo_path', 'group:id,name', 'delegate:id,name,email', 'substituteDelegate:id,name,email'])
+            ->orderBy($this->sortColumn(), $this->sortOrder())
+            ->orderBy('teams.name');
+    }
+
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', GamesEdition::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Delegaciones inscritas';
+    }
+
+    protected function exportRows(): iterable
+    {
+        $edition = $this->edition();
+
+        return $edition ? $this->listingQuery($edition)->get() : [];
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Delegación' => fn (GamesEditionTeam $e) => $e->team->name,
+            'Serie' => fn (GamesEditionTeam $e) => $e->group?->name,
+            'Delegado titular' => fn (GamesEditionTeam $e) => $e->delegate?->name,
+            'Correo del titular' => fn (GamesEditionTeam $e) => $e->delegate?->email,
+            'Delegado suplente' => fn (GamesEditionTeam $e) => $e->substituteDelegate?->name,
+            'Correo del suplente' => fn (GamesEditionTeam $e) => $e->substituteDelegate?->email,
+            'Pago' => fn (GamesEditionTeam $e) => $e->fee_paid ? 'Registrado' : 'Pendiente',
+            'Estado' => fn (GamesEditionTeam $e) => $e->status->label(),
+        ];
     }
 
     protected function sortableFields(): array

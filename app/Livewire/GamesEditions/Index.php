@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\GamesEditions;
 
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\GamesEdition;
 use App\Models\Venue;
 use App\Services\GamesEditionService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -22,7 +24,7 @@ use Livewire\WithPagination;
 #[Title('Olimpiadas')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithFileUploads, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithFileUploads, WithPagination;
 
     public string $search = '';
 
@@ -197,17 +199,51 @@ class Index extends Component
 
     public function render()
     {
-        $query = $this->managedQuery()
+        $query = $this->listingQuery();
+
+        return view('livewire.games-editions.index', [
+            'editions' => $query->paginate($this->perPageLimit()),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        return $this->managedQuery()
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->withCount('seasons')
             ->with(['hostVenue:id,name', 'organizer:id,name'])
             ->orderBy($this->sortColumn(), $this->sortOrder());
+    }
 
-        return view('livewire.games-editions.index', [
-            'editions' => $query->paginate($this->perPageLimit()),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', GamesEdition::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Olimpiadas';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Nombre' => fn (GamesEdition $e) => $e->name,
+            'Organizador' => fn (GamesEdition $e) => $e->organizer?->name,
+            'Inicio' => fn (GamesEdition $e) => $e->start_date,
+            'Fin' => fn (GamesEdition $e) => $e->end_date,
+            'Sede principal' => fn (GamesEdition $e) => $e->hostVenue?->name,
+            'Competencias' => fn (GamesEdition $e) => $e->seasons_count,
+            'Estado' => fn (GamesEdition $e) => $e->is_active ? 'Activa' : 'Inactiva',
+        ];
     }
 
     protected function sortableFields(): array

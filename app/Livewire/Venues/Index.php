@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Venues;
 
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Venue;
 use App\Services\VenueService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -18,7 +20,7 @@ use Livewire\WithPagination;
 #[Title('Sedes')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -134,7 +136,17 @@ class Index extends Component
 
     public function render()
     {
-        $query = Venue::query()
+        $query = $this->listingQuery();
+
+        return view('livewire.venues.index', [
+            'venues' => $query->paginate($this->perPageLimit()),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        return Venue::query()
             ->when($this->search !== '', function ($q) {
                 $q->where(function ($q) {
                     $q->where('name', 'like', "%{$this->search}%")
@@ -145,10 +157,33 @@ class Index extends Component
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->withCount('matches')
             ->orderBy($this->sortColumn(), $this->sortOrder());
+    }
 
-        return view('livewire.venues.index', [
-            'venues' => $query->paginate($this->perPageLimit()),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', Venue::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Sedes';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Nombre' => fn (Venue $v) => $v->name,
+            'Dirección' => fn (Venue $v) => $v->address,
+            'Latitud' => fn (Venue $v) => $v->latitude !== null ? (float) $v->latitude : null,
+            'Longitud' => fn (Venue $v) => $v->longitude !== null ? (float) $v->longitude : null,
+            'Partidos' => fn (Venue $v) => $v->matches_count,
+            'Estado' => fn (Venue $v) => $v->is_active ? 'Activa' : 'Inactiva',
+        ];
     }
 
     protected function sortableFields(): array

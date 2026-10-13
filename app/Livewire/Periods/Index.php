@@ -6,6 +6,7 @@ namespace App\Livewire\Periods;
 
 use App\Enums\MatchStatus;
 use App\Enums\SportFormatType;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\EventParticipant;
@@ -17,6 +18,7 @@ use App\Services\GameMatchService;
 use App\Services\MatchPeriodService;
 use App\Support\ParticipantLabel;
 use App\Support\SeasonAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -26,7 +28,7 @@ use Livewire\WithPagination;
 #[Title('Parciales')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -142,12 +144,27 @@ class Index extends Component
         $this->resetErrorBag();
     }
 
-    public function render(GameMatchService $matches)
+    public function render()
+    {
+        $user = auth()->user();
+
+        $query = $this->listingQuery();
+
+        return view('livewire.periods.index', [
+            'matches' => $query->paginate($this->perPageLimit()),
+            'filterSeasons' => SeasonAccess::manageableSeasons($user, includeClosed: true),
+            'statusOptions' => MatchStatus::cases(),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
     {
         $user = auth()->user();
         $term = trim($this->search);
+        $matches = app(GameMatchService::class);
 
-        $query = $matches->queryByFormat(SportFormatType::HeadToHead)
+        return $matches->queryByFormat(SportFormatType::HeadToHead)
             ->unless($user->hasRole('admin'), fn ($q) => $q->whereHas('season.gamesEdition', fn ($t) => $t->where('organizer_id', $user->id)))
             ->when($term !== '', fn ($q) => $q->whereHas('participants', fn ($p) => $p->whereHasMorph('participant', [SeasonTeam::class, SeasonTeamPlayer::class],
                 fn ($m, string $type) => $type === SeasonTeam::class
@@ -163,12 +180,34 @@ class Index extends Component
             ->withCount('periods')
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('id');
+    }
 
-        return view('livewire.periods.index', [
-            'matches' => $query->paginate($this->perPageLimit()),
-            'filterSeasons' => SeasonAccess::manageableSeasons($user, includeClosed: true),
-            'statusOptions' => MatchStatus::cases(),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', MatchPeriod::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Parciales';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Partido' => fn (GameMatch $m) => $m->participants->map(fn ($p) => ParticipantLabel::for($p))->join(' vs '),
+            'Competencia' => fn (GameMatch $m) => $m->season->name,
+            'Jornada' => fn (GameMatch $m) => $m->matchday->name,
+            'Fecha' => fn (GameMatch $m) => $m->scheduled_at?->format('d/m/Y H:i'),
+            'Parciales' => fn (GameMatch $m) => $m->periods->map(fn ($p) => "{$p->home_points}-{$p->away_points}")->join(' / '),
+            'Total' => fn (GameMatch $m) => $m->periods->isNotEmpty() ? $m->periods->sum('home_points').' - '.$m->periods->sum('away_points') : null,
+            'Estado' => fn (GameMatch $m) => $m->status->label(),
+        ];
     }
 
     protected function sortableFields(): array

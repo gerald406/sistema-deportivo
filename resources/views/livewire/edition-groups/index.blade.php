@@ -6,10 +6,13 @@
         </div>
 
         @if ($edition)
-            <button wire:click="create" type="button"
-                    class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                <i class="fa-solid fa-plus"></i> Nueva serie
-            </button>
+            <div class="flex flex-wrap gap-2">
+                <x-export-button />
+                <button wire:click="create" type="button"
+                        class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                    <i class="fa-solid fa-plus"></i> Nueva serie
+                </button>
+            </div>
         @endif
     </div>
 

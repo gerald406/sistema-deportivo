@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Reports;
 
+use App\Enums\EditionTeamStatus;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Models\GamesEdition;
 use App\Models\Team;
 use App\Services\AwardService;
@@ -27,6 +29,8 @@ use Livewire\Component;
 #[Title('Puntaje general')]
 class GeneralScore extends Component
 {
+    use ExportsExcel;
+
     #[Url(as: 'olimpiada')]
     public string $editionId = '';
 
@@ -87,6 +91,41 @@ class GeneralScore extends Component
         $awards->rebuild($edition);
 
         $this->dispatch('toast', type: 'success', message: 'Puntaje general recalculado.');
+    }
+
+    protected function authorizeExport(): void
+    {
+        // boot() ya exige reports.view en cada peticion.
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Puntaje general';
+    }
+
+    protected function exportRows(): iterable
+    {
+        $edition = $this->edition();
+
+        return $edition ? app(AwardService::class)->table($edition) : [];
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Pos.' => fn (object $r) => $r->position,
+            'Delegación' => fn (object $r) => $r->team->name,
+            'Serie' => fn (object $r) => $r->group?->name,
+            '1.º' => fn (object $r) => $r->gold,
+            '2.º' => fn (object $r) => $r->silver,
+            '3.º' => fn (object $r) => $r->bronze,
+            'Puntos' => fn (object $r) => $r->total_points,
+            'Condición' => fn (object $r) => match (true) {
+                $r->disqualified => 'Descalificada',
+                $r->status === EditionTeamStatus::Withdrawn => 'Retirada',
+                default => null,
+            },
+        ];
     }
 
     public function render(AwardService $awards)

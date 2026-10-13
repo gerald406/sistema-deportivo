@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Reports;
 
+use App\Livewire\Concerns\ExportsExcel;
 use App\Models\Season;
 use App\Services\SeasonService;
 use App\Services\StandingService;
@@ -27,6 +28,8 @@ use Livewire\Component;
 #[Title('Reportes')]
 class Index extends Component
 {
+    use ExportsExcel;
+
     #[Url(as: 'competencia')]
     public string $seasonId = '';
 
@@ -62,6 +65,43 @@ class Index extends Component
             'table' => $season ? $standings->tableFor($season) : collect(),
             'scoring' => $season?->scoringConfigs()->orderBy('id')->first(),
         ]);
+    }
+
+    protected function authorizeExport(): void
+    {
+        // boot() ya exige reports.view en cada peticion.
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Tabla de posiciones';
+    }
+
+    /** Misma tabla que la pantalla, con el puesto ya numerado. */
+    protected function exportRows(): iterable
+    {
+        $season = $this->validSeason();
+
+        return $season
+            ? collect(app(StandingService::class)->tableFor($season))->values()->map(fn ($row, $i) => [$i + 1, $row])
+            : [];
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            '#' => fn (array $r) => $r[0],
+            'Equipo' => fn (array $r) => $r[1]->seasonTeam->team->name,
+            'PJ' => fn (array $r) => $r[1]->matches_played,
+            'G' => fn (array $r) => $r[1]->wins,
+            'E' => fn (array $r) => $r[1]->draws,
+            'P' => fn (array $r) => $r[1]->losses,
+            'WO' => fn (array $r) => $r[1]->walkovers_against,
+            'AF' => fn (array $r) => (int) ($r[1]->extra_stats['scored'] ?? 0),
+            'EC' => fn (array $r) => (int) ($r[1]->extra_stats['conceded'] ?? 0),
+            'Dif' => fn (array $r) => (int) ($r[1]->extra_stats['diff'] ?? 0),
+            'Pts' => fn (array $r) => $r[1]->points,
+        ];
     }
 
     private function validSeason(): ?Season

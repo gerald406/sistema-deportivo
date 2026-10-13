@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin\Users;
 
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\User;
 use App\Services\UserAccountService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -19,7 +21,7 @@ use Spatie\Permission\Models\Role;
 #[Title('Usuarios')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -178,7 +180,17 @@ class Index extends Component
 
     public function render()
     {
-        $query = User::query()
+        $query = $this->listingQuery();
+
+        return view('livewire.admin.users.index', [
+            'users' => $query->paginate($this->perPageLimit()),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        return User::query()
             ->when($this->search !== '', function ($q) {
                 $q->where(function ($q) {
                     $q->where('name', 'like', "%{$this->search}%")
@@ -195,10 +207,32 @@ class Index extends Component
             )
             ->with('roles:id,name')
             ->orderBy($this->sortColumn(), $this->sortOrder());
+    }
 
-        return view('livewire.admin.users.index', [
-            'users' => $query->paginate($this->perPageLimit()),
-        ]);
+    protected function authorizeExport(): void
+    {
+        // boot() ya exige el rol admin en cada peticion.
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Usuarios';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Nombre' => fn (User $u) => $u->name,
+            'Correo' => fn (User $u) => $u->email,
+            'Roles' => fn (User $u) => $u->roles->pluck('name')->implode(', '),
+            'Estado' => fn (User $u) => $u->is_active ? 'Activo' : 'Inactivo',
+            'Creado' => fn (User $u) => $u->created_at,
+        ];
     }
 
     protected function sortableFields(): array

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\EditionGroups;
 
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\SelectsEdition;
 use App\Livewire\Concerns\Sortable;
 use App\Models\GamesEdition;
 use App\Models\GamesEditionGroup;
 use App\Services\EditionGroupService;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -22,7 +24,7 @@ use Livewire\Component;
 #[Title('Series')]
 class Index extends Component
 {
-    use SelectsEdition, Sortable;
+    use ExportsExcel, SelectsEdition, Sortable;
 
     public string $sortField = 'sort_order';
 
@@ -105,7 +107,16 @@ class Index extends Component
     {
         $edition = $this->edition();
 
-        $groups = $edition
+        return view('livewire.edition-groups.index', [
+            'edition' => $edition,
+            'groups' => $this->groupsOf($edition),
+        ]);
+    }
+
+    /** Series de la olimpiada en el orden elegido: las comparten render() y la exportacion a Excel. */
+    private function groupsOf(?GamesEdition $edition): Collection
+    {
+        return $edition
             ? GamesEditionGroup::where('games_edition_id', $edition->id)
                 ->withCount('editionTeams')
                 ->with(['editionTeams' => fn ($q) => $q->with('team:id,name')])
@@ -113,11 +124,31 @@ class Index extends Component
                 ->orderBy('name')
                 ->get()
             : collect();
+    }
 
-        return view('livewire.edition-groups.index', [
-            'edition' => $edition,
-            'groups' => $groups,
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', GamesEdition::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Series';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->groupsOf($this->edition());
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Orden' => fn (GamesEditionGroup $g) => $g->sort_order,
+            'Serie' => fn (GamesEditionGroup $g) => $g->name,
+            'N.º de delegaciones' => fn (GamesEditionGroup $g) => $g->edition_teams_count,
+            'Delegaciones' => fn (GamesEditionGroup $g) => $g->editionTeams->pluck('team.name')->sort()->implode(', '),
+        ];
     }
 
     protected function sortableFields(): array

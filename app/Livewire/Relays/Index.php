@@ -6,17 +6,19 @@ namespace App\Livewire\Relays;
 
 use App\Enums\MatchStatus;
 use App\Enums\SeasonTeamPlayerStatus;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\EventLineup;
 use App\Models\EventParticipant;
 use App\Models\GameMatch;
 use App\Models\SeasonTeam;
-use App\Policies\SeasonTeamPolicy;
 use App\Models\SeasonTeamPlayer;
 use App\Models\Team;
 use App\Policies\EventLineupPolicy;
+use App\Policies\SeasonTeamPolicy;
 use App\Services\EventLineupService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -27,7 +29,7 @@ use Livewire\WithPagination;
 #[Title('Relevos de postas')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -171,12 +173,24 @@ class Index extends Component
         return EventLineupPolicy::managesParticipant(auth()->user(), $participant);
     }
 
-    public function render(EventLineupService $service)
+    public function render()
+    {
+        $query = $this->listingQuery();
+
+        return view('livewire.relays.index', [
+            'participants' => $query->paginate($this->perPageLimit()),
+            'statusOptions' => MatchStatus::cases(),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
     {
         $user = auth()->user();
         $term = trim($this->search);
+        $service = app(EventLineupService::class);
 
-        $query = $service->relayParticipantsQuery()
+        return $service->relayParticipantsQuery()
             ->select('event_participants.*')
             ->addSelect([
                 'match_scheduled_at' => GameMatch::select('scheduled_at')->whereColumn('matches.id', 'event_participants.match_id'),
@@ -201,11 +215,36 @@ class Index extends Component
             ])
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('event_participants.id');
+    }
 
-        return view('livewire.relays.index', [
-            'participants' => $query->paginate($this->perPageLimit()),
-            'statusOptions' => MatchStatus::cases(),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', EventLineup::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Postas';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Posta' => fn (EventParticipant $p) => $p->match->discipline?->name ?? $p->match->season->sport->name,
+            'Competencia' => fn (EventParticipant $p) => $p->match->season->name,
+            'Jornada' => fn (EventParticipant $p) => $p->match->matchday->name,
+            'Fecha' => fn (EventParticipant $p) => $p->match->scheduled_at?->format('d/m/Y H:i'),
+            'Equipo' => fn (EventParticipant $p) => $p->participant?->team->name,
+            'Carril' => fn (EventParticipant $p) => $p->lane_or_board,
+            'Relevistas' => fn (EventParticipant $p) => $p->lineups
+                ->map(fn ($leg) => "{$leg->leg_order}. {$leg->seasonTeamPlayer->player->last_name}, {$leg->seasonTeamPlayer->player->first_name}")->join('; '),
+            'Estado' => fn (EventParticipant $p) => $p->match->status->label(),
+        ];
     }
 
     protected function sortableFields(): array

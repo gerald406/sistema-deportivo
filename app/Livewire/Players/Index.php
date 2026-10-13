@@ -7,11 +7,13 @@ namespace App\Livewire\Players;
 use App\Enums\EmploymentType;
 use App\Enums\Gender;
 use App\Enums\StaffType;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Player;
 use App\Policies\PlayerPolicy;
 use App\Services\PlayerRegistrationService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -24,7 +26,7 @@ use Livewire\WithPagination;
 #[Title('Participantes')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithFileUploads, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithFileUploads, WithPagination;
 
     public string $search = '';
 
@@ -171,11 +173,22 @@ class Index extends Component
         $this->resetForm();
     }
 
-    public function render(PlayerRegistrationService $service)
+    public function render()
+    {
+        $query = $this->listingQuery();
+
+        return view('livewire.players.index', [
+            'players' => $query->paginate($this->perPageLimit()),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
     {
         $user = auth()->user();
+        $service = app(PlayerRegistrationService::class);
 
-        $query = $service->scopeVisibleTo(Player::query(), $user)
+        return $service->scopeVisibleTo(Player::query(), $user)
             ->when($this->search !== '', function ($q) {
                 $q->where(function ($q) {
                     $q->where('first_name', 'like', "%{$this->search}%")
@@ -192,10 +205,36 @@ class Index extends Component
                 'seasonTeamPlayers as '.PlayerPolicy::managedAttribute($user) => PlayerPolicy::managedRosterConstraint($user),
             ]))
             ->orderBy($this->sortColumn(), $this->sortOrder());
+    }
 
-        return view('livewire.players.index', [
-            'players' => $query->paginate($this->perPageLimit()),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', Player::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Participantes';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Apellidos' => fn (Player $p) => $p->last_name,
+            'Nombres' => fn (Player $p) => $p->first_name,
+            'DNI' => fn (Player $p) => $p->dni,
+            'Nacimiento' => fn (Player $p) => $p->birth_date,
+            'Género' => fn (Player $p) => $p->gender?->label(),
+            'Tipo' => fn (Player $p) => $p->staff_type?->label(),
+            'Condición' => fn (Player $p) => $p->employment_type?->label(),
+            'Documentos' => fn (Player $p) => $p->documents_verified_at ? 'Verificados' : 'Por verificar',
+            'Estado' => fn (Player $p) => $p->is_active ? 'Activo' : 'Inactivo',
+        ];
     }
 
     protected function sortableFields(): array

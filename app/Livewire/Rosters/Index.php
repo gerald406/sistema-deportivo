@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Rosters;
 
 use App\Enums\SeasonTeamPlayerStatus;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Player;
@@ -36,7 +37,7 @@ use Livewire\WithPagination;
 #[Title('Planteles')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -284,32 +285,11 @@ class Index extends Component
         $this->resetForm();
     }
 
-    public function render(SeasonTeamPlayerService $service, SeasonTeamService $seasonTeams, RosterRuleService $rules)
+    public function render(SeasonTeamService $seasonTeams, RosterRuleService $rules)
     {
         $user = auth()->user();
 
-        $query = $service->scopeVisibleTo(SeasonTeamPlayer::query(), $user)
-            ->addSelect([
-                'season_team_player.*',
-                // Alias para ordenar por apellido sin JOIN.
-                'player_last_name' => Player::select('last_name')->whereColumn('players.id', 'season_team_player.player_id'),
-            ])
-            ->when($this->search !== '', fn ($q) => $q->whereHas('player', fn ($p) => $p
-                ->where('first_name', 'like', "%{$this->search}%")
-                ->orWhere('last_name', 'like', "%{$this->search}%")
-                ->orWhere('dni', 'like', "%{$this->search}%")))
-            ->when(ctype_digit($this->seasonTeamFilter), fn ($q) => $q->where('season_team_id', (int) $this->seasonTeamFilter))
-            ->when(SeasonTeamPlayerStatus::tryFrom($this->rosterStatusFilter), fn ($q, $s) => $q->where('status', $s->value))
-            ->with([
-                'player:id,first_name,last_name,dni,birth_date,gender,photo_path,documents_verified_at', 'position:id,name',
-                'seasonTeam:id,season_id,team_id,category_id', 'seasonTeam.team:id,name',
-                'seasonTeam.season:id,name,status,games_edition_id,games_edition_event_id,category_id,gender',
-                'seasonTeam.season.gamesEdition:id,name,organizer_id,start_date',
-                'seasonTeam.season.event:id,min_players,max_players,rules_blocking',
-                'seasonTeam.season.category:id,name,min_age',
-            ])
-            ->orderBy($this->sortColumn(), $this->sortOrder())
-            ->orderBy('player_last_name');
+        $query = $this->listingQuery();
 
         $entries = $query->paginate($this->perPageLimit());
 
@@ -339,6 +319,69 @@ class Index extends Component
             'filterSeasonTeams' => $seasonTeams->scopeVisibleTo(SeasonTeam::query(), $user)
                 ->with(['team:id,name', 'season:id,name'])->get()->sortBy(fn ($st) => $st->team->name),
         ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        $user = auth()->user();
+        $service = app(SeasonTeamPlayerService::class);
+
+        return $service->scopeVisibleTo(SeasonTeamPlayer::query(), $user)
+            ->addSelect([
+                'season_team_player.*',
+                // Alias para ordenar por apellido sin JOIN.
+                'player_last_name' => Player::select('last_name')->whereColumn('players.id', 'season_team_player.player_id'),
+            ])
+            ->when($this->search !== '', fn ($q) => $q->whereHas('player', fn ($p) => $p
+                ->where('first_name', 'like', "%{$this->search}%")
+                ->orWhere('last_name', 'like', "%{$this->search}%")
+                ->orWhere('dni', 'like', "%{$this->search}%")))
+            ->when(ctype_digit($this->seasonTeamFilter), fn ($q) => $q->where('season_team_id', (int) $this->seasonTeamFilter))
+            ->when(SeasonTeamPlayerStatus::tryFrom($this->rosterStatusFilter), fn ($q, $s) => $q->where('status', $s->value))
+            ->with([
+                'player:id,first_name,last_name,dni,birth_date,gender,photo_path,documents_verified_at', 'position:id,name',
+                'seasonTeam:id,season_id,team_id,category_id', 'seasonTeam.team:id,name',
+                'seasonTeam.season:id,name,status,games_edition_id,games_edition_event_id,category_id,gender',
+                'seasonTeam.season.gamesEdition:id,name,organizer_id,start_date',
+                'seasonTeam.season.event:id,min_players,max_players,rules_blocking',
+                'seasonTeam.season.category:id,name,min_age',
+            ])
+            ->orderBy($this->sortColumn(), $this->sortOrder())
+            ->orderBy('player_last_name');
+    }
+
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', SeasonTeamPlayer::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Planteles';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'N°' => fn (SeasonTeamPlayer $e) => $e->shirt_number,
+            'Apellidos' => fn (SeasonTeamPlayer $e) => $e->player->last_name,
+            'Nombres' => fn (SeasonTeamPlayer $e) => $e->player->first_name,
+            'DNI' => fn (SeasonTeamPlayer $e) => $e->player->dni,
+            'Nacimiento' => fn (SeasonTeamPlayer $e) => $e->player->birth_date,
+            'Capitán' => fn (SeasonTeamPlayer $e) => (bool) $e->is_captain,
+            'Documentos' => fn (SeasonTeamPlayer $e) => $e->player->documents_verified_at ? 'Verificados' : 'Por verificar',
+            'Delegación' => fn (SeasonTeamPlayer $e) => $e->seasonTeam->team->name,
+            'Competencia' => fn (SeasonTeamPlayer $e) => $e->seasonTeam->season->name,
+            'Posición' => fn (SeasonTeamPlayer $e) => $e->position?->name,
+            'Estado' => fn (SeasonTeamPlayer $e) => $e->status->label(),
+            'Alta' => fn (SeasonTeamPlayer $e) => $e->enrolled_at,
+        ];
     }
 
     protected function sortableFields(): array

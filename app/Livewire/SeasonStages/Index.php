@@ -6,6 +6,7 @@ namespace App\Livewire\SeasonStages;
 
 use App\Enums\EditionTeamStatus;
 use App\Enums\StageMode;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Models\Season;
 use App\Models\SeasonStage;
 use App\Models\SeasonTeam;
@@ -34,6 +35,8 @@ use Livewire\Component;
 #[Title('Fases y llaves')]
 class Index extends Component
 {
+    use ExportsExcel;
+
     #[Url(as: 'competencia')]
     public string $seasonId = '';
 
@@ -318,17 +321,54 @@ class Index extends Component
 
         return view('livewire.season-stages.index', [
             'season' => $season,
-            'stages' => $season
-                ? $season->stages()->with([
-                    'group:id,name', 'results.team:id,name', 'results.seasonTeamPlayer.player:id,first_name,last_name',
-                    'matches.participants' => ParticipantLabel::eagerLoad(),
-                ])->get()
-                : collect(),
+            'stages' => $this->stagesOf($season),
             'entrantNames' => $this->showBracket ? $this->entrants() : collect(),
         ]);
     }
 
     /** Inscripciones activas de la competencia: id de season_team => nombre de la delegacion. */
+    /** Fases de la competencia con su llave y su podio: las comparten render() y la exportacion a Excel. */
+    private function stagesOf(?Season $season): Collection
+    {
+        return $season
+            ? $season->stages()->with([
+                'group:id,name', 'results.team:id,name', 'results.seasonTeamPlayer.player:id,first_name,last_name',
+                'matches.participants' => ParticipantLabel::eagerLoad(),
+            ])->get()
+            : collect();
+    }
+
+    protected function authorizeExport(): void
+    {
+        // boot() ya exige el permiso en cada peticion; season() solo devuelve competencias que el usuario gestiona.
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Fases';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->stagesOf($this->season());
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Fase' => fn (SeasonStage $s) => $s->name,
+            'Modo' => fn (SeasonStage $s) => $s->mode->label(),
+            'Serie' => fn (SeasonStage $s) => $s->group?->name,
+            'Clasifican' => fn (SeasonStage $s) => $s->qualifiers,
+            'Tercer puesto' => fn (SeasonStage $s) => (bool) $s->has_third_place,
+            'Partidos' => fn (SeasonStage $s) => $s->matches->count(),
+            'Podio' => fn (SeasonStage $s) => $s->results->sortBy('place')
+                ->map(fn ($r) => "{$r->place}.º ".($r->team?->name ?? '').($r->seasonTeamPlayer?->player
+                    ? " ({$r->seasonTeamPlayer->player->last_name}, {$r->seasonTeamPlayer->player->first_name})" : ''))
+                ->join('; '),
+        ];
+    }
+
     private function entrants(): Collection
     {
         $season = $this->season();

@@ -6,6 +6,7 @@ namespace App\Livewire\Seasons;
 
 use App\Enums\Gender;
 use App\Enums\SeasonStatus;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\SelectsEdition;
 use App\Livewire\Concerns\Sortable;
@@ -14,6 +15,7 @@ use App\Models\Season;
 use App\Models\Sport;
 use App\Services\CompetitionGeneratorService;
 use App\Services\SeasonService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -30,7 +32,7 @@ use Livewire\WithPagination;
 #[Title('Competencias')]
 class Index extends Component
 {
-    use LimitsPerPage, SelectsEdition, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, SelectsEdition, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -259,7 +261,22 @@ class Index extends Component
     {
         $edition = $this->edition();
 
-        $query = Season::query()
+        $query = $this->listingQuery();
+
+        return view('livewire.seasons.index', [
+            'edition' => $edition,
+            'seasons' => $query->paginate($this->perPageLimit()),
+            'filterSports' => Sport::orderBy('name')->get(['id', 'name']),
+            'filterCategories' => Category::where('is_active', true)->orderBy('min_age')->get(['id', 'name']),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        $edition = $this->edition();
+
+        return Season::query()
             // Sin olimpiada elegida (o ajena) no se lista nada.
             ->where('games_edition_id', $edition?->id ?? 0)
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
@@ -270,13 +287,37 @@ class Index extends Component
             ->withCount(['seasonTeams', 'scoringConfigs'])
             ->with(['gamesEdition:id,name,organizer_id', 'sport:id,name', 'category:id,name', 'discipline:id,name'])
             ->orderBy($this->sortColumn(), $this->sortOrder());
+    }
 
-        return view('livewire.seasons.index', [
-            'edition' => $edition,
-            'seasons' => $query->paginate($this->perPageLimit()),
-            'filterSports' => Sport::orderBy('name')->get(['id', 'name']),
-            'filterCategories' => Category::where('is_active', true)->orderBy('min_age')->get(['id', 'name']),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', Season::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Competencias';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Competencia' => fn (Season $s) => $s->name,
+            'Deporte' => fn (Season $s) => $s->sport->name,
+            'Prueba' => fn (Season $s) => $s->discipline?->name,
+            'Nivel' => fn (Season $s) => $s->category?->name,
+            'Género' => fn (Season $s) => $s->gender?->label(),
+            'Inicio' => fn (Season $s) => $s->start_date,
+            'Fin' => fn (Season $s) => $s->end_date,
+            'Delegaciones' => fn (Season $s) => $s->season_teams_count,
+            'Estado' => fn (Season $s) => $s->status->label(),
+            'Activa' => fn (Season $s) => (bool) $s->is_active,
+        ];
     }
 
     protected function sortableFields(): array

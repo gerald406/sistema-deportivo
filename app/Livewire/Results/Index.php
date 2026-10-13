@@ -6,6 +6,7 @@ namespace App\Livewire\Results;
 
 use App\Enums\MatchStatus;
 use App\Enums\SportFormatType;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\EventParticipant;
@@ -28,7 +29,7 @@ use Livewire\WithPagination;
 #[Title('Resultados')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -109,6 +110,28 @@ class Index extends Component
     public function formatOf(GameMatch $match): SportFormatType
     {
         return app(GameMatchService::class)->formatFor($match->season, $match->discipline);
+    }
+
+    /** Resultado en texto plano para la exportacion: misma lectura que la columna de la vista. */
+    private function resultText(GameMatch $match): string
+    {
+        if ($match->status === MatchStatus::Walkover) {
+            $absent = $match->participants->firstWhere('position', 2);
+
+            return 'W.O. — no se presentó '.($absent ? ParticipantLabel::for($absent) : '?');
+        }
+
+        if ($match->status !== MatchStatus::Played) {
+            return '';
+        }
+
+        if ($this->formatOf($match) === SportFormatType::HeadToHead) {
+            return (int) $match->participants[0]->result_value.' - '.(int) $match->participants[1]->result_value;
+        }
+
+        return $match->participants->whereNotNull('position')->sortBy('position')->take(3)
+            ->map(fn ($p) => "{$p->position}° ".ParticipantLabel::for($p).' ('.rtrim(rtrim((string) $p->result_value, '0'), '.').')')
+            ->join('; ');
     }
 
     public function editingMatch(): ?GameMatch
@@ -229,9 +252,24 @@ class Index extends Component
     public function render(GameMatchService $service)
     {
         $user = auth()->user();
-        $term = trim($this->search);
 
-        $query = $service->scopeVisibleTo(GameMatch::query(), $user)
+        $query = $this->listingQuery();
+
+        return view('livewire.results.index', [
+            'matches' => $query->paginate($this->perPageLimit()),
+            'filterSeasons' => $service->visibleSeasons($user),
+            'statusOptions' => MatchStatus::cases(),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        $user = auth()->user();
+        $term = trim($this->search);
+        $service = app(GameMatchService::class);
+
+        return $service->scopeVisibleTo(GameMatch::query(), $user)
             ->when($term !== '', fn ($q) => $q->whereHas('participants', fn ($p) => $p->whereHasMorph('participant', [SeasonTeam::class, SeasonTeamPlayer::class],
                 fn ($m, string $type) => $type === SeasonTeam::class
                     ? $m->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$term}%"))
@@ -246,12 +284,35 @@ class Index extends Component
             ->withCount('participants')
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('id');
+    }
 
-        return view('livewire.results.index', [
-            'matches' => $query->paginate($this->perPageLimit()),
-            'filterSeasons' => $service->visibleSeasons($user),
-            'statusOptions' => MatchStatus::cases(),
-        ]);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', EventParticipant::class);
+    }
+
+    protected function exportTitle(): string
+    {
+        return 'Resultados';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Partido / prueba' => fn (GameMatch $m) => $this->formatOf($m) === SportFormatType::HeadToHead && $m->participants->count() === 2
+                ? $m->participants->map(fn ($p) => ParticipantLabel::for($p))->join(' vs ')
+                : ($m->discipline?->name ?? $m->season->sport->name)." ({$m->participants_count})",
+            'Competencia' => fn (GameMatch $m) => $m->season->name,
+            'Jornada' => fn (GameMatch $m) => $m->matchday->name,
+            'Fecha' => fn (GameMatch $m) => $m->scheduled_at?->format('d/m/Y H:i'),
+            'Resultado' => fn (GameMatch $m) => $this->resultText($m),
+            'Estado' => fn (GameMatch $m) => $m->status->label(),
+        ];
     }
 
     protected function sortableFields(): array

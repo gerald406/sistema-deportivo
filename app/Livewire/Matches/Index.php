@@ -9,6 +9,7 @@ use App\Enums\MatchStatus;
 use App\Enums\RoundType;
 use App\Enums\SeasonTeamPlayerStatus;
 use App\Enums\SportFormatType;
+use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Discipline;
@@ -22,6 +23,7 @@ use App\Models\Venue;
 use App\Services\GameMatchService;
 use App\Support\ParticipantLabel;
 use App\Support\SeasonAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -34,7 +36,7 @@ use Livewire\WithPagination;
 #[Title('Partidos')]
 class Index extends Component
 {
-    use LimitsPerPage, Sortable, WithPagination;
+    use ExportsExcel, LimitsPerPage, Sortable, WithPagination;
 
     public string $search = '';
 
@@ -332,9 +334,30 @@ class Index extends Component
     public function render(GameMatchService $service)
     {
         $user = auth()->user();
-        $term = trim($this->search);
 
-        $query = $service->scopeVisibleTo(GameMatch::query(), $user)
+        $query = $this->listingQuery();
+
+        $filterSeasons = $service->visibleSeasons($user);
+
+        return view('livewire.matches.index', [
+            'matches' => $query->paginate($this->perPageLimit()),
+            'filterSeasons' => $filterSeasons,
+            // Jornadas solo de una competencia visible (seasonFilter viene del navegador).
+            'filterMatchdays' => ctype_digit($this->seasonFilter) && $filterSeasons->contains('id', (int) $this->seasonFilter)
+                ? Matchday::where('season_id', (int) $this->seasonFilter)->orderBy('start_date')->orderBy('id')->get(['id', 'name'])
+                : collect(),
+            'statusOptions' => MatchStatus::cases(),
+        ]);
+    }
+
+    /** Listado filtrado y ordenado: lo comparten render() y la exportacion a Excel. */
+    private function listingQuery(): Builder
+    {
+        $user = auth()->user();
+        $term = trim($this->search);
+        $service = app(GameMatchService::class);
+
+        return $service->scopeVisibleTo(GameMatch::query(), $user)
             ->when($term !== '', fn ($q) => $q->whereHas('participants', fn ($p) => $p->whereHasMorph('participant', [SeasonTeam::class, SeasonTeamPlayer::class],
                 fn ($m, string $type) => $type === SeasonTeam::class
                     ? $m->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$term}%"))
@@ -354,18 +377,38 @@ class Index extends Component
             ->withCount('participants')
             ->orderBy($this->sortColumn(), $this->sortOrder())
             ->orderBy('id');
+    }
 
-        $filterSeasons = $service->visibleSeasons($user);
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', GameMatch::class);
+    }
 
-        return view('livewire.matches.index', [
-            'matches' => $query->paginate($this->perPageLimit()),
-            'filterSeasons' => $filterSeasons,
-            // Jornadas solo de una competencia visible (seasonFilter viene del navegador).
-            'filterMatchdays' => ctype_digit($this->seasonFilter) && $filterSeasons->contains('id', (int) $this->seasonFilter)
-                ? Matchday::where('season_id', (int) $this->seasonFilter)->orderBy('start_date')->orderBy('id')->get(['id', 'name'])
-                : collect(),
-            'statusOptions' => MatchStatus::cases(),
-        ]);
+    protected function exportTitle(): string
+    {
+        return 'Partidos';
+    }
+
+    protected function exportRows(): iterable
+    {
+        return $this->listingQuery()->get();
+    }
+
+    protected function exportColumns(): array
+    {
+        return [
+            'Fecha' => fn (GameMatch $m) => $m->scheduled_at?->format('d/m/Y H:i'),
+            'Participantes' => fn (GameMatch $m) => $m->participants->map(fn ($p) => ParticipantLabel::for($p))
+                ->join($m->participants->count() === 2 ? ' vs ' : '; '),
+            'Prueba' => fn (GameMatch $m) => $m->discipline?->name,
+            'Competencia' => fn (GameMatch $m) => $m->season->name,
+            'Jornada' => fn (GameMatch $m) => $m->matchday->name,
+            'Olimpiada' => fn (GameMatch $m) => $m->season->gamesEdition->name,
+            'Deporte' => fn (GameMatch $m) => $m->season->sport->name,
+            'Ronda' => fn (GameMatch $m) => $m->round_type->label(),
+            'Sede' => fn (GameMatch $m) => $m->venue?->name,
+            'Estado' => fn (GameMatch $m) => $m->status->label(),
+        ];
     }
 
     protected function sortableFields(): array
