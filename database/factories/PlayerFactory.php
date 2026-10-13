@@ -18,7 +18,11 @@ class PlayerFactory extends Factory
             'dni' => $this->faker->unique()->numerify('########'),
             'first_name' => $this->faker->firstName(),
             'last_name' => $this->faker->lastName(),
-            'birth_date' => $this->faker->dateTimeBetween('-35 years', '-16 years'),
+            // Mayores de 25 al 2026: entran al nivel Libre de las bases.
+            'birth_date' => $this->faker->dateTimeBetween('1965-01-01', '2000-12-31'),
+            'gender' => $this->faker->randomElement(['M', 'F']),
+            'staff_type' => 'teacher',
+            'employment_type' => 'appointed',
             'photo_path' => null,
             'is_active' => true,
         ];

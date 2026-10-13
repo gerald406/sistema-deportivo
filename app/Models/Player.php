@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\EmploymentType;
+use App\Enums\Gender;
+use App\Enums\StaffType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +21,9 @@ class Player extends Model
         'first_name',
         'last_name',
         'birth_date',
+        'gender',
+        'staff_type',
+        'employment_type',
         'photo_path',
         'is_active',
         'created_by',
@@ -27,6 +33,12 @@ class Player extends Model
     {
         return [
             'birth_date' => 'date',
+            'gender' => Gender::class,
+            'staff_type' => StaffType::class,
+            'employment_type' => EmploymentType::class,
+            // Fuera de $fillable a proposito: solo la fija
+            // PlayerRegistrationService::setDocumentsVerified().
+            'documents_verified_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }

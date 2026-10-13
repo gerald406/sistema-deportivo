@@ -58,6 +58,16 @@ class PlayerPolicy
     }
 
     /**
+     * Marcar los documentos como verificados: el organizador de la
+     * olimpiada (admin por Gate::before); nunca el delegado. Misma regla
+     * que revalida PlayerRegistrationService::setDocumentsVerified().
+     */
+    public function verifyDocuments(User $user, Player $player): bool
+    {
+        return app(PlayerRegistrationService::class)->canVerifyDocuments($user, $player);
+    }
+
+    /**
      * Restriccion sobre season_team_player: planteles de una delegacion de
      * la que $user es delegado titular o suplente
      * (SeasonTeamPolicy::delegateConstraint(), la unica version SQL de

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\Players;
 
+use App\Enums\EmploymentType;
+use App\Enums\Gender;
+use App\Enums\StaffType;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\Player;
@@ -43,6 +46,9 @@ class Index extends Component
         'first_name' => '',
         'last_name' => '',
         'birth_date' => '',
+        'gender' => '',
+        'staff_type' => '',
+        'employment_type' => '',
         'is_active' => true,
     ];
 
@@ -91,6 +97,9 @@ class Index extends Component
             'first_name' => $player->first_name,
             'last_name' => $player->last_name,
             'birth_date' => $player->birth_date?->format('Y-m-d') ?? '',
+            'gender' => $player->gender?->value ?? '',
+            'staff_type' => $player->staff_type?->value ?? '',
+            'employment_type' => $player->employment_type?->value ?? '',
             'is_active' => $player->is_active,
         ];
         $this->existingPhotoUrl = $player->photo_path ? Storage::disk('public')->url($player->photo_path) : null;
@@ -141,6 +150,19 @@ class Index extends Component
         }
 
         $this->dispatch('toast', type: 'success', message: 'Participante eliminado.');
+    }
+
+    /** Documentos revisados: solo admin u organizador (PlayerPolicy::verifyDocuments). */
+    public function toggleDocuments(int $id, PlayerRegistrationService $service): void
+    {
+        $player = $this->findVisiblePlayer($id);
+        $this->authorize('verifyDocuments', $player);
+
+        $service->setDocumentsVerified($player, $player->documents_verified_at === null, auth()->user());
+
+        $this->dispatch('toast', type: 'success', message: $player->documents_verified_at
+            ? 'Documentos marcados como verificados.'
+            : 'Se quitó la verificación de documentos.');
     }
 
     public function closeModal(): void
@@ -208,6 +230,9 @@ class Index extends Component
             'first_name' => '',
             'last_name' => '',
             'birth_date' => '',
+            'gender' => '',
+            'staff_type' => '',
+            'employment_type' => '',
             'is_active' => true,
         ];
         $this->newPhoto = null;
@@ -226,8 +251,25 @@ class Index extends Component
             'form.first_name' => ['required', 'string', 'max:100'],
             'form.last_name' => ['required', 'string', 'max:100'],
             'form.birth_date' => ['required', 'date', 'before:today'],
+            // Damas o varones: lo exigen las competencias por genero.
+            'form.gender' => ['required', Rule::in([Gender::Male->value, Gender::Female->value])],
+            'form.staff_type' => ['nullable', Rule::enum(StaffType::class)],
+            'form.employment_type' => ['nullable', Rule::enum(EmploymentType::class)],
             'form.is_active' => ['boolean'],
             'newPhoto' => ['nullable', 'image', 'max:2048'],
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'form.dni' => 'DNI',
+            'form.first_name' => 'nombres',
+            'form.last_name' => 'apellidos',
+            'form.birth_date' => 'fecha de nacimiento',
+            'form.gender' => 'género',
+            'form.staff_type' => 'tipo de personal',
+            'form.employment_type' => 'condición',
         ];
     }
 }
