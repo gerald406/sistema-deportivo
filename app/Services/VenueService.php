@@ -25,9 +25,8 @@ class VenueService
     }
 
     /**
-     * matches.venue_id y games_editions.host_venue_id son SET NULL en la
-     * BD: borrar una sede en uso dejaria partidos/ediciones sin sede en
-     * silencio. Se bloquea aqui (mismo criterio que deleteDiscipline).
+     * matches.venue_id es SET NULL en la BD: borrar una sede en uso
+     * dejaria partidos sin sede en silencio. Se bloquea aqui (mismo criterio que deleteDiscipline).
      *
      * Devuelve true o el mensaje exacto de por que no se pudo borrar.
      */
@@ -35,10 +34,6 @@ class VenueService
     {
         if ($venue->matches()->exists()) {
             return 'No se puede eliminar: la sede tiene partidos programados. Desactívala en su lugar.';
-        }
-
-        if ($venue->gamesEditionsHosted()->exists()) {
-            return 'No se puede eliminar: la sede es anfitriona de una edición. Desactívala en su lugar.';
         }
 
         try {

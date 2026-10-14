@@ -87,7 +87,6 @@ class DemoPublicSeeder extends Seeder
                 'organizer_id' => $this->organizer->id,
                 'start_date' => $this->today->copy()->subDay(),
                 'end_date' => $this->today->copy()->addDay(),
-                'host_venue_id' => $venues[0]->id,
                 'is_active' => true,
             ]);
 

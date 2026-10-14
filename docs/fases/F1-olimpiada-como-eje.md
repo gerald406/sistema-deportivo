@@ -101,7 +101,7 @@ El stash ya trae este renombrado. Si se rehace, el orden de sustitución sobre l
 ## Tarea 1.3 — Pantalla de Olimpiadas, rutas y menú
 
 - [x] **Paso 1.** `app/Livewire/GamesEditions/Index.php`: quitar el `abort_unless` de `boot()`; `authorize('viewAny', GamesEdition::class)` en `mount()` y `authorize()` en `create`, `edit`, `save`, `delete`. Agregar al formulario `organizer_id` (solo lo ve el admin) y logo con `WithFileUploads` (carpeta `editions` del disco `public`, máx. 2 MB). El listado usa `GamesEditionService::scopeManagedBy()`.
-- [x] **Paso 2.** Vista: título "Olimpiadas", columnas Nombre (con logo), Organizador, Inicio, Fin, Sede principal, Competencias, Estado. Botón "Nueva olimpiada" bajo `@can('create', GamesEdition::class)`.
+- [x] **Paso 2.** Vista: título "Olimpiadas", columnas Nombre (con logo), Organizador, Inicio, Fin, Sede principal (quitada después, D17), Competencias, Estado. Botón "Nueva olimpiada" bajo `@can('create', GamesEdition::class)`.
 - [x] **Paso 3.** `routes/web.php`: una sola ruta `/olimpiadas` → `games-editions.index`, fuera del grupo `role:admin`. Quitar `/torneos` y `/ediciones`.
 - [x] **Paso 4.** `config/admin-menu.php`: grupo "Olimpiada" con "Olimpiadas" (`editions.manage`) y "Temporadas" (`seasons.manage`). Quitar las entradas duplicadas.
 - [x] **Paso 5.** `resources/views/livewire/dashboard.blade.php` y `DashboardService`: la métrica es `activeGamesEditions`, etiqueta "Olimpiadas activas", ruta `games-editions.index`, permiso `editions.manage`.

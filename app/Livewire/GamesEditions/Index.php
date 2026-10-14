@@ -8,7 +8,6 @@ use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
 use App\Models\GamesEdition;
-use App\Models\Venue;
 use App\Services\GamesEditionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -46,10 +45,7 @@ class Index extends Component
         'organizer_id' => '',
         'start_date' => '',
         'end_date' => '',
-        'host_venue_id' => '',
         'is_active' => true,
-        'yellow_cards_limit' => '',
-        'captain_red_matches' => '',
     ];
 
     /** Logo nuevo pendiente de subir (Livewire\WithFileUploads). */
@@ -88,20 +84,6 @@ class Index extends Component
         return auth()->user()->hasRole('admin');
     }
 
-    /**
-     * Sedes activas + la sede actual de la olimpiada en edicion (aunque se
-     * haya desactivado despues, para no perderla del selector).
-     */
-    public function venues(): Collection
-    {
-        $currentVenueId = $this->editingId ? $this->findManaged($this->editingId)->host_venue_id : null;
-
-        return Venue::where('is_active', true)
-            ->when($currentVenueId, fn ($q) => $q->orWhere('id', $currentVenueId))
-            ->orderBy('name')
-            ->get(['id', 'name']);
-    }
-
     public function create(): void
     {
         $this->authorize('create', GamesEdition::class);
@@ -121,10 +103,7 @@ class Index extends Component
             'organizer_id' => $edition->organizer_id,
             'start_date' => $edition->start_date?->format('Y-m-d') ?? '',
             'end_date' => $edition->end_date?->format('Y-m-d') ?? '',
-            'host_venue_id' => $edition->host_venue_id ?? '',
             'is_active' => $edition->is_active,
-            'yellow_cards_limit' => $edition->yellow_cards_limit ?? '',
-            'captain_red_matches' => $edition->captain_red_matches ?? '',
         ];
         $this->existingLogoUrl = $edition->logo ? Storage::disk('public')->url($edition->logo) : null;
         $this->showModal = true;
@@ -133,16 +112,7 @@ class Index extends Component
     public function save(GamesEditionService $service): void
     {
         $data = $this->validate($this->rules())['form'];
-
-        // Vacio = la regla no se aplica.
-        foreach (['yellow_cards_limit', 'captain_red_matches'] as $rule) {
-            $data[$rule] = in_array($data[$rule] ?? '', ['', null], true) ? null : (int) $data[$rule];
-        }
         $actor = auth()->user();
-
-        foreach (['start_date', 'end_date', 'host_venue_id'] as $field) {
-            $data[$field] = in_array($data[$field], ['', null], true) ? null : $data[$field];
-        }
 
         if ($this->editingId) {
             $edition = $this->findManaged($this->editingId);
@@ -214,7 +184,7 @@ class Index extends Component
             ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
             ->withCount('seasons')
-            ->with(['hostVenue:id,name', 'organizer:id,name'])
+            ->with('organizer:id,name')
             ->orderBy($this->sortColumn(), $this->sortOrder());
     }
 
@@ -240,7 +210,6 @@ class Index extends Component
             'Organizador' => fn (GamesEdition $e) => $e->organizer?->name,
             'Inicio' => fn (GamesEdition $e) => $e->start_date,
             'Fin' => fn (GamesEdition $e) => $e->end_date,
-            'Sede principal' => fn (GamesEdition $e) => $e->hostVenue?->name,
             'Competencias' => fn (GamesEdition $e) => $e->seasons_count,
             'Estado' => fn (GamesEdition $e) => $e->is_active ? 'Activa' : 'Inactiva',
         ];
@@ -281,10 +250,7 @@ class Index extends Component
             'organizer_id' => '',
             'start_date' => '',
             'end_date' => '',
-            'host_venue_id' => '',
             'is_active' => true,
-            'yellow_cards_limit' => '',
-            'captain_red_matches' => '',
         ];
         $this->newLogo = null;
         $this->existingLogoUrl = null;
@@ -298,20 +264,15 @@ class Index extends Component
      */
     private function rules(): array
     {
-        $hasStart = ! in_array($this->form['start_date'], ['', null], true);
-
         return [
             'form.name' => [
                 'required', 'string', 'max:150',
                 Rule::unique('games_editions', 'name')->ignore($this->editingId),
             ],
             'form.organizer_id' => ['nullable', 'integer'],
-            'form.start_date' => ['nullable', 'date'],
-            'form.end_date' => array_filter(['nullable', 'date', $hasStart ? 'after_or_equal:form.start_date' : null]),
-            'form.host_venue_id' => ['nullable', 'integer', Rule::exists('venues', 'id')],
+            'form.start_date' => ['required', 'date'],
+            'form.end_date' => ['required', 'date', 'after_or_equal:form.start_date'],
             'form.is_active' => ['boolean'],
-            'form.yellow_cards_limit' => ['nullable', 'integer', 'between:1,20'],
-            'form.captain_red_matches' => ['nullable', 'integer', 'between:1,20'],
             'newLogo' => ['nullable', 'image', 'max:2048'],
         ];
     }
@@ -323,9 +284,6 @@ class Index extends Component
             'form.organizer_id' => 'organizador',
             'form.start_date' => 'fecha de inicio',
             'form.end_date' => 'fecha de fin',
-            'form.host_venue_id' => 'sede principal',
-            'form.yellow_cards_limit' => 'amarillas para suspensión',
-            'form.captain_red_matches' => 'partidos de sanción al capitán',
             'newLogo' => 'logo',
         ];
     }

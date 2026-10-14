@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 class GamesEditionService
 {
     /**
-     * @param array{name: string, organizer_id: int|string|null, start_date: string|null, end_date: string|null, host_venue_id: int|null, is_active: bool, logo?: string} $data
+     * @param array{name: string, organizer_id: int|string|null, start_date: string, end_date: string, is_active: bool, logo?: string} $data
      */
     public function register(array $data, User $actor): GamesEdition
     {

@@ -49,7 +49,6 @@
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Organizador</th>
                         <x-sortable-th field="start_date" label="Inicio" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="end_date" label="Fin" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Sede principal</th>
                         <x-sortable-th field="seasons_count" label="Competencias" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sortable-th field="is_active" label="Estado" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3"></th>
@@ -74,7 +73,6 @@
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $edition->start_date?->format('d/m/Y') ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-600">{{ $edition->end_date?->format('d/m/Y') ?? '—' }}</td>
-                            <td class="px-4 py-3 text-gray-600">{{ $edition->hostVenue?->name ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-600">{{ $edition->seasons_count }}</td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
@@ -100,7 +98,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-10 text-center text-gray-400">No hay olimpiadas que coincidan con el filtro.</td>
+                            <td colspan="7" class="px-4 py-10 text-center text-gray-400">No hay olimpiadas que coincidan con el filtro.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -162,18 +160,6 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Sede principal <span class="text-gray-400">(opcional)</span></label>
-                    <select wire:model="form.host_venue_id"
-                            class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">Sin sede principal</option>
-                        @foreach ($this->venues() as $venue)
-                            <option value="{{ $venue->id }}">{{ $venue->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('form.host_venue_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
                     <label class="block text-sm font-medium text-gray-700">Logo</label>
                     <div class="mt-2 flex items-center gap-4">
                         @if ($newLogo)
@@ -191,26 +177,6 @@
                     <div wire:loading wire:target="newLogo" class="mt-1 text-xs text-indigo-500">Cargando imagen...</div>
                     @error('newLogo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     <p class="mt-1 text-xs text-gray-400">JPG, PNG o GIF. Máx 2MB.</p>
-                </div>
-
-                <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p class="text-sm font-semibold text-gray-700">Reglas disciplinarias</p>
-                    <p class="text-xs text-gray-500">Vacío = la regla no se aplica. Una tarjeta roja da siempre 1 partido de sanción.</p>
-                    <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600">Amarillas para suspensión</label>
-                            <input type="number" min="1" max="20" wire:model="form.yellow_cards_limit" placeholder="No se acumulan"
-                                   class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <p class="mt-1 text-xs text-gray-400">Acumuladas en una misma competencia: 1 partido de sanción.</p>
-                            @error('form.yellow_cards_limit') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600">Partidos de sanción al capitán expulsado</label>
-                            <input type="number" min="1" max="20" wire:model="form.captain_red_matches" placeholder="Igual que los demás (1)"
-                                   class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            @error('form.captain_red_matches') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
                 </div>
 
                 <label class="flex items-center gap-2">

@@ -19,10 +19,7 @@ class GamesEdition extends Model
         'organizer_id',
         'start_date',
         'end_date',
-        'host_venue_id',
         'is_active',
-        'yellow_cards_limit',
-        'captain_red_matches',
     ];
 
     protected function casts(): array
@@ -31,9 +28,6 @@ class GamesEdition extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'is_active' => 'boolean',
-            // Reglas disciplinarias: NULL = no se aplica (ver SuspensionService).
-            'yellow_cards_limit' => 'integer',
-            'captain_red_matches' => 'integer',
         ];
     }
 
@@ -41,11 +35,6 @@ class GamesEdition extends Model
     public function organizer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'organizer_id');
-    }
-
-    public function hostVenue(): BelongsTo
-    {
-        return $this->belongsTo(Venue::class, 'host_venue_id');
     }
 
     public function seasons(): HasMany

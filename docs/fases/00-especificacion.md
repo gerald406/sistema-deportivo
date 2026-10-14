@@ -44,6 +44,7 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D14 | Ajedrez: emparejamiento manual por el organizador | 29/09 |
 | D15 | Se publica en un hosting (proveedor por definir) | 12/10 |
 | D16 | El buscador de participantes al armar un plantel se limita a los de las delegaciones del usuario. Titular y suplente comparten los participantes que registran; el organizador ve los que registraron los delegados de su olimpiada | 13/10 |
+| D17 | La olimpiada guarda solo nombre, organizador, fechas de inicio y fin (obligatorias), logo y estado: sin sede principal. La acumulación de amarillas (Art. 15) y la sanción de 2 partidos al capitán (Art. 14) se manejan **fuera del sistema**; dentro, toda roja da 1 partido | 14/10 |
 
 Supuestos míos (cada uno es un valor por defecto editable). **Todos (S1 a S6) confirmados por el
 cliente el 13/10:**
@@ -68,8 +69,8 @@ cliente el 13/10:**
 | 4 series por sorteo; eliminación simple; pasa el 1.º de cada serie | Art. 8, 10 | F2, F5 |
 | Fase final: ganadores juegan por 1.º/2.º, perdedores por 3.º/4.º | Art. 10 | F5 |
 | W.O. por no presentarse | Art. 12 | ya existe |
-| Roja: 1 partido; capitán: 2 | Art. 14 | F5 |
-| 2 amarillas acumuladas: 1 partido | Art. 15 | F5 |
+| Roja: 1 partido (el capitán: 2, fuera del sistema, D17) | Art. 14 | F5 |
+| 2 amarillas acumuladas: 1 partido (fuera del sistema, D17) | Art. 15 | — |
 | Reprogramación por fuerza mayor | Art. 16 | ya existe |
 | Equipo descalificado por mala inscripción | Art. 22 | F2 (estado) |
 | Medallas a 1.º, 2.º y 3.º; puntaje general por delegación | Art. 28 | F6 |

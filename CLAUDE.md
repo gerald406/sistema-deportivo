@@ -53,9 +53,12 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
      y lado ganador (`TiebreakType`). Fuera de una llave el empate sigue permitido.
    - No se reabre un partido si la ronda siguiente ya se jugó (`BracketService::ensureCanReopen()`).
    - Las gestiona quien gestiona la competencia (`SeasonAccess::manages()`), pantalla /fases.
-9. **Sanciones = datos de la olimpiada.** `games_editions.yellow_cards_limit` (amarillas
-   acumuladas en una competencia que dan 1 partido) y `captain_red_matches` (partidos al capitán
-   expulsado). Vacío = la regla no se aplica. Solo `SuspensionService` las interpreta.
+9. **Sanciones automáticas: solo rojas.** Al cerrar un partido, cada roja (directa o por doble
+   amarilla) da 1 partido de sanción, sea o no capitán el expulsado (`SuspensionService`). La
+   acumulación de amarillas y la sanción especial al capitán se manejan **fuera del sistema**
+   (decisión del cliente); si se decide una, el organizador la registra como sanción manual.
+   La olimpiada guarda solo nombre, organizador, fechas de inicio y fin (obligatorias), logo y
+   estado: no tiene sede principal ni reglas disciplinarias.
 
 10. **Puntaje general = dato derivado.** `AwardService::rebuild()` borra y recalcula
    `edition_awards` y `games_edition_medals` de la olimpiada: cada podio (de la ÚLTIMA fase de

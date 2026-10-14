@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Editions;
 
+use App\Livewire\GamesEditions\Index as GamesEditionsIndex;
 use App\Models\GamesEdition;
 use App\Models\Season;
 use App\Models\Sport;
@@ -14,6 +15,7 @@ use App\Support\SeasonAccess;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\Concerns\CreatesActors;
 use Tests\TestCase;
 
@@ -32,7 +34,6 @@ class GamesEditionAuthorizationTest extends TestCase
             'organizer_id' => null,
             'start_date' => '2026-10-28',
             'end_date' => '2026-10-30',
-            'host_venue_id' => null,
             'is_active' => true,
         ];
     }
@@ -188,6 +189,32 @@ class GamesEditionAuthorizationTest extends TestCase
 
         $this->assertIsString($result);
         $this->assertDatabaseHas('users', ['id' => $organizer->id]);
+    }
+
+    public function test_form_requires_both_dates_in_order(): void
+    {
+        $organizer = $this->organizer();
+
+        $form = fn () => Livewire::actingAs($this->admin())->test(GamesEditionsIndex::class)
+            ->call('create')
+            ->set('form.name', 'Olimpiada con fechas')
+            ->set('form.organizer_id', $organizer->id);
+
+        $form()->set('form.start_date', '')->set('form.end_date', '')
+            ->call('save')
+            ->assertHasErrors(['form.start_date' => 'required', 'form.end_date' => 'required']);
+
+        $form()->set('form.start_date', '2026-10-30')->set('form.end_date', '2026-10-28')
+            ->call('save')
+            ->assertHasErrors(['form.end_date' => 'after_or_equal']);
+
+        $this->assertSame(0, GamesEdition::count());
+
+        $form()->set('form.start_date', '2026-10-28')->set('form.end_date', '2026-10-30')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('2026-10-30', GamesEdition::sole()->end_date->toDateString());
     }
 
     public function test_organizer_sees_only_own_editions(): void
