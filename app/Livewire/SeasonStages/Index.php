@@ -160,6 +160,13 @@ class Index extends Component
     public function createStandardForAll(StageService $service): void
     {
         $seasons = SeasonAccess::manageableSeasons(auth()->user())->where('is_active', true);
+
+        if ($seasons->isEmpty()) {
+            $this->dispatch('toast', type: 'info', message: 'No hay competencias activas: genéralas primero en Competencias.');
+
+            return;
+        }
+
         $result = $service->createMissingStandardStages($seasons, auth()->user());
 
         $this->dispatch('toast', type: $result['seasons'] === 0 ? 'info' : 'success', message: $result['seasons'] === 0
