@@ -196,6 +196,19 @@ class StandardStagesTest extends TestCase
         $this->assertSame(5, $chess->stages()->count());
     }
 
+    public function test_button_is_shown_without_choosing_a_competition(): void
+    {
+        $this->actingAs($this->organizer)->get(route('season-stages.index'))
+            ->assertOk()
+            ->assertSee('Generar fases de todas las competencias')
+            ->assertSee('$wire.createStandardForAll()', false);
+
+        // Sin competencias activas lo dice, en vez de "ya tenian fases".
+        Livewire::actingAs($this->organizer)->test(SeasonStagesIndex::class)
+            ->call('createStandardForAll')
+            ->assertDispatched('toast', type: 'info', message: 'No hay competencias activas: genéralas primero en Competencias.');
+    }
+
     public function test_admin_sets_standard_stages_on_the_sport(): void
     {
         $sport = Sport::factory()->create(['format_type' => 'head_to_head']);
