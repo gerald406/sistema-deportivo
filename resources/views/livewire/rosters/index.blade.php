@@ -87,12 +87,10 @@
                 </button>
 
                 @can('create', \App\Models\SeasonTeamPlayer::class)
-                    @if ($bulkTeam)
-                        <button wire:click="openBulk" type="button"
-                                class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
-                            <i class="fa-solid fa-users-line"></i> Agregar varios
-                        </button>
-                    @endif
+                    <button wire:click="openBulk" type="button"
+                            class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+                        <i class="fa-solid fa-users-line"></i> Agregar varios
+                    </button>
                     <button wire:click="create" type="button"
                             class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
                         <i class="fa-solid fa-user-plus"></i> Agregar participante
@@ -451,25 +449,54 @@
         <div x-show="show" x-transition.opacity @click="$wire.closeBulk()" class="fixed inset-0 bg-gray-900/50"></div>
 
         <div x-show="show" x-transition class="relative flex max-h-[92vh] w-full max-w-4xl flex-col rounded-xl bg-white shadow-xl">
-            @if ($showBulk && $bulkTeam)
-                @php($candidates = $this->bulkCandidates())
-                @php($current = $bulkTeam->roster()->where('status', '!=', \App\Enums\SeasonTeamPlayerStatus::Inactive->value)->count())
-                @php($max = $bulkTeam->season->event?->max_players)
-                @php($min = $bulkTeam->season->event?->min_players)
+            @if ($showBulk)
+                @php($bulkSeason = $this->bulkSeason())
+                @php($bulkTeamModel = $this->bulkTeam())
+                @php($ready = $bulkSeason && $bulkTeamModel)
+                @php($bulkSeasonTeam = $ready ? $this->bulkSeasonTeam() : null)
+                @php($candidates = $ready ? $this->bulkCandidates() : collect())
+                @php($current = $bulkSeasonTeam ? $bulkSeasonTeam->roster()->where('status', '!=', \App\Enums\SeasonTeamPlayerStatus::Inactive->value)->count() : 0)
+                @php($max = $bulkSeason?->event?->max_players)
+                @php($min = $bulkSeason?->event?->min_players)
 
                 <div class="border-b px-6 py-4">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <h2 class="text-lg font-semibold text-gray-900">Agregar participantes</h2>
-                            <p class="text-sm text-gray-500">{{ $bulkTeam->season->name }} · {{ $bulkTeam->team->name }}</p>
+                            <p class="text-sm text-gray-500">Elige la disciplina y la delegación, marca a los participantes y agrégalos de una vez.</p>
                         </div>
-                        <div class="text-right text-sm">
-                            <p class="font-semibold text-gray-800">Plantel {{ $current }}{{ $max ? ' / '.$max : '' }}</p>
-                            @if ($min && $current < $min)
-                                <p class="text-xs text-amber-700">Faltan {{ $min - $current }} para el mínimo ({{ $min }})</p>
-                            @endif
-                        </div>
+                        @if ($ready)
+                            <div class="shrink-0 text-right text-sm">
+                                <p class="font-semibold text-gray-800">Plantel {{ $current }}{{ $max ? ' / '.$max : '' }}</p>
+                                @if ($min && $current < $min)
+                                    <p class="text-xs text-amber-700">Faltan {{ $min - $current }} para el mínimo ({{ $min }})</p>
+                                @endif
+                                @unless ($bulkSeasonTeam)
+                                    <p class="text-xs text-indigo-600">Aún no inscrita: se inscribe al agregar</p>
+                                @endunless
+                            </div>
+                        @endif
                     </div>
+
+                    {{-- Destino del lote: disciplina y delegacion (precargadas si habia un plantel filtrado) --}}
+                    <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <select wire:model.live="bulkSeasonId" title="Disciplina" aria-label="Disciplina"
+                                class="w-full min-w-0 truncate rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">Elige la disciplina...</option>
+                            @foreach ($this->bulkSeasonOptions() as $option)
+                                <option value="{{ $option->id }}">{{ $option->name }}</option>
+                            @endforeach
+                        </select>
+                        <select wire:model.live="bulkTeamId" title="Delegación" aria-label="Delegación" @disabled(! $bulkSeason)
+                                class="w-full min-w-0 truncate rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100">
+                            <option value="">{{ $bulkSeason ? 'Elige la delegación...' : 'Primero la disciplina' }}</option>
+                            @foreach ($this->bulkTeamOptions() as $option)
+                                <option value="{{ $option->id }}">{{ $option->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    @if ($ready)
 
                     <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         <div class="relative min-w-0 lg:col-span-2">
@@ -503,6 +530,7 @@
                             Solo aptos
                         </label>
                     </div>
+                    @endif
                 </div>
 
                 {{-- Resumen del ultimo agregado: los validos entraron; el resto, con su motivo --}}
@@ -543,7 +571,7 @@
                                         <p class="font-medium {{ $candidate->state === 'blocked' ? '' : 'text-gray-900' }}">{{ $p->last_name }}, {{ $p->first_name }}</p>
                                         <p class="text-xs text-gray-400">
                                             DNI {{ $p->dni }}
-                                            @if ($p->birth_date) · {{ (int) $bulkTeam->season->gamesEdition?->start_date?->year - $p->birth_date->year }} años @endif
+                                            @if ($p->birth_date) · {{ (int) $bulkSeason->gamesEdition?->start_date?->year - $p->birth_date->year }} años @endif
                                             · {{ collect([$p->staff_type?->label(), $p->employment_type?->label()])->filter()->implode(' · ') ?: 'Sin tipo' }}
                                         </p>
                                     </td>
@@ -563,7 +591,11 @@
                             @empty
                                 <tr>
                                     <td class="px-6 py-10 text-center text-gray-400">
-                                        No hay participantes disponibles con estos filtros. Regístralos primero en Participantes.
+                                        @if ($ready)
+                                            No hay participantes disponibles con estos filtros. Regístralos primero en Participantes.
+                                        @else
+                                            Elige la disciplina y la delegación para ver a los participantes.
+                                        @endif
                                     </td>
                                 </tr>
                             @endforelse
@@ -583,7 +615,7 @@
                     </p>
                     <div class="flex gap-3">
                         <button type="button" wire:click="closeBulk" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">Cerrar</button>
-                        <button type="button" wire:click="addSelected" wire:loading.attr="disabled" @disabled(count($bulkSelected) === 0)
+                        <button type="button" wire:click="addSelected" wire:loading.attr="disabled" @disabled(! $ready || count($bulkSelected) === 0)
                                 class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
                             <span wire:loading.remove wire:target="addSelected"><i class="fa-solid fa-user-plus"></i> Agregar {{ count($bulkSelected) }} al plantel</span>
                             <span wire:loading wire:target="addSelected"><i class="fa-solid fa-spinner fa-spin"></i> Agregando...</span>
