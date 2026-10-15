@@ -252,6 +252,73 @@ class DelegationEnrollmentTest extends TestCase
             ->assertSet('form.team_id', $this->team->id);
     }
 
+    public function test_roster_screen_only_offers_enrolled_disciplines(): void
+    {
+        $chess = $this->competition('Ajedrez Libre Varones', 'head_to_head', max: 1);
+        $relay = $this->competition('Postas Libre Varones', 'team_relay');
+        $other = Team::factory()->create(['name' => 'Otra delegación']);
+        $this->registerDelegation($this->edition, $other, $this->delegate());
+        $this->service()->enroll($this->football, $this->team, $this->delegate);
+        $this->service()->enroll($chess, $other, $this->organizer);
+
+        // El delegado: solo lo que SU delegacion marco, en el alta individual y en la multiple.
+        $screen = Livewire::actingAs($this->delegate)->test(RostersIndex::class);
+        $this->assertSame([$this->football->id], $screen->instance()->competitionOptions()->pluck('id')->all());
+        $this->assertSame([$this->football->id], $screen->instance()->bulkSeasonOptions()->pluck('id')->all());
+        $screen->set('form.season_id', (string) $this->football->id);
+        $this->assertSame([$this->team->id], $screen->instance()->delegationOptions()->pluck('id')->all());
+
+        // El organizador: lo que alguna delegacion marco (nunca Postas) y, en cada una, solo las inscritas.
+        $organizer = Livewire::actingAs($this->organizer)->test(RostersIndex::class);
+        $this->assertEqualsCanonicalizing([$this->football->id, $chess->id], $organizer->instance()->competitionOptions()->pluck('id')->all());
+        $this->assertNotContains($relay->id, $organizer->instance()->competitionOptions()->pluck('id'));
+        $organizer->set('form.season_id', (string) $chess->id);
+        $this->assertSame([$other->id], $organizer->instance()->delegationOptions()->pluck('id')->all());
+    }
+
+    public function test_roster_screen_points_to_enrollment_when_nothing_is_enrolled(): void
+    {
+        Livewire::actingAs($this->delegate)->test(RostersIndex::class)
+            ->call('create')
+            ->assertSee('Inscripción por disciplina')
+            ->assertSee(route('enrollment.index'), false);
+    }
+
+    public function test_participants_only_go_to_enrolled_disciplines(): void
+    {
+        $chess = $this->competition('Ajedrez Libre Varones', 'head_to_head', max: 1);
+        $rosters = app(SeasonTeamPlayerService::class);
+        $data = fn () => ['player_id' => Player::factory()->create(['created_by' => $this->delegate->id, 'gender' => 'M'])->id,
+            'shirt_number' => null, 'position_id' => null, 'is_captain' => false, 'status' => 'active', 'enrolled_at' => '2026-10-20'];
+
+        // Sin marcarla en Inscripcion por disciplina: nadie la abre desde el plantel.
+        foreach ([$this->delegate, $this->organizer, $this->admin()] as $actor) {
+            try {
+                $rosters->registerInCompetition($chess, $this->team, $data(), $actor);
+                $this->fail('Un participante abrió una disciplina que la delegación no marcó.');
+            } catch (ValidationException $e) {
+                $this->assertStringContainsString('Inscripción por disciplina', $e->errors()['form.season_id'][0]);
+            }
+        }
+        $this->assertFalse(SeasonTeam::where('season_id', $chess->id)->exists());
+
+        // Desactivada por la organizacion: tampoco.
+        $seasonTeam = $this->service()->enroll($chess, $this->team, $this->delegate);
+        $seasonTeam->update(['is_active' => false]);
+
+        try {
+            $rosters->registerInCompetition($chess, $this->team, $data(), $this->delegate);
+            $this->fail('Se agregó un participante a una inscripción desactivada.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('form.season_id', $e->errors());
+        }
+
+        // Marcada y activa: entra.
+        $seasonTeam->update(['is_active' => true]);
+        $rosters->registerInCompetition($chess, $this->team, $data(), $this->delegate);
+        $this->assertSame(1, $seasonTeam->roster()->count());
+    }
+
     public function test_page_is_reachable_by_the_three_roles(): void
     {
         foreach ([$this->delegate, $this->organizer, $this->admin()] as $user) {

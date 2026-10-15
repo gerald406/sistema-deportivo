@@ -52,6 +52,7 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D22 | El delegado inscribe a su delegación en las disciplinas (colectivas e individuales) en una sola pantalla, y desde cada una arma el plantel. Cierre de inscripciones por olimpiada (`registration_deadline`; Puno: 23/10, bases VII.a): después solo el organizador inscribe o retira | 14/10 |
 | D23 | El plantel se arma por selección múltiple: lista de participantes de la delegación con su aptitud (apto, con observaciones, no puede), "seleccionar todos los aptos" y alta en lote con camiseta y posición vacías; se agregan los válidos y se informa el resto. Camiseta, posición y capitán se editan en línea en la tabla (marcar un capitán se la quita al anterior) | 14/10 |
 | D24 | /partidos solo programa: jornada, fecha y hora, sede y estado. Los partidos nacen en /fases al generar la llave, con sus participantes; ya no se crean partidos sueltos ni se eligen participantes o carriles en el modal | 15/10 |
+| D25 | /inscripcion-disciplinas es la única puerta para inscribir a una delegación en una disciplina, para todos los roles. /planteles solo ofrece y admite las disciplinas marcadas (inscripción activa) y, en cada una, las delegaciones inscritas; agregar un participante ya no crea la inscripción. Reemplaza a S3 | 15/10 |
 
 Supuestos míos (cada uno es un valor por defecto editable). **Todos (S1 a S6) confirmados por el
 cliente el 13/10:**
@@ -60,7 +61,7 @@ cliente el 13/10:**
 |---|---|---|
 | S1 | Una fila "(damas y varones)" genera dos podios, uno por género, cada uno con los puntos de la fila | F3 |
 | S2 | Las filas de Atletismo generan una competencia por prueba, cada una con los puntos de la fila | F3 |
-| S3 | La inscripción de una delegación a una competencia se crea sola al registrar su primer participante | F4 |
+| S3 | ~~La inscripción de una delegación a una competencia se crea sola al registrar su primer participante~~ Reemplazado por D25 (15/10) | F4 |
 | S4 | Desempate del puntaje general: más oros, luego platas, luego bronces | F6 |
 | S5 | Una delegación descalificada conserva sus premios en el detalle, pero va al final del puntaje general sin posición | F6 |
 | S6 | Puntualidad, Estudiantina y Danza se cargan en el catálogo como "actividades" (un deporte de formato ranking) para poder tener competencia y podio | F3 |

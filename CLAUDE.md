@@ -124,14 +124,16 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
    DELEGADO (titular o suplente) inscribe y retira a SU delegación en las disciplinas desde
    /inscripcion-disciplinas (`DelegationEnrollmentService::enroll()`/`withdraw()`), solo hasta
    `games_editions.registration_deadline` (incluido ese día); quien gestiona la olimpiada lo hace
-   siempre. Retirar exige plantel vacío. También nacen al registrar el primer participante
-   (`SeasonTeamService::ensureFor()`, que exige delegación inscrita y no retirada ni
-   descalificada), con el mismo cierre. Una inscripción desactivada por el organizador solo la
-   reactiva él. Categoría, estado y retiro con historial: ORGANIZADOR o ADMIN en /inscripciones
+   siempre. Retirar exige plantel vacío. **Es la única puerta (D25, para todos los roles)**: el
+   plantel ya NO crea inscripciones; `SeasonTeamService::ensureFor()` (exige delegación inscrita
+   y no retirada ni descalificada) solo lo llama `enroll()`. Una inscripción desactivada por el
+   organizador solo la reactiva él. Categoría, estado y retiro con historial: ORGANIZADOR o ADMIN en /inscripciones
    (`SeasonTeamPolicy`, `SeasonTeamService`).
 5. **Participantes en el plantel (`SeasonTeamPlayer`)**: los inscribe el DELEGADO (titular o
    suplente) eligiendo competencia y delegación
-   (`SeasonTeamPlayerService::registerInCompetition()`, que autoriza con `canRegisterFor()`;
+   (`SeasonTeamPlayerService::registerInCompetition()`, que autoriza con `canRegisterFor()` y
+   exige la inscripción ACTIVA de la delegación en esa disciplina, D25; los selects de /planteles
+   solo ofrecen esas disciplinas y delegaciones: `competitionsFor()`/`delegationsFor()`;
    en lote con `registerMany()`, que pasa a cada uno por el mismo camino, y camiseta, posición y
    capitán en línea con `updateInline()`, D23),
    y nunca en delegaciones ajenas. El organizador de la olimpiada y el admin conservan acceso de supervisión

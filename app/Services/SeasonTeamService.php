@@ -68,11 +68,10 @@ class SeasonTeamService
     }
 
     /**
-     * Inscripcion de la delegacion en la competencia, creada si no existe
-     * (S3: nace sola al registrar el primer participante). Exige que la
-     * delegacion este inscrita en la olimpiada y no retirada ni
-     * descalificada. No autoriza: quien llama ya decidio que el actor
-     * puede (SeasonTeamPlayerService::registerInCompetition()).
+     * Inscripcion de la delegacion en la competencia, creada si no existe.
+     * Exige que la delegacion este inscrita en la olimpiada y no retirada
+     * ni descalificada. No autoriza: quien llama ya decidio que el actor
+     * puede (DelegationEnrollmentService::enroll(), unica entrada).
      */
     public function ensureFor(Season $season, Team $team): SeasonTeam
     {
