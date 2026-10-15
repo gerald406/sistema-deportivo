@@ -6,62 +6,205 @@
         </div>
 
         @php
-            // Mismo boton arriba y en el panel vacio: una sola confirmacion.
+            // Mismo boton arriba y en el listado vacio: una sola confirmacion.
             $confirmAll = "Swal.fire({
                 title: 'Generar fases de todas las competencias',
-                text: 'Se crearán las fases estándar de cada competencia activa que aún no tenga fases. Las que ya tienen fases no se modifican.',
+                text: 'Se crearán las fases estándar de cada competencia activa de esta olimpiada que aún no tenga fases. Las que ya tienen fases no se modifican.',
                 icon: 'question', showCancelButton: true,
                 confirmButtonText: 'Generar', cancelButtonText: 'Cancelar', confirmButtonColor: '#059669',
             }).then((r) => { if (r.isConfirmed) \$wire.createStandardForAll() })";
         @endphp
 
-        <div class="flex flex-wrap gap-2">
-            <button type="button" x-on:click="{{ $confirmAll }}"
-                    class="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600">
-                <i class="fa-solid fa-layer-group"></i> Generar fases de todas
-            </button>
-            @if ($season)
-                <x-export-button />
-                @if ($stages->isEmpty())
-                    <button wire:click="createStandard" type="button"
-                            class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> Crear fases estándar
+        @if ($edition)
+            <div class="flex flex-wrap gap-2">
+                <button type="button" x-on:click="{{ $confirmAll }}"
+                        class="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600">
+                    <i class="fa-solid fa-layer-group"></i> Generar fases de todas
+                </button>
+                @if ($season)
+                    @if ($stages->isEmpty())
+                        <button wire:click="createStandard" type="button"
+                                class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Crear fases estándar
+                        </button>
+                    @endif
+                    <button wire:click="create" type="button"
+                            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                        <i class="fa-solid fa-plus"></i> Nueva fase
                     </button>
                 @endif
-                <button wire:click="create" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                    <i class="fa-solid fa-plus"></i> Nueva fase
-                </button>
-            @endif
-        </div>
+            </div>
+        @endif
     </div>
 
-    {{-- Selector de competencia --}}
+    <x-edition-picker :options="$this->editionOptions()" />
+
+    @if (! $edition)
+        <div class="rounded-xl bg-white p-10 text-center text-gray-400 shadow-sm ring-1 ring-gray-900/5">
+            No tienes ninguna olimpiada a tu cargo.
+        </div>
+    @else
+
+    {{-- Selector de competencia: vacio = listado de todas las fases --}}
     <div class="flex flex-col gap-2 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 sm:flex-row sm:items-center">
         <label for="stage-season" class="text-sm font-medium text-gray-700">
             <i class="fa-solid fa-medal mr-1 text-amber-500"></i> Competencia
         </label>
         <select id="stage-season" wire:model.live="seasonId"
                 class="flex-1 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">Selecciona una competencia</option>
-            @foreach ($this->seasonOptions()->groupBy(fn ($s) => $s->gamesEdition->name) as $editionName => $group)
-                <optgroup label="{{ $editionName }}">
-                    @foreach ($group as $option)
-                        <option value="{{ $option->id }}">{{ $option->name }}</option>
-                    @endforeach
-                </optgroup>
+            <option value="">Todas las competencias (listado de fases)</option>
+            @foreach ($this->seasonOptions() as $option)
+                <option value="{{ $option->id }}">{{ $option->name }}</option>
             @endforeach
         </select>
+        @if ($season)
+            <button type="button" wire:click="backToList" class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50">
+                <i class="fa-solid fa-arrow-left"></i> Volver al listado
+            </button>
+            <x-export-button />
+        @endif
     </div>
 
     @if (! $season)
-        <div class="rounded-xl bg-white p-10 text-center shadow-sm ring-1 ring-gray-900/5">
-            <p class="text-gray-500">Elige una competencia para ver sus fases, o crea de una vez las fases estándar de todas las que aún no tienen.</p>
-            <button type="button" x-on:click="{{ $confirmAll }}"
-                    class="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600">
-                <i class="fa-solid fa-layer-group"></i> Generar fases de todas las competencias
-            </button>
+        {{-- Filtros del listado --}}
+        <div class="grid grid-cols-1 gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="relative sm:col-span-2">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" wire:model.live.debounce.400ms="search" placeholder="Buscar competencia o fase..."
+                       class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+            <select wire:model.live="sportFilter" class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Todos los deportes</option>
+                @foreach ($filterSports as $sport)
+                    <option value="{{ $sport->id }}">{{ $sport->name }}</option>
+                @endforeach
+            </select>
+            <select wire:model.live="categoryFilter" class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Todos los niveles</option>
+                @foreach ($filterCategories as $category)
+                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                @endforeach
+            </select>
+            <select wire:model.live="genderFilter" class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Damas y varones</option>
+                @foreach ($this->genderOptions() as $option)
+                    <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                @endforeach
+            </select>
+            <select wire:model.live="modeFilter" class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Todos los modos</option>
+                @foreach ($this->modeOptions() as $option)
+                    <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                @endforeach
+            </select>
+            <select wire:model.live="groupFilter" class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Todas las series</option>
+                @foreach ($this->editionGroupOptions() as $group)
+                    <option value="{{ $group->id }}">{{ $group->name }}</option>
+                @endforeach
+                <option value="none">Sin serie (finales)</option>
+            </select>
+            <select wire:model.live="progressFilter" class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Cualquier avance</option>
+                @foreach ($this->progressOptions() as $value => $label)
+                    <option value="{{ $value }}">{{ $label }}</option>
+                @endforeach
+            </select>
+            <div class="flex gap-3 sm:col-span-2 lg:col-span-1">
+                <select wire:model.live="perPage" class="flex-1 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="10">10 por página</option>
+                    <option value="15">15 por página</option>
+                    <option value="25">25 por página</option>
+                    <option value="50">50 por página</option>
+                </select>
+                <x-export-button />
+            </div>
         </div>
+
+        {{-- Listado de fases --}}
+        <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
+            <div class="overflow-x-auto">
+                <table class="w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <x-sortable-th field="season_name" label="Competencia" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                            <x-sortable-th field="name" label="Fase" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                            <x-sortable-th field="mode" label="Modo" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Serie</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Clasif.</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">3.er puesto</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Avance</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Podio</th>
+                            <th class="px-4 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse ($allStages as $row)
+                            <tr wire:key="row-{{ $row->id }}">
+                                <td class="px-4 py-3">
+                                    <p class="font-medium text-gray-900">{{ $row->season->name }}</p>
+                                    <p class="text-xs text-gray-400">{{ $row->season->sport->name }}{{ $row->season->discipline ? ' — '.$row->season->discipline->name : '' }}</p>
+                                </td>
+                                <td class="px-4 py-3 text-gray-700">{{ $row->name }}</td>
+                                <td class="px-4 py-3">
+                                    <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $row->mode === \App\Enums\StageMode::Matches ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700' }}">
+                                        {{ $row->mode->label() }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-gray-600">{{ $row->group?->name ?? '—' }}</td>
+                                <td class="px-4 py-3 text-gray-600">{{ $row->qualifiers ?? '—' }}</td>
+                                <td class="px-4 py-3 text-gray-600">{{ $row->has_third_place ? 'Sí' : '—' }}</td>
+                                <td class="px-4 py-3 text-gray-600">{{ $this->progressLabel($row) }}</td>
+                                <td class="px-4 py-3 text-xs text-gray-600">
+                                    @forelse ($row->results as $result)
+                                        <span class="block">{{ $result->place }}.º {{ $result->team?->name }}</span>
+                                    @empty
+                                        —
+                                    @endforelse
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <button type="button" wire:click="openSeason({{ $row->season_id }})"
+                                            class="text-sm font-medium text-indigo-600 hover:text-indigo-500">Abrir</button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="9" class="px-4 py-10 text-center text-gray-400">
+                                    <p>No hay fases que coincidan con el filtro.</p>
+                                    <button type="button" x-on:click="{{ $confirmAll }}"
+                                            class="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600">
+                                        <i class="fa-solid fa-layer-group"></i> Generar fases de todas las competencias
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="border-t border-gray-100 px-4 py-3">
+                {{ $allStages->links() }}
+            </div>
+        </div>
+
+        {{-- Lo que falta: competencias activas sin fases --}}
+        @php($missing = $this->seasonsWithoutStages())
+        @if ($missing->isNotEmpty())
+            <div class="rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200">
+                <p class="text-sm font-semibold text-amber-800">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                    {{ $missing->count() }} {{ $missing->count() === 1 ? 'competencia activa no tiene' : 'competencias activas no tienen' }} fases
+                </p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @foreach ($missing as $item)
+                        <button type="button" wire:key="missing-{{ $item->id }}" wire:click="openSeason({{ $item->id }})"
+                                class="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
+                            {{ $item->name }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     @else
         <div class="space-y-4">
             @forelse ($stages as $stage)
@@ -161,6 +304,8 @@
                 </div>
             @endforelse
         </div>
+    @endif
+
     @endif
 
     {{-- Modal crear/editar fase --}}

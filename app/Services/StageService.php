@@ -11,6 +11,7 @@ use App\Enums\StandardStages;
 use App\Models\GamesEditionGroup;
 use App\Models\Season;
 use App\Models\SeasonStage;
+use App\Models\Sport;
 use App\Models\User;
 use App\Support\SeasonAccess;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -176,7 +177,10 @@ class StageService
     {
         $season->loadMissing('sport', 'discipline');
 
-        return $season->sport->standard_stages
+        // Se lee de la BD y no de $season->sport: quien llama puede haber
+        // cargado el deporte con columnas parciales (p. ej.
+        // SeasonAccess::manageableSeasons()) y el dato llegaria vacio.
+        return Sport::whereKey($season->sport_id)->first(['id', 'standard_stages'])?->standard_stages
             ?? StandardStages::forFormat($this->matches->formatFor($season, $season->discipline));
     }
 

@@ -184,6 +184,10 @@ class StandardStagesTest extends TestCase
 
         $this->assertSame(5, $chess->stages()->count());
         $this->assertSame(5, $football->stages()->count());
+
+        // El boton respeta las fases estandar del deporte (ajedrez: podio), no solo el formato.
+        $this->assertSame([StageMode::DirectPodium], $chess->stages()->pluck('mode')->unique()->values()->all());
+        $this->assertSame([StageMode::Matches], $football->stages()->pluck('mode')->unique()->values()->all());
         $this->assertSame(['Mi fase'], $athletics->stages()->pluck('name')->all());
         $this->assertSame(0, $inactive->stages()->count());
         $this->assertSame(0, $closed->stages()->count());
