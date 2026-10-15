@@ -122,6 +122,14 @@
                 </div>
 
                 <div>
+                    <label class="block text-sm font-medium text-gray-700">Director(a) de la institución <span class="font-normal text-gray-400">(opcional)</span></label>
+                    <input type="text" wire:model="form.director_name" placeholder="Ej: Mg. Ana Quispe Mamani"
+                           class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <p class="mt-1 text-xs text-gray-400">Sale impreso bajo su firma en la ficha de inscripción general.</p>
+                    @error('form.director_name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
                     <label class="block text-sm font-medium text-gray-700">Escudo / logo</label>
                     <div class="mt-2 flex items-center gap-4">
                         @if ($newLogo)

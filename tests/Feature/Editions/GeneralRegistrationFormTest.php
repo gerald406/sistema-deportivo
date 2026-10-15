@@ -1,0 +1,167 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Editions;
+
+use App\Livewire\PlayerRegistrationSelector;
+use App\Livewire\Teams\Index as TeamsIndex;
+use App\Models\GamesEdition;
+use App\Models\Season;
+use App\Models\SeasonTeam;
+use App\Models\Team;
+use App\Models\User;
+use App\Services\GeneralRegistrationFormService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Tests\Concerns\BuildsCompetition;
+use Tests\Concerns\CreatesActors;
+use Tests\TestCase;
+
+/** D21: ficha de inscripcion general por delegacion y disciplina (bases VII.c y VII.d). */
+class GeneralRegistrationFormTest extends TestCase
+{
+    use BuildsCompetition, CreatesActors, RefreshDatabase;
+
+    private User $organizer;
+
+    private User $delegate;
+
+    private GamesEdition $edition;
+
+    private Team $team;
+
+    private SeasonTeam $football;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->organizer = $this->organizer();
+        $this->edition = GamesEdition::factory()->create(['organizer_id' => $this->organizer->id, 'start_date' => '2026-10-28']);
+        $this->delegate = $this->delegate(['name' => 'Delegado Titular']);
+        $this->team = Team::factory()->create(['name' => 'IESP Yunguyo', 'director_name' => 'Mg. Ana Quispe']);
+        $this->registerDelegation($this->edition, $this->team, $this->delegate, $this->delegate(['name' => 'Delegada Accesitaria']));
+
+        $this->football = $this->enrollment('Fútbol Libre Varones');
+    }
+
+    private function enrollment(string $name, ?Team $team = null): SeasonTeam
+    {
+        $season = Season::firstOrCreate(
+            ['games_edition_id' => $this->edition->id, 'name' => $name],
+            Season::factory()->make(['games_edition_id' => $this->edition->id, 'name' => $name])->getAttributes(),
+        );
+
+        return SeasonTeam::create(['season_id' => $season->id, 'team_id' => ($team ?? $this->team)->id, 'is_active' => true]);
+    }
+
+    public function test_form_lists_the_whole_roster_with_two_signatures_and_the_declaration(): void
+    {
+        $this->rosterEntry($this->football, 9, ['last_name' => 'Zapana', 'first_name' => 'Luis', 'birth_date' => '1990-12-31']);
+        $this->rosterEntry($this->football, 10, ['last_name' => 'Apaza', 'first_name' => 'Juan', 'birth_date' => '1980-01-01']);
+        $this->rosterEntry($this->football, 11, ['last_name' => 'Baja', 'first_name' => 'Pedro'])->update(['status' => 'inactive']);
+
+        $form = app(GeneralRegistrationFormService::class)->prepare($this->football);
+
+        // Por apellidos, sin los dados de baja; edad por ano de nacimiento (2026 - 1990).
+        $this->assertSame(['APAZA, Juan', 'ZAPANA, Luis'], $form['participants']->pluck('name')->all());
+        $this->assertSame(36, $form['participants'][1]['age']);
+        $this->assertSame(['Delegado Titular', 'Delegada Accesitaria', 'Mg. Ana Quispe'], [$form['delegateName'], $form['substituteName'], $form['directorName']]);
+
+        $response = $this->actingAs($this->delegate)->get(route('registrations.general', $this->football))->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+    }
+
+    public function test_view_renders_two_copies_and_only_the_two_signatures(): void
+    {
+        $this->rosterEntry($this->football, 9, ['last_name' => 'Apaza']);
+        $form = app(GeneralRegistrationFormService::class)->prepare($this->football);
+
+        $html = view('reports.pdf.ficha-general', ['forms' => collect([$form])])->render();
+
+        $this->assertSame(2, substr_count($html, 'class="sheet"'));
+        $this->assertStringContainsString('ORIGINAL', $html);
+        $this->assertStringContainsString('COPIA', $html);
+        $this->assertStringContainsString('Declaración jurada de la Dirección', $html);
+        // Dos firmas por copia: delegado y director(a).
+        $this->assertSame(4, substr_count($html, 'class="sign-role"'));
+        $this->assertStringContainsString('Mg. Ana Quispe', $html);
+        $this->assertStringNotContainsString('Firma del Participante', $html);
+    }
+
+    public function test_only_its_delegation_and_the_organization_print_it(): void
+    {
+        $this->rosterEntry($this->football, 9);
+        $url = route('registrations.general', $this->football);
+
+        foreach ([$this->delegate, $this->organizer, $this->admin()] as $allowed) {
+            $this->actingAs($allowed)->get($url)->assertOk();
+        }
+
+        // Delegado de otra delegacion de la misma olimpiada, y organizador ajeno.
+        $other = $this->delegate();
+        $this->registerDelegation($this->edition, Team::factory()->create(), $other);
+
+        foreach ([$other, $this->organizer()] as $stranger) {
+            $this->actingAs($stranger)->get($url)->assertForbidden();
+        }
+    }
+
+    public function test_empty_roster_has_no_form(): void
+    {
+        $this->actingAs($this->delegate)->get(route('registrations.general', $this->football))->assertNotFound();
+    }
+
+    public function test_all_forms_of_a_delegation_in_one_pdf(): void
+    {
+        $this->rosterEntry($this->football, 9);
+        $volley = $this->enrollment('Vóley Libre Varones');
+        $this->rosterEntry($volley, 4);
+        $this->enrollment('Ajedrez Libre Varones'); // sin plantel: no sale
+
+        $this->assertSame(
+            ['Fútbol Libre Varones', 'Vóley Libre Varones'],
+            app(GeneralRegistrationFormService::class)->seasonTeamsOf($this->edition, $this->team)->pluck('season.name')->all(),
+        );
+
+        $url = route('registrations.general.delegation', [$this->edition, $this->team]);
+        $this->actingAs($this->delegate)->get($url)->assertOk();
+
+        $other = $this->delegate();
+        $this->registerDelegation($this->edition, Team::factory()->create(), $other);
+        $this->actingAs($other)->get($url)->assertForbidden();
+    }
+
+    public function test_selector_offers_the_general_forms_of_the_delegation(): void
+    {
+        $this->rosterEntry($this->football, 9);
+        $this->enrollment('Ajedrez Libre Varones');
+
+        $groups = Livewire::actingAs($this->delegate)->test(PlayerRegistrationSelector::class)
+            ->set('gamesEditionId', (string) $this->edition->id)
+            ->assertSee('Fichas de inscripción general por disciplina')
+            ->assertSee(route('registrations.general.delegation', [$this->edition, $this->team]), false)
+            ->instance()->generalForms();
+
+        $this->assertSame([$this->team->id], $groups->keys()->all());
+        $this->assertSame(['Fútbol Libre Varones'], $groups[$this->team->id]->pluck('season.name')->all());
+    }
+
+    public function test_organizer_records_the_director_on_the_delegation(): void
+    {
+        Livewire::actingAs($this->admin())->test(TeamsIndex::class)
+            ->call('edit', $this->team->id)
+            ->assertSet('form.director_name', 'Mg. Ana Quispe')
+            ->set('form.director_name', '  Dr. Luis Mamani ')
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertSame('Dr. Luis Mamani', $this->team->refresh()->director_name);
+
+        Livewire::actingAs($this->admin())->test(TeamsIndex::class)
+            ->call('edit', $this->team->id)
+            ->set('form.director_name', '')
+            ->call('save');
+        $this->assertNull($this->team->refresh()->director_name);
+    }
+}

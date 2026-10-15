@@ -41,6 +41,9 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
    (`PlayerResolutionController`, autoriza `PlayerPolicy::view`). La suben el delegado que
    gestiona al participante mientras los documentos no estén verificados, y el organizador o el
    admin siempre (`PlayerRegistrationService::attachResolution()`/`canManageResolution()`).
+   **Ficha de inscripción GENERAL** por delegación y disciplina (D21, bases VII.c/VII.d):
+   `GeneralRegistrationFormService` + `reports.pdf.ficha-general`, por duplicado, con la
+   declaración jurada; firman solo el delegado y el director(a) (`teams.director_name`).
 7. **Reglas de plantel = datos.** Género, edad por AÑO de nacimiento (año de la olimpiada − año
    de nacimiento ≥ edad mínima del nivel; sin edad máxima), tope de plantel y "una sola
    delegación por olimpiada" salen de la competencia (`seasons.category_id`, `seasons.gender`) y

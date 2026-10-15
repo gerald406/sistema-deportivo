@@ -100,6 +100,10 @@
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
+                                    <a href="{{ route('registrations.general', $seasonTeam) }}" target="_blank" rel="noopener"
+                                       class="text-gray-400 hover:text-indigo-600" title="Ficha de inscripción general (PDF)">
+                                        <i class="fa-solid fa-file-pdf"></i>
+                                    </a>
                                     @can('update', $seasonTeam)
                                         <button wire:click="edit({{ $seasonTeam->id }})" class="text-gray-400 hover:text-indigo-600" title="Editar">
                                             <i class="fa-solid fa-pen"></i>

@@ -5,7 +5,7 @@
             <i class="fa-solid fa-file-signature text-indigo-600"></i>
             Fichas de Inscripción
         </h1>
-        <p class="mt-1 text-sm text-gray-500">Selecciona participantes del plantel de una competencia para generar sus fichas de inscripción en PDF.</p>
+        <p class="mt-1 text-sm text-gray-500">La ficha general (una por disciplina, con la lista del plantel) es la que piden las bases; solo la firman el delegado y el director(a). Las fichas individuales quedan como opción.</p>
     </div>
 
     <div class="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-md sm:p-6">
@@ -44,6 +44,41 @@
             </div>
         </div>
     </div>
+
+    {{-- Fichas generales por disciplina (D21): lo principal --}}
+    @if ($gamesEditionId !== '')
+        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md">
+            <div class="border-b bg-gray-50 px-4 py-3">
+                <h2 class="text-sm font-semibold text-gray-800"><i class="fa-solid fa-list-check mr-1 text-indigo-600"></i> Fichas de inscripción general por disciplina</h2>
+                <p class="text-xs text-gray-500">Una ficha por disciplina con todo el plantel, por duplicado y con la declaración jurada de la Dirección. Firman solo el delegado y el director(a).</p>
+            </div>
+            <div class="divide-y divide-gray-100">
+                @forelse ($this->generalForms() as $teamId => $seasonTeams)
+                    <div wire:key="general-{{ $teamId }}" class="px-4 py-3">
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p class="font-medium text-gray-900">{{ $seasonTeams->first()->team->name }}</p>
+                            <a href="{{ route('registrations.general.delegation', [$gamesEditionId, $teamId]) }}" target="_blank" rel="noopener"
+                               class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
+                                <i class="fa-solid fa-file-pdf"></i> Todas las fichas ({{ $seasonTeams->count() }} {{ $seasonTeams->count() === 1 ? 'disciplina' : 'disciplinas' }})
+                            </a>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            @foreach ($seasonTeams as $seasonTeam)
+                                <a href="{{ route('registrations.general', $seasonTeam) }}" target="_blank" rel="noopener" wire:key="general-st-{{ $seasonTeam->id }}"
+                                   class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100">
+                                    {{ $seasonTeam->season->name }} <span class="text-indigo-400">· {{ $seasonTeam->participants_count }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @empty
+                    <p class="px-4 py-6 text-center text-sm text-gray-400">Aún no hay planteles con participantes en esta olimpiada.</p>
+                @endforelse
+            </div>
+        </div>
+
+        <h2 class="text-sm font-semibold text-gray-700">Fichas individuales <span class="font-normal text-gray-400">(opcional: elige competencia y participantes)</span></h2>
+    @endif
 
     @if ($seasonId !== '')
         {{-- POST a una pestaña nueva con los ids elegidos (mismo patrón que la referencia):
