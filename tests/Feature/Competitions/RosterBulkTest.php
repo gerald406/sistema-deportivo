@@ -166,9 +166,13 @@ class RosterBulkTest extends TestCase
 
     public function test_bulk_works_straight_from_planteles_choosing_discipline_and_delegation(): void
     {
-        // Otra disciplina en la que la delegacion aun no esta inscrita.
+        // Otra disciplina que la delegacion marco en Inscripcion por disciplina, y una que no.
         $futsal = Season::factory()->create([
             'games_edition_id' => $this->edition->id, 'gender' => 'F', 'name' => 'Futsal Libre Damas', 'status' => 'active',
+        ]);
+        $marked = SeasonTeam::create(['season_id' => $futsal->id, 'team_id' => $this->team->id, 'is_active' => true]);
+        $unmarked = Season::factory()->create([
+            'games_edition_id' => $this->edition->id, 'gender' => 'F', 'name' => 'Básquet Libre Damas', 'status' => 'active',
         ]);
         $a = $this->woman('Apaza');
 
@@ -177,6 +181,7 @@ class RosterBulkTest extends TestCase
             ->call('openBulk')
             ->assertSet('bulkSeasonId', '')
             ->assertSee('Elige la disciplina y la delegación');
+        $this->assertNotContains($unmarked->id, $screen->instance()->bulkSeasonOptions()->pluck('id'));
 
         // Con una sola delegacion posible, se elige sola al elegir la disciplina.
         $screen->set('bulkSeasonId', (string) $futsal->id)->assertSet('bulkTeamId', (string) $this->team->id);
@@ -184,10 +189,9 @@ class RosterBulkTest extends TestCase
 
         $screen->set('bulkSelected', [(string) $a->id])->call('addSelected')->assertDispatched('toast', type: 'success');
 
-        // Se inscribio en la disciplina con su primer participante y la tabla pasa a ese plantel.
-        $seasonTeam = SeasonTeam::where('season_id', $futsal->id)->where('team_id', $this->team->id)->sole();
-        $this->assertSame([$a->id], $seasonTeam->roster()->pluck('player_id')->all());
-        $screen->assertSet('seasonTeamFilter', (string) $seasonTeam->id);
+        // Entra al plantel de esa disciplina y la tabla pasa a ese plantel.
+        $this->assertSame([$a->id], $marked->roster()->pluck('player_id')->all());
+        $screen->assertSet('seasonTeamFilter', (string) $marked->id);
 
         // Una disciplina o delegacion ajena puesta a mano no se acepta.
         $foreignTeam = Team::factory()->create();

@@ -135,8 +135,8 @@ class DelegationEnrollmentService
      * Quien inscribe: los mismos que arman el plantel
      * (SeasonTeamPlayerService::canRegisterFor()); el delegado solo hasta
      * el cierre de inscripciones. Nadie en una competencia cerrada o
-     * inactiva. Tambien la usa registerInCompetition() cuando el primer
-     * participante crearia la inscripcion.
+     * inactiva. Es la unica puerta: el plantel ya no crea inscripciones
+     * (SeasonTeamPlayerService::registerInCompetition()).
      */
     public function ensureCanEnroll(User $actor, Season $season, Team $team): void
     {

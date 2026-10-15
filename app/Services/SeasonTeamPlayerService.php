@@ -8,6 +8,7 @@ use App\Enums\EditionTeamStatus;
 use App\Enums\SeasonStatus;
 use App\Enums\SeasonTeamPlayerStatus;
 use App\Models\EventParticipant;
+use App\Models\GamesEdition;
 use App\Models\GamesEditionTeam;
 use App\Models\Player;
 use App\Models\Season;
@@ -37,8 +38,10 @@ use Illuminate\Validation\ValidationException;
  * por olimpiada): son datos y las evalua RosterRuleService. Advierten por
  * defecto y solo bloquean si la fila del cuadro lo pide (D11).
  *
- * La inscripcion de la delegacion en la competencia (SeasonTeam) nace sola
- * al registrar su primer participante: registerInCompetition() (S3).
+ * La inscripcion de la delegacion en la competencia (SeasonTeam) NO nace
+ * aqui: se marca antes en Inscripcion por disciplina
+ * (DelegationEnrollmentService::enroll()). El plantel solo se arma en
+ * disciplinas inscritas y activas, para todos los roles.
  */
 class SeasonTeamPlayerService
 {
@@ -53,9 +56,10 @@ class SeasonTeamPlayerService
     }
 
     /**
-     * Agrega un participante al plantel de $team en $season, creando la
-     * inscripcion de la delegacion si aun no existe. Es la entrada del
-     * delegado: elige competencia y delegacion, no una inscripcion previa.
+     * Agrega un participante al plantel de $team en $season. La delegacion
+     * debe estar inscrita y activa en la disciplina (Inscripcion por
+     * disciplina): el plantel ya no abre disciplinas nuevas, para nadie.
+     * Es la entrada del delegado: elige competencia y delegacion.
      *
      * @param array{player_id: int, shirt_number?: int|null, position_id?: int|null, is_captain?: bool, status?: string, enrolled_at?: string, observations?: string|null} $data
      */
@@ -69,23 +73,26 @@ class SeasonTeamPlayerService
             throw ValidationException::withMessages(['form.season_id' => 'La competencia está cerrada: el plantel ya no se modifica.']);
         }
 
-        // Si este participante crearia la inscripcion en la disciplina, rige
-        // lo mismo que al inscribirla (D22): el delegado solo hasta el cierre.
-        if (! SeasonTeam::where('season_id', $season->id)->where('team_id', $team->id)->exists()) {
-            try {
-                app(DelegationEnrollmentService::class)->ensureCanEnroll($actor, $season, $team);
-            } catch (ValidationException $e) {
-                throw ValidationException::withMessages(['form.season_id' => $e->errors()['enrollment'] ?? $e->getMessage()]);
-            }
+        // Una delegacion retirada o descalificada no suma participantes aunque ya este inscrita.
+        $entry = GamesEditionTeam::where('games_edition_id', $season->games_edition_id)->where('team_id', $team->id)->first();
+
+        if ($entry?->status !== EditionTeamStatus::Registered) {
+            throw ValidationException::withMessages(['form.team_id' => 'La delegación está retirada o descalificada: no puede inscribir participantes.']);
         }
 
-        // Transaccion: si el participante es rechazado, la inscripcion de
-        // la delegacion recien creada no queda vacia.
-        return DB::transaction(function () use ($season, $team, $data, $actor) {
-            $seasonTeam = app(SeasonTeamService::class)->ensureFor($season, $team);
+        $seasonTeam = SeasonTeam::where('season_id', $season->id)->where('team_id', $team->id)->first();
 
-            return $this->register(['season_team_id' => $seasonTeam->id] + $data, $actor);
-        });
+        if ($seasonTeam === null) {
+            throw ValidationException::withMessages([
+                'form.season_id' => 'La delegación no está inscrita en esta disciplina: márcala primero en Inscripción por disciplina.',
+            ]);
+        }
+
+        if (! $seasonTeam->is_active) {
+            throw ValidationException::withMessages(['form.season_id' => 'La organización desactivó esta inscripción: consúltalo con el organizador.']);
+        }
+
+        return $this->register(['season_team_id' => $seasonTeam->id] + $data, $actor);
     }
 
     /**
@@ -207,57 +214,64 @@ class SeasonTeamPlayerService
     }
 
     /**
-     * Competencias abiertas en las que $actor puede armar planteles
-     * (union si tiene varios roles): admin, todas; organizador, las de sus
-     * olimpiadas; delegado, las de las olimpiadas donde tiene una
-     * delegacion inscrita.
+     * Competencias abiertas en las que $actor puede armar planteles: las que
+     * alguna delegacion a su alcance marco en Inscripcion por disciplina
+     * (season_team activo, delegacion inscrita en la olimpiada). Union si
+     * tiene varios roles: admin, todas las delegaciones; organizador, las de
+     * sus olimpiadas; delegado, las suyas.
      */
     public function competitionsFor(User $actor): Collection
     {
         return Season::query()
             ->where('status', '!=', SeasonStatus::Closed->value)
             ->where('is_active', true)
-            ->unless($actor->hasRole('admin'), fn ($q) => $q->whereHas('gamesEdition', function ($edition) use ($actor) {
-                $edition->where(function ($w) use ($actor) {
-                    $w->whereRaw('1 = 0');
-
-                    if ($actor->hasRole('organizador') && $actor->can('editions.manage')) {
-                        $w->orWhere('organizer_id', $actor->id);
-                    }
-
-                    if ($actor->hasRole('delegado') && $actor->can('players.manage')) {
-                        $w->orWhereHas('editionTeams', fn ($t) => $t
-                            ->where('status', EditionTeamStatus::Registered->value)
-                            ->where(fn ($d) => $d->where('delegate_id', $actor->id)->orWhere('substitute_delegate_id', $actor->id)));
-                    }
-                });
-            }))
+            ->whereExists(fn ($enrolled) => $this->enrolledDelegations($enrolled, $actor)->whereColumn('st.season_id', 'seasons.id'))
             ->with(['gamesEdition:id,name,organizer_id,start_date', 'event:id,min_players,max_players,rules_blocking'])
             ->orderBy('name')
             ->get();
     }
 
     /**
-     * Delegaciones para las que $actor puede armar plantel en $season:
-     * quien gestiona la olimpiada, todas las inscritas; el delegado, las
-     * suyas. Vacio si no le corresponde ninguna.
+     * Delegaciones para las que $actor puede armar plantel en $season: las
+     * inscritas y activas en esa disciplina; quien gestiona la olimpiada,
+     * todas; el delegado, las suyas. Vacio si no le corresponde ninguna.
      */
     public function delegationsFor(User $actor, Season $season): Collection
     {
-        $season->loadMissing('gamesEdition');
-        $manages = $season->gamesEdition && $this->editions->manages($actor, $season->gamesEdition);
-
-        if (! $manages && ! ($actor->hasRole('delegado') && $actor->can('players.manage'))) {
-            return collect();
-        }
-
         return Team::query()
-            ->whereHas('editionTeams', fn ($t) => $t
-                ->where('games_edition_id', $season->games_edition_id)
-                ->where('status', EditionTeamStatus::Registered->value)
-                ->unless($manages, fn ($q) => $q->where(fn ($d) => $d->where('delegate_id', $actor->id)->orWhere('substitute_delegate_id', $actor->id))))
+            ->whereExists(fn ($enrolled) => $this->enrolledDelegations($enrolled, $actor)
+                ->where('st.season_id', $season->id)
+                ->whereColumn('st.team_id', 'teams.id'))
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    /**
+     * Inscripciones activas (alias st) de delegaciones habilitadas en la
+     * olimpiada de su competencia que $actor puede armar: misma regla que
+     * canRegisterFor(), en SQL.
+     */
+    private function enrolledDelegations($query, User $actor)
+    {
+        return $query->selectRaw('1')
+            ->from('season_team as st')
+            ->join('seasons as st_season', 'st_season.id', '=', 'st.season_id')
+            ->join('games_edition_teams as st_entry', fn ($j) => $j
+                ->on('st_entry.team_id', '=', 'st.team_id')
+                ->on('st_entry.games_edition_id', '=', 'st_season.games_edition_id'))
+            ->where('st.is_active', true)
+            ->where('st_entry.status', EditionTeamStatus::Registered->value)
+            ->unless($actor->hasRole('admin'), fn ($q) => $q->where(function ($w) use ($actor) {
+                $w->whereRaw('1 = 0');
+
+                if ($actor->hasRole('organizador') && $actor->can('editions.manage')) {
+                    $w->orWhereIn('st_season.games_edition_id', GamesEdition::select('id')->where('organizer_id', $actor->id));
+                }
+
+                if ($actor->hasRole('delegado') && $actor->can('players.manage')) {
+                    $w->orWhere(fn ($d) => $d->where('st_entry.delegate_id', $actor->id)->orWhere('st_entry.substitute_delegate_id', $actor->id));
+                }
+            }));
     }
 
     /**

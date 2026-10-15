@@ -219,7 +219,7 @@
                         </select>
                         @error('form.season_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         @if ($competitions->isEmpty())
-                            <p class="mt-1 text-xs text-amber-700">No hay competencias abiertas para tus delegaciones. El organizador debe generarlas e inscribir tu delegación en la olimpiada.</p>
+                            <p class="mt-1 text-xs text-amber-700">Aún no hay disciplinas marcadas para tus delegaciones. Márcalas primero en <a href="{{ route('enrollment.index') }}" class="font-medium underline">Inscripción por disciplina</a>.</p>
                         @endif
                     </div>
 
@@ -368,9 +368,6 @@
                                 @if ($min && $current < $min)
                                     <p class="text-xs text-amber-700">Faltan {{ $min - $current }} para el mínimo ({{ $min }})</p>
                                 @endif
-                                @unless ($bulkSeasonTeam)
-                                    <p class="text-xs text-indigo-600">Aún no inscrita: se inscribe al agregar</p>
-                                @endunless
                             </div>
                         @endif
                     </div>
@@ -392,6 +389,9 @@
                             @endforeach
                         </select>
                     </div>
+                    @if ($this->bulkSeasonOptions()->isEmpty())
+                        <p class="mt-2 text-xs text-amber-700">Aún no hay disciplinas marcadas para tus delegaciones. Márcalas primero en <a href="{{ route('enrollment.index') }}" class="font-medium underline">Inscripción por disciplina</a>.</p>
+                    @endif
 
                     @if ($ready)
 

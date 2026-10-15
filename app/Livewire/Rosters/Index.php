@@ -33,8 +33,9 @@ use Livewire\WithPagination;
 
 /**
  * Planteles. Para agregar un participante se elige la COMPETENCIA y la
- * DELEGACION: la inscripcion de la delegacion en la competencia se crea
- * sola con el primer participante (SeasonTeamPlayerService::registerInCompetition()).
+ * DELEGACION, solo entre las disciplinas que la delegacion marco en
+ * Inscripcion por disciplina (SeasonTeamPlayerService::competitionsFor()):
+ * el plantel no inscribe disciplinas nuevas.
  */
 #[Layout('layouts.admin')]
 #[Title('Planteles')]
@@ -431,9 +432,9 @@ class Index extends Component
     }
 
     /**
-     * Agrega a los seleccionados. Si la delegacion aun no estaba inscrita en
-     * la disciplina, la inscribe el primero (registerInCompetition(), con el
-     * cierre de inscripciones). Despues, la tabla muestra ese plantel.
+     * Agrega a los seleccionados al plantel de la disciplina inscrita
+     * (registerMany() -> registerInCompetition()). Despues, la tabla
+     * muestra ese plantel.
      */
     public function addSelected(SeasonTeamPlayerService $service): void
     {

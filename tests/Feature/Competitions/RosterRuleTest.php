@@ -68,7 +68,10 @@ class RosterRuleTest extends TestCase
         }
     }
 
-    /** Competencia con su fila del cuadro. */
+    /**
+     * Competencia con su fila del cuadro. La delegacion de la prueba ya la
+     * marco en Inscripcion por disciplina (sin eso, el plantel no la admite).
+     */
     private function competition(string $level = 'Libre', ?string $gender = 'M', array $row = [], ?string $sportName = null): Season
     {
         $sport = Sport::factory()->create($sportName ? ['name' => $sportName, 'slug' => str($sportName)->slug()->value()] : []);
@@ -78,13 +81,16 @@ class RosterRuleTest extends TestCase
             'category_id' => $this->levels[$level]->id,
         ]);
 
-        return Season::factory()->create([
+        $season = Season::factory()->create([
             'games_edition_id' => $this->edition->id,
             'games_edition_event_id' => $event->id,
             'sport_id' => $sport->id,
             'category_id' => $this->levels[$level]->id,
             'gender' => $gender,
         ]);
+        SeasonTeam::create(['season_id' => $season->id, 'team_id' => $this->team->id, 'category_id' => $season->category_id, 'is_active' => true]);
+
+        return $season;
     }
 
     private function player(string $birthDate = '1990-05-10', ?string $gender = 'M', array $attributes = []): Player
@@ -326,16 +332,13 @@ class RosterRuleTest extends TestCase
         }
 
         $this->assertSame(0, SeasonTeamPlayer::count());
-        // La inscripcion de la delegacion tampoco queda creada a medias.
-        $this->assertSame(0, SeasonTeam::count());
 
         $this->assertNotNull($this->enroll($season, $this->player('1980-01-01'), actor: $this->delegate));
     }
 
-    public function test_first_participant_creates_the_delegation_entry(): void
+    public function test_participants_join_the_marked_discipline_entry(): void
     {
         $season = $this->competition();
-        $this->assertSame(0, SeasonTeam::count());
 
         $first = $this->enroll($season, $this->player(), actor: $this->delegate);
         $second = $this->enroll($season, $this->player(), actor: $this->delegate);
@@ -365,7 +368,7 @@ class RosterRuleTest extends TestCase
             }
         }
 
-        $this->assertSame(0, SeasonTeam::count());
+        $this->assertSame(0, SeasonTeam::whereIn('team_id', [$outsider->id, $retired->id, $disqualified->id])->count());
         $this->assertSame($this->team->id, $service->ensureFor($season, $this->team)->team_id);
     }
 
@@ -402,7 +405,6 @@ class RosterRuleTest extends TestCase
         }
 
         $this->assertSame(0, SeasonTeamPlayer::count());
-        $this->assertSame(0, SeasonTeam::count());
 
         // El suplente si puede.
         $substitute = $this->delegate();
@@ -507,6 +509,7 @@ class RosterRuleTest extends TestCase
         $foreign = Season::factory()->create(['name' => 'Competencia Ajena']);
         $otherTeam = Team::factory()->create();
         $this->registerDelegation($this->edition, $otherTeam);
+        SeasonTeam::create(['season_id' => $own->id, 'team_id' => $otherTeam->id, 'is_active' => true]);
 
         $component = Livewire::actingAs($this->delegate)->test(RostersIndex::class)->call('create');
 
