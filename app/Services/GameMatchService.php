@@ -72,6 +72,28 @@ class GameMatchService
         });
     }
 
+    /**
+     * Programacion de un partido desde /partidos (D24): jornada, fecha y
+     * hora, sede y estado (Programado/Cancelado). Competencia, disciplina,
+     * ronda, modalidad y participantes vienen de la llave (BracketService)
+     * y aqui no se tocan aunque lleguen en $data. Pasa por update() con los
+     * participantes actuales: mismas validaciones, sin reemplazarlos.
+     *
+     * @param array{matchday_id: int|string, venue_id?: int|string|null, scheduled_at?: string|null, status?: string} $data
+     */
+    public function schedule(GameMatch $match, array $data, User $actor): GameMatch
+    {
+        return $this->update($match, [
+            'matchday_id' => $data['matchday_id'],
+            'discipline_id' => $match->discipline_id,
+            'venue_id' => $data['venue_id'] ?? null,
+            'round_type' => $match->round_type->value,
+            'modality' => $match->modality?->value,
+            'scheduled_at' => $data['scheduled_at'] ?? null,
+            'status' => $data['status'] ?? $match->status->value,
+        ], $this->currentParticipants($match), $actor);
+    }
+
     public function update(GameMatch $match, array $data, array $participants, User $actor): GameMatch
     {
         $match->load('season.gamesEdition', 'season.sport');
