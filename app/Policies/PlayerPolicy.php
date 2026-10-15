@@ -68,6 +68,16 @@ class PlayerPolicy
     }
 
     /**
+     * Subir, reemplazar o quitar la resolucion (PDF). Misma regla que
+     * revalida PlayerRegistrationService::attachResolution(): el delegado
+     * solo mientras los documentos no esten verificados.
+     */
+    public function manageResolution(User $user, Player $player): bool
+    {
+        return app(PlayerRegistrationService::class)->canManageResolution($user, $player);
+    }
+
+    /**
      * Restriccion sobre season_team_player: planteles de una delegacion de
      * la que $user es delegado titular o suplente
      * (SeasonTeamPolicy::delegateConstraint(), la unica version SQL de

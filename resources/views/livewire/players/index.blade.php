@@ -29,6 +29,13 @@
             <option value="inactive">Inactivos</option>
         </select>
 
+        <select wire:model.live="resolutionFilter"
+                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <option value="">Con y sin resolución</option>
+            <option value="with">Con resolución (PDF)</option>
+            <option value="without">Sin resolución</option>
+        </select>
+
         <select wire:model.live="perPage"
                 class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="10">10 por página</option>
@@ -51,6 +58,7 @@
                         <x-sortable-th field="birth_date" label="Nacimiento" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Género / Condición</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Documentos</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Resolución</th>
                         <x-sortable-th field="is_active" label="Estado" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <th class="px-4 py-3"></th>
                     </tr>
@@ -88,6 +96,24 @@
                                 @endcan
                             </td>
                             <td class="px-4 py-3">
+                                <div class="flex items-center gap-2">
+                                    @if ($player->resolution_path)
+                                        <a href="{{ route('players.resolution', $player) }}" target="_blank" rel="noopener"
+                                           class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-700 hover:bg-sky-200"
+                                           title="Subida el {{ $player->resolution_uploaded_at?->format('d/m/Y H:i') }}">
+                                            <i class="fa-solid fa-file-pdf"></i> PDF
+                                        </a>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                                            <i class="fa-solid fa-triangle-exclamation"></i> Sin resolución
+                                        </span>
+                                    @endif
+                                    <button type="button" wire:click="openResolution({{ $player->id }})" class="text-gray-400 hover:text-indigo-600" title="Resolución">
+                                        <i class="fa-solid fa-paperclip"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
                                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
                                              {{ $player->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600' }}">
                                     {{ $player->is_active ? 'Activo' : 'Inactivo' }}
@@ -111,7 +137,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-10 text-center text-gray-400">No hay participantes que coincidan con el filtro.</td>
+                            <td colspan="9" class="px-4 py-10 text-center text-gray-400">No hay participantes que coincidan con el filtro.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -218,6 +244,15 @@
                     <p class="mt-1 text-xs text-gray-400">JPG, PNG o GIF. Máx 2MB.</p>
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Resolución de nombramiento o contrato <span class="font-normal text-gray-400">(PDF, opcional)</span></label>
+                    <input type="file" wire:model="newResolution" accept="application/pdf"
+                           class="mt-2 block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100">
+                    <div wire:loading wire:target="newResolution" class="mt-1 text-xs text-indigo-500">Cargando PDF...</div>
+                    @error('newResolution') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    <p class="mt-1 text-xs text-gray-400">Solo PDF, máx 5MB. Sirve para verificar la condición y atender reclamos. Si ya tiene una, se reemplaza.</p>
+                </div>
+
                 <label class="flex items-center gap-2">
                     <input type="checkbox" wire:model="form.is_active" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                     <span class="text-sm text-gray-700">Activo</span>
@@ -228,11 +263,77 @@
                         Cancelar
                     </button>
                     <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                        <span wire:loading.remove wire:target="save,newPhoto">Guardar</span>
-                        <span wire:loading wire:target="save,newPhoto"><i class="fa-solid fa-spinner fa-spin"></i> Guardando...</span>
+                        <span wire:loading.remove wire:target="save,newPhoto,newResolution">Guardar</span>
+                        <span wire:loading wire:target="save,newPhoto,newResolution"><i class="fa-solid fa-spinner fa-spin"></i> Guardando...</span>
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{-- Modal resolucion (PDF): lo usan el delegado y el organizador --}}
+    <div x-data="{ show: @entangle('showResolution') }" x-show="show" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div x-show="show" x-transition.opacity @click="$wire.closeResolution()" class="fixed inset-0 bg-gray-900/50"></div>
+
+        <div x-show="show" x-transition class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            @if ($resolutionPlayer = $this->resolutionPlayer())
+                <h2 class="text-lg font-semibold text-gray-900">Resolución</h2>
+                <p class="text-sm text-gray-500">{{ $resolutionPlayer->fullName() }} · DNI {{ $resolutionPlayer->dni }}</p>
+
+                <div class="mt-4 rounded-lg bg-gray-50 p-3 text-sm">
+                    @if ($resolutionPlayer->resolution_path)
+                        <a href="{{ route('players.resolution', $resolutionPlayer) }}" target="_blank" rel="noopener"
+                           class="inline-flex items-center gap-2 font-medium text-indigo-600 hover:text-indigo-500">
+                            <i class="fa-solid fa-file-pdf"></i> Ver resolución
+                        </a>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Subida el {{ $resolutionPlayer->resolution_uploaded_at?->format('d/m/Y H:i') }}
+                            por {{ $resolutionPlayer->resolutionUploader?->name ?? '—' }}
+                        </p>
+                    @else
+                        <p class="text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Aún no tiene resolución.</p>
+                    @endif
+                </div>
+
+                @can('manageResolution', $resolutionPlayer)
+                    <form wire:submit="saveResolution" class="mt-4 space-y-3">
+                        <input type="file" wire:model="resolutionFile" accept="application/pdf"
+                               class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100">
+                        <div wire:loading wire:target="resolutionFile" class="text-xs text-indigo-500">Cargando PDF...</div>
+                        @error('resolutionFile') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                        <p class="text-xs text-gray-400">Solo PDF, máx 5MB.</p>
+
+                        <div class="flex items-center justify-between gap-3 pt-2">
+                            @if ($resolutionPlayer->resolution_path)
+                                <button type="button" class="text-sm font-medium text-red-600 hover:text-red-500"
+                                        x-on:click="confirmDelete('la resolución', () => $wire.removeResolution())">
+                                    Quitar resolución
+                                </button>
+                            @else
+                                <span></span>
+                            @endif
+                            <div class="flex gap-3">
+                                <button type="button" wire:click="closeResolution" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">Cancelar</button>
+                                <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                                    {{ $resolutionPlayer->resolution_path ? 'Reemplazar' : 'Subir' }}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                @else
+                    <p class="mt-4 text-xs text-gray-500">
+                        @if ($resolutionPlayer->documents_verified_at)
+                            Los documentos ya están verificados: solo el organizador puede reemplazar la resolución.
+                        @else
+                            No puedes cambiar la resolución de este participante.
+                        @endif
+                    </p>
+                    <div class="mt-4 flex justify-end">
+                        <button type="button" wire:click="closeResolution" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">Cerrar</button>
+                    </div>
+                @endcan
+            @endif
         </div>
     </div>
 </div>

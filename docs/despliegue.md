@@ -124,6 +124,10 @@ Crea `storage/app/backups/respaldo-AAAA-MM-DD_HHMMSS.sql.gz` (estructura, datos 
 conserva los 14 más recientes (`BACKUP_KEEP`). Los respaldos tienen DNI y fechas de nacimiento:
 no se suben al repositorio ni se dejan en una carpeta pública.
 
+`db:backup` respalda solo la base de datos. Las **resoluciones en PDF** de los participantes viven
+en `storage/app/private/resolutions/` (fotos: `storage/app/public/players/`): copiarlas también
+al cerrar cada jornada. Tienen datos personales: nunca van a git ni a una carpeta pública.
+
 **Programación diaria a las 23:00** (hora del Perú; la aplicación usa `America/Lima`). Una de dos:
 
 ```cron

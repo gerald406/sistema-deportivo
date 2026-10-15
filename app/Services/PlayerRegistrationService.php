@@ -10,7 +10,10 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class PlayerRegistrationService
 {
@@ -22,6 +25,17 @@ class PlayerRegistrationService
     private const FORM_FIELDS = [
         'dni', 'first_name', 'last_name', 'birth_date', 'gender', 'staff_type', 'employment_type', 'photo_path', 'is_active',
     ];
+
+    /**
+     * Resolucion de nombramiento o contrato (PDF, D20). Va al disco PRIVADO:
+     * solo se descarga por la ruta players.resolution, que autoriza con
+     * PlayerPolicy::view (su delegacion, el organizador y el admin).
+     */
+    public const RESOLUTION_DISK = 'local';
+
+    public const RESOLUTION_DIR = 'resolutions';
+
+    public const RESOLUTION_MAX_KB = 5120;
 
     /**
      * @param array{dni: string, first_name: string, last_name: string, birth_date: string, gender?: string|null, staff_type?: string|null, employment_type?: string|null, is_active: bool} $data
@@ -107,7 +121,74 @@ class PlayerRegistrationService
             Storage::disk('public')->delete($player->photo_path);
         }
 
+        if ($player->resolution_path) {
+            Storage::disk(self::RESOLUTION_DISK)->delete($player->resolution_path);
+        }
+
         return true;
+    }
+
+    /**
+     * Quien sube, reemplaza o quita la resolucion:
+     *   - el admin y el organizador que verifica documentos, siempre;
+     *   - el delegado que gestiona al participante (PlayerPolicy::update),
+     *     solo mientras los documentos NO esten verificados: el archivo
+     *     verificado queda como evidencia para reclamos.
+     */
+    public function canManageResolution(User $actor, Player $player): bool
+    {
+        if ($this->canVerifyDocuments($actor, $player)) {
+            return true;
+        }
+
+        return $player->documents_verified_at === null && Gate::forUser($actor)->allows('update', $player);
+    }
+
+    /** Sube o reemplaza la resolucion. El archivo anterior se borra despues de guardar. */
+    public function attachResolution(Player $player, UploadedFile $file, User $actor): Player
+    {
+        if (! $this->canManageResolution($actor, $player)) {
+            throw new AuthorizationException($player->documents_verified_at
+                ? 'Los documentos ya están verificados: solo el organizador puede reemplazar la resolución.'
+                : 'No puedes cambiar la resolución de este participante.');
+        }
+
+        // Se revisa el contenido (no solo la extension) aunque el componente ya valide.
+        if ($file->getMimeType() !== 'application/pdf' || $file->getSize() > self::RESOLUTION_MAX_KB * 1024) {
+            throw ValidationException::withMessages(['newResolution' => 'La resolución debe ser un PDF de hasta 5 MB.']);
+        }
+
+        $previous = $player->resolution_path;
+        $path = $file->store(self::RESOLUTION_DIR, self::RESOLUTION_DISK);
+
+        $player->forceFill([
+            'resolution_path' => $path,
+            'resolution_uploaded_at' => now(),
+            'resolution_uploaded_by' => $actor->id,
+        ])->save();
+
+        if ($previous && $previous !== $path) {
+            Storage::disk(self::RESOLUTION_DISK)->delete($previous);
+        }
+
+        return $player;
+    }
+
+    public function removeResolution(Player $player, User $actor): Player
+    {
+        if (! $this->canManageResolution($actor, $player)) {
+            throw new AuthorizationException('No puedes quitar la resolución de este participante.');
+        }
+
+        $previous = $player->resolution_path;
+
+        $player->forceFill(['resolution_path' => null, 'resolution_uploaded_at' => null, 'resolution_uploaded_by' => null])->save();
+
+        if ($previous) {
+            Storage::disk(self::RESOLUTION_DISK)->delete($previous);
+        }
+
+        return $player;
     }
 
     /**

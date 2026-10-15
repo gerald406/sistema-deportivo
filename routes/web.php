@@ -3,6 +3,7 @@
 use App\Http\Controllers\ManagerialReportController;
 use App\Http\Controllers\PlayerCardController;
 use App\Http\Controllers\PlayerRegistrationController;
+use App\Http\Controllers\PlayerResolutionController;
 use App\Http\Controllers\RosterReportController;
 use App\Livewire\Admin\Roles\Index as AdminRolesIndex;
 use App\Livewire\Admin\Sports\Index as AdminSportsIndex;
@@ -61,6 +62,10 @@ Route::middleware([
 
     Route::get('/participantes', PlayersIndex::class)
         ->name('players.index');
+
+    // Resolucion (PDF) del participante: disco privado, autoriza PlayerPolicy::view.
+    Route::get('/participantes/{player}/resolucion', [PlayerResolutionController::class, 'show'])
+        ->name('players.resolution');
 
     Route::get('/olimpiadas', GamesEditionsIndex::class)
         ->name('games-editions.index');

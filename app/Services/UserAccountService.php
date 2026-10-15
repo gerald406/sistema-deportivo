@@ -101,6 +101,10 @@ class UserAccountService
             return 'No se puede eliminar: el usuario tiene reaperturas de partidos registradas. Desactívalo en su lugar.';
         }
 
+        if ($user->uploadedResolutions()->exists()) {
+            return 'No se puede eliminar: el usuario subió resoluciones de participantes (evidencia para reclamos). Desactívalo en su lugar.';
+        }
+
         try {
             $user->delete();
         } catch (QueryException) {
