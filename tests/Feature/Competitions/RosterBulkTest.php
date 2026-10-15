@@ -164,12 +164,44 @@ class RosterBulkTest extends TestCase
         app(SeasonTeamPlayerService::class)->registerMany($this->volley, $other, [$this->woman('Apaza')->id], $this->delegate);
     }
 
-    public function test_bulk_needs_a_chosen_roster(): void
+    public function test_bulk_works_straight_from_planteles_choosing_discipline_and_delegation(): void
     {
-        Livewire::actingAs($this->delegate)->test(RostersIndex::class)
-            ->assertDontSee('Agregar varios')
+        // Otra disciplina en la que la delegacion aun no esta inscrita.
+        $futsal = Season::factory()->create([
+            'games_edition_id' => $this->edition->id, 'gender' => 'F', 'name' => 'Futsal Libre Damas', 'status' => 'active',
+        ]);
+        $a = $this->woman('Apaza');
+
+        $screen = Livewire::actingAs($this->delegate)->test(RostersIndex::class)
+            ->assertSee('Agregar varios')
             ->call('openBulk')
-            ->assertNotFound();
+            ->assertSet('bulkSeasonId', '')
+            ->assertSee('Elige la disciplina y la delegación');
+
+        // Con una sola delegacion posible, se elige sola al elegir la disciplina.
+        $screen->set('bulkSeasonId', (string) $futsal->id)->assertSet('bulkTeamId', (string) $this->team->id);
+        $this->assertSame(['Apaza' => 'ok'], $this->states($screen));
+
+        $screen->set('bulkSelected', [(string) $a->id])->call('addSelected')->assertDispatched('toast', type: 'success');
+
+        // Se inscribio en la disciplina con su primer participante y la tabla pasa a ese plantel.
+        $seasonTeam = SeasonTeam::where('season_id', $futsal->id)->where('team_id', $this->team->id)->sole();
+        $this->assertSame([$a->id], $seasonTeam->roster()->pluck('player_id')->all());
+        $screen->assertSet('seasonTeamFilter', (string) $seasonTeam->id);
+
+        // Una disciplina o delegacion ajena puesta a mano no se acepta.
+        $foreignTeam = Team::factory()->create();
+        $this->registerDelegation($this->edition, $foreignTeam, $this->delegate());
+        $screen->set('bulkTeamId', (string) $foreignTeam->id);
+        $this->assertNull($screen->instance()->bulkTeam());
+        $this->assertCount(0, $screen->instance()->bulkCandidates());
+    }
+
+    public function test_filtered_roster_preloads_the_panel(): void
+    {
+        $this->screen()->call('openBulk')
+            ->assertSet('bulkSeasonId', (string) $this->volley->id)
+            ->assertSet('bulkTeamId', (string) $this->team->id);
     }
 
     public function test_inline_edits_shirt_position_and_captain(): void
