@@ -217,8 +217,10 @@ Las pruebas corren sobre MySQL en la base `laravel_pichangav2_test` (`phpunit.xm
 
 Producción (F7, parcial): guía en `docs/despliegue.md`. Respaldo con `php artisan db:backup`
 (`storage/app/backups/`, nunca en git: tiene datos personales). La aplicación corre en hora
-`America/Lima` y fuerza HTTPS cuando `APP_ENV=production`. Falta desplegar y el simulacro: están
-bloqueados hasta que el cliente elija hosting.
+`America/Lima` y fuerza HTTPS cuando `APP_ENV=production`. Publicado en CloudPanel
+(`yunguyo.canchita.pe`, 15/10/2026): los archivos deben ser del usuario del sitio y todo
+`php artisan` se corre como ese usuario, nunca como root (`docs/despliegue.md`, sección 4,
+variante C). Falta el simulacro.
 
 ## Rediseño "Ediciones flexibles" — diseño original (referencia historica)
 

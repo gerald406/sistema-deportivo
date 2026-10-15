@@ -9,11 +9,11 @@ Cuando se elija el hosting, completar la sección 1 y borrar la variante que no 
 | Dato | Valor |
 |---|---|
 | Proveedor y plan | _por definir_ |
-| Tipo | _compartido con cPanel / VPS_ |
-| Dominio o subdominio | _por definir_ |
+| Tipo | VPS Ubuntu con CloudPanel (ver sección 4, variante C) |
+| Dominio o subdominio | `yunguyo.canchita.pe` (usuario del sitio: `canchita-yunguyo`) |
 | Versión de PHP | _por definir_ (mínimo 8.2) |
 | MySQL o MariaDB y versión | _por definir_ (probado en MariaDB 10.4) |
-| ¿Acceso por SSH? | _por definir_ |
+| ¿Acceso por SSH? | Sí (root y usuario del sitio) |
 | ¿Tareas programadas (cron)? | _por definir_ |
 
 ## 2. Qué debe cumplir el hosting
@@ -64,6 +64,45 @@ composer install --no-dev --optimize-autoloader
    Si el plan no deja cambiar la raíz, copiar el contenido de `public/` a `public_html/` y
    editar en `public_html/index.php` las dos rutas `__DIR__.'/../'` para que apunten a
    `/home/usuario/sistema/`.
+
+**Variante C — CloudPanel (la que se usa en `yunguyo.canchita.pe`):**
+
+1. En la PC se arma un zip con `vendor/` (sin dependencias de desarrollo) y `public/build/` ya
+   compilados: en el servidor no hace falta Composer ni Node.
+2. En CloudPanel, el sitio usa PHP 8.2 o superior y su *Root Directory* apunta a `public`.
+3. Se sube el zip a `/home/canchita-yunguyo/htdocs/yunguyo.canchita.pe/` y se descomprime ahí.
+
+**El dueño de los archivos debe ser el usuario del sitio, no `root`.** PHP corre como
+`canchita-yunguyo`. Si el zip se descomprime o algún `php artisan` se corre como root, quedan
+carpetas de root donde PHP no puede escribir. Así pasó el 15/10/2026: las fotos no se guardaban
+(`storage/app/public/players` ni existía) y se veían rotas, aunque `storage:link` estaba bien y
+una prueba con `tinker` como root sí escribía.
+
+Estructura, dueño y permisos (como root; repetir el `chown` tras cada descompresión o copia):
+
+```bash
+cd /home/canchita-yunguyo/htdocs/yunguyo.canchita.pe
+
+mkdir -p storage/app/public/players storage/app/private/livewire-tmp storage/app/private/resolutions storage/app/backups
+mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+
+chown -R canchita-yunguyo:canchita-yunguyo /home/canchita-yunguyo/htdocs/yunguyo.canchita.pe
+find storage bootstrap/cache -type d -exec chmod 775 {} \;
+find storage bootstrap/cache -type f -exec chmod 664 {} \;
+```
+
+Todo `php artisan` se corre **como el usuario del sitio**: entrando por SSH con
+`canchita-yunguyo` o, desde root, con
+`su -s /bin/bash canchita-yunguyo -c "cd /home/canchita-yunguyo/htdocs/yunguyo.canchita.pe && php artisan ..."`.
+Si `php -v` no coincide con la versión del sitio, usar el binario explícito (`php8.3 artisan ...`).
+
+Comprobar:
+
+```bash
+ls -la public | grep storage      # storage -> .../storage/app/public
+ls -la storage/app                # dueño canchita-yunguyo, permisos drwxrwxr-x
+ls storage/app/public/players     # aquí aparecen las fotos subidas
+```
 
 ## 5. Configurar el `.env`
 
@@ -174,6 +213,26 @@ php artisan up
 Si cambió algo de la interfaz, subir también `public/build/`. Nunca `migrate:fresh` ni
 `migrate:refresh` en producción: borran todo.
 
+En CloudPanel, con un zip nuevo (como root):
+
+```bash
+cd /home/canchita-yunguyo/htdocs/yunguyo.canchita.pe
+unzip -o sistema-deportivo-produccion-AAAA-MM-DD.zip -d .     # no toca .env ni storage/app
+chown -R canchita-yunguyo:canchita-yunguyo /home/canchita-yunguyo/htdocs/yunguyo.canchita.pe
+
+su -s /bin/bash canchita-yunguyo -c "cd /home/canchita-yunguyo/htdocs/yunguyo.canchita.pe && \
+  php artisan down && \
+  php artisan db:backup && \
+  php artisan migrate --force && \
+  php artisan storage:link; \
+  php artisan optimize:clear && \
+  php artisan optimize && \
+  php artisan up"
+```
+
+`storage:link` responde "already exists" si el enlace ya está: por eso va con `;` y no corta
+la cadena.
+
 ## 9. Comprobaciones después de publicar
 
 | # | Comprobar | Si falla |
@@ -182,7 +241,7 @@ Si cambió algo de la interfaz, subir también `public/build/`. Nunca `migrate:f
 | 2 | `https://dominio/.env` y `https://dominio/storage/app/backups/` dan 404 o 403 | El dominio no apunta a `public/`: corregirlo de inmediato |
 | 3 | `https://dominio/up` responde | Revisar `storage/logs/laravel.log` |
 | 4 | Entrar con el admin inicial y **cambiar su contraseña** | Revisar `ADMIN_EMAIL` y `ADMIN_PASSWORD` y volver a sembrar |
-| 5 | Subir la foto de un participante y verla | Falta `storage:link` o permisos en `storage/` |
+| 5 | Subir la foto de un participante y verla | Falta `storage:link`, o `storage/` es de root: `chown` al usuario del sitio (sección 4, variante C). Si la subida da 401: `APP_URL` exacto con https y `TRUSTED_PROXIES=*` |
 | 6 | Generar un carnet PDF, leer su QR con el celular: abre "verificado" | Si da 403: poner `TRUSTED_PROXIES=*` y `php artisan config:cache` |
 | 7 | La hora de un registro recién creado es la hora local | Revisar `APP_TIMEZONE` |
 | 8 | `php artisan db:backup` crea el archivo | Revisar `MYSQLDUMP_PATH`; si el hosting bloquea `proc_open`, usar el respaldo del panel |
