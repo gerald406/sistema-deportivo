@@ -109,4 +109,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(MatchReopenLog::class);
     }
+
+    /** Resoluciones (PDF) de participantes que subio (players.resolution_uploaded_by, RESTRICT). */
+    public function uploadedResolutions(): HasMany
+    {
+        return $this->hasMany(Player::class, 'resolution_uploaded_by');
+    }
 }

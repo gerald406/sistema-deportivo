@@ -91,6 +91,7 @@ la siguiente con una prueba omitida ni marcada como pendiente.
 | M16 | F6 | `2026_10_24_090100_add_total_points_to_games_edition_medals_table` | `total_points` |
 | M17 | D17 | `2026_10_25_090000_simplify_games_editions_table` | − `host_venue_id`, − `yellow_cards_limit`, − `captain_red_matches`; fechas obligatorias |
 | M18 | D18 | `2026_10_25_090100_add_standard_stages_to_sports_table` | `sports.standard_stages`; ajedrez = `podium_series` |
+| M19 | D20 | `2026_10_25_090200_add_resolution_to_players_table` | `resolution_path`, `resolution_uploaded_at`, `resolution_uploaded_by` |
 
 Después de cada migración nueva: `php artisan migrate` en la base de trabajo.
 
@@ -106,7 +107,7 @@ Después de cada migración nueva: `php artisan migrate` en la base de trabajo.
 | `teams` (−) | − `delegate_id` | — |
 | `season_team` (−) | − `delegate_id` | — |
 | `games_edition_events` | `games_edition_id` CASCADE; `sort_order` int; `label` string(150); `sport_id` nulo RESTRICT; `category_id` nulo RESTRICT; `gender_scope` enum def. `none`; `separate_podiums` bool def. true; `per_discipline` bool def. false; `pts_first`, `pts_second`, `pts_third` int nulos; `min_players`, `max_players` int nulos; `rules_blocking` bool def. false; `is_active` bool def. true | (`games_edition_id`, `label`) |
-| `players` (+) | `gender` enum `M`,`F` nulo; `staff_type` enum nulo; `employment_type` enum nulo; `documents_verified_at` timestamp nulo | — |
+| `players` (+) | `gender` enum `M`,`F` nulo; `staff_type` enum nulo; `employment_type` enum nulo; `documents_verified_at` timestamp nulo; `resolution_path` string nulo, `resolution_uploaded_at` timestamp nulo, `resolution_uploaded_by` nulo → `users` RESTRICT (M19, D20) | — |
 | `season_stages` | `season_id` CASCADE; `name` string(80); `sort_order` int; `mode` enum; `group_id` nulo → `games_edition_groups` SET NULL; `qualifiers` int nulo; `has_third_place` bool def. false | (`season_id`, `name`) |
 | `matches` (+) | `season_stage_id` nulo → `season_stages` RESTRICT; `bracket_round` int nulo; `bracket_slot` int nulo; `next_match_id` nulo → `matches` SET NULL; `next_match_side` enum `home`,`away` nulo; `loser_next_match_id` nulo → `matches` SET NULL; `tiebreak_type` enum nulo; `round_type` + `third_place` | — |
 | `event_participants` (+) | `tiebreak_score` int nulo | — |
@@ -172,7 +173,7 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | `RosterRuleService` | `evaluate(Season $season, Team $team, Player $player): array{errors: string[], warnings: string[]}` (ya clasifica: `errors` si la fila es bloqueante, `warnings` si no); `violations(...): string[]` (sin clasificar); `isBlocking(Season): bool`; `referenceYear(Season): int`; `missingForMinimum(Season, int $activeCount): int` | F4 |
 | `SeasonTeamService` | `ensureFor(Season $season, Team $team): SeasonTeam` | F4 |
 | `SeasonTeamPlayerService` | `registerInCompetition(Season $season, Team $team, array $data, User $actor): SeasonTeamPlayer`; `canRegisterFor(User, Season, Team): bool`; `competitionsFor(User): Collection`; `delegationsFor(User, Season): Collection`. Se eliminan `seasonTeamsFor()` y `ageAtSeason()` | F4 |
-| `PlayerRegistrationService` | `setDocumentsVerified(Player $player, bool $verified, User $actor): Player`; `canVerifyDocuments(User, Player): bool`. `register()`/`update()` solo aceptan los campos del formulario | F4 |
+| `PlayerRegistrationService` | `setDocumentsVerified(Player $player, bool $verified, User $actor): Player`; `canVerifyDocuments(User, Player): bool`. `register()`/`update()` solo aceptan los campos del formulario; `attachResolution(Player, UploadedFile, User): Player`, `removeResolution(Player, User): Player`, `canManageResolution(User, Player): bool` (D20) | F4, D20 |
 | `StageService` | `register(Season $season, array $data, User $actor): SeasonStage`; `update(SeasonStage $stage, array $data, User $actor): SeasonStage`; `delete(SeasonStage $stage, User $actor): bool\|string`; `createStandardStages(Season $season, User $actor): Collection` (estructura según `standardStagesFor()`, D18); `createMissingStandardStages(iterable $seasons, User $actor): array`; `standardStagesFor(Season $season): StandardStages`; `winners(SeasonStage $stage): Collection` | F5, D18 |
 | `BracketService` | `generate(SeasonStage $stage, array $seasonTeamIdsInSeedOrder, User $actor): Collection`; `advance(GameMatch $match): void`; `clear(SeasonStage $stage, User $actor): bool\|string`; `ensureCanReopen(GameMatch $match): void`; `seedOrder(int $size): array`; constante `REOPEN_BLOCKED` | F5 |
 | `DirectPodiumService` | `save(SeasonStage $stage, array $places, User $actor): void` (`$places`: por puesto, una fila `['team_id' => int, 'season_team_player_id' => ?int]` o una lista de filas si el puesto es compartido; guardar reemplaza el podio; en una fase con serie solo admite delegaciones de esa serie, D18). Constante `PLACES` | F5 |
@@ -271,6 +272,7 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | `tests/Feature/Stages/TiebreakTest.php` | F5 |
 | `tests/Feature/Stages/StandardStagesTest.php` | D18 |
 | `tests/Feature/Stages/StageListingTest.php` (listado de fases en /fases) | D18 |
+| `tests/Feature/Editions/PlayerResolutionTest.php` | D20 |
 | `tests/Feature/Stages/RedCardSuspensionTest.php` (antes `YellowCardSuspensionTest`, D17) | F5 |
 | `tests/Feature/Scores/AwardServiceTest.php` | F6 |
 | `tests/Feature/Smoke/ProductionConfigTest.php` | F7 |

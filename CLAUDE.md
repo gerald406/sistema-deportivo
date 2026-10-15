@@ -36,6 +36,11 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
    que lo registró antes de tener plantel. Lleva género, tipo (docente/administrativo) y condición
    (nombrado/contratado). `documents_verified_at` solo lo fija el organizador o el admin
    (`PlayerRegistrationService::setDocumentsVerified()`), nunca el delegado ni el formulario.
+   **Resolución en PDF** (nombramiento o contrato, opcional con aviso, D20): disco PRIVADO
+   (`storage/app/private/resolutions`), se descarga solo por `players.resolution`
+   (`PlayerResolutionController`, autoriza `PlayerPolicy::view`). La suben el delegado que
+   gestiona al participante mientras los documentos no estén verificados, y el organizador o el
+   admin siempre (`PlayerRegistrationService::attachResolution()`/`canManageResolution()`).
 7. **Reglas de plantel = datos.** Género, edad por AÑO de nacimiento (año de la olimpiada − año
    de nacimiento ≥ edad mínima del nivel; sin edad máxima), tope de plantel y "una sola
    delegación por olimpiada" salen de la competencia (`seasons.category_id`, `seasons.gender`) y

@@ -33,7 +33,13 @@ class Index extends Component
     /** all | active | inactive */
     public string $statusFilter = 'all';
 
+    /** '' | with | without (resolucion en PDF) */
+    public string $resolutionFilter = '';
+
     public int $perPage = 15;
+
+    /** PDF de hasta 5 MB, revisado por contenido (lo revalida PlayerRegistrationService). */
+    private const RESOLUTION_RULES = ['file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:'.PlayerRegistrationService::RESOLUTION_MAX_KB];
 
     public string $sortField = 'last_name';
 
@@ -60,6 +66,17 @@ class Index extends Component
     /** URL de la foto actual, para mostrarla en el modal al editar. */
     public ?string $existingPhotoUrl = null;
 
+    /** Resolucion (PDF) adjunta en el formulario de alta/edicion. */
+    public $newResolution = null;
+
+    // --- Modal "Resolucion" (delegado u organizador, desde cada fila) ---
+    public bool $showResolution = false;
+
+    public ?int $resolutionPlayerId = null;
+
+    /** PDF elegido en el modal "Resolucion". */
+    public $resolutionFile = null;
+
     public function mount(): void
     {
         $this->authorize('viewAny', Player::class);
@@ -76,6 +93,11 @@ class Index extends Component
     }
 
     public function updatingPerPage(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingResolutionFilter(): void
     {
         $this->resetPage();
     }
@@ -112,10 +134,18 @@ class Index extends Component
     {
         $validated = $this->validate($this->rules());
         $data = $validated['form'];
+        $actor = auth()->user();
 
         if ($this->editingId) {
             $player = $this->findVisiblePlayer($this->editingId);
             $this->authorize('update', $player);
+
+            // Verificado = el PDF queda como evidencia: se avisa antes de guardar nada.
+            if ($this->newResolution && ! $actor->can('manageResolution', $player)) {
+                $this->addError('newResolution', 'Los documentos ya están verificados: solo el organizador puede reemplazar la resolución.');
+
+                return;
+            }
 
             if ($this->newPhoto) {
                 $this->deletePhotoIfExists($player->photo_path);
@@ -130,7 +160,11 @@ class Index extends Component
                 $data['photo_path'] = $this->newPhoto->store('players', 'public');
             }
 
-            $service->register($data, auth()->user());
+            $player = $service->register($data, $actor);
+        }
+
+        if ($this->newResolution) {
+            $service->attachResolution($player, $this->newResolution, $actor);
         }
 
         $this->showModal = false;
@@ -173,6 +207,55 @@ class Index extends Component
         $this->resetForm();
     }
 
+    /** Participante del modal "Resolucion": visible para el usuario (si no, 404). */
+    public function resolutionPlayer(): ?Player
+    {
+        return $this->resolutionPlayerId ? $this->findVisiblePlayer($this->resolutionPlayerId)->load('resolutionUploader:id,name') : null;
+    }
+
+    public function openResolution(int $id): void
+    {
+        $player = $this->findVisiblePlayer($id);
+        $this->authorize('view', $player);
+
+        $this->resolutionPlayerId = $player->id;
+        $this->resolutionFile = null;
+        $this->resetErrorBag();
+        $this->showResolution = true;
+    }
+
+    public function saveResolution(PlayerRegistrationService $service): void
+    {
+        $player = $this->findVisiblePlayer((int) $this->resolutionPlayerId);
+        $this->authorize('manageResolution', $player);
+
+        $this->validate(['resolutionFile' => self::RESOLUTION_RULES], [], ['resolutionFile' => 'resolución']);
+
+        $service->attachResolution($player, $this->resolutionFile, auth()->user());
+
+        $this->closeResolution();
+        $this->dispatch('toast', type: 'success', message: 'Resolución guardada.');
+    }
+
+    public function removeResolution(PlayerRegistrationService $service): void
+    {
+        $player = $this->findVisiblePlayer((int) $this->resolutionPlayerId);
+        $this->authorize('manageResolution', $player);
+
+        $service->removeResolution($player, auth()->user());
+
+        $this->closeResolution();
+        $this->dispatch('toast', type: 'success', message: 'Se quitó la resolución.');
+    }
+
+    public function closeResolution(): void
+    {
+        $this->showResolution = false;
+        $this->resolutionPlayerId = null;
+        $this->resolutionFile = null;
+        $this->resetErrorBag();
+    }
+
     public function render()
     {
         $query = $this->listingQuery();
@@ -198,6 +281,8 @@ class Index extends Component
             })
             ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
+            ->when($this->resolutionFilter === 'with', fn ($q) => $q->whereNotNull('resolution_path'))
+            ->when($this->resolutionFilter === 'without', fn ($q) => $q->whereNull('resolution_path'))
             // Precarga la pertenencia para los @can('update'/'delete') de
             // cada fila (PlayerPolicy la lee de este atributo): 0 consultas
             // extra por fila en vez de 2. Admin no lo necesita (Gate::before).
@@ -233,6 +318,7 @@ class Index extends Component
             'Tipo' => fn (Player $p) => $p->staff_type?->label(),
             'Condición' => fn (Player $p) => $p->employment_type?->label(),
             'Documentos' => fn (Player $p) => $p->documents_verified_at ? 'Verificados' : 'Por verificar',
+            'Resolución' => fn (Player $p) => $p->resolution_path ? 'Sí ('.$p->resolution_uploaded_at?->format('d/m/Y').')' : 'No',
             'Estado' => fn (Player $p) => $p->is_active ? 'Activo' : 'Inactivo',
         ];
     }
@@ -276,6 +362,7 @@ class Index extends Component
         ];
         $this->newPhoto = null;
         $this->existingPhotoUrl = null;
+        $this->newResolution = null;
         $this->resetErrorBag();
     }
 
@@ -296,6 +383,7 @@ class Index extends Component
             'form.employment_type' => ['nullable', Rule::enum(EmploymentType::class)],
             'form.is_active' => ['boolean'],
             'newPhoto' => ['nullable', 'image', 'max:2048'],
+            'newResolution' => ['nullable', ...self::RESOLUTION_RULES],
         ];
     }
 
@@ -309,6 +397,7 @@ class Index extends Component
             'form.gender' => 'género',
             'form.staff_type' => 'tipo de personal',
             'form.employment_type' => 'condición',
+            'newResolution' => 'resolución',
         ];
     }
 }

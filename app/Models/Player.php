@@ -39,8 +39,17 @@ class Player extends Model
             // Fuera de $fillable a proposito: solo la fija
             // PlayerRegistrationService::setDocumentsVerified().
             'documents_verified_at' => 'datetime',
+            // Tambien fuera de $fillable: solo los escribe
+            // PlayerRegistrationService::attachResolution()/removeResolution().
+            'resolution_uploaded_at' => 'datetime',
             'is_active' => 'boolean',
         ];
+    }
+
+    /** Quien subio la resolucion (PDF) vigente: evidencia para reclamos. */
+    public function resolutionUploader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resolution_uploaded_by');
     }
 
     public function seasonTeamPlayers(): HasMany
