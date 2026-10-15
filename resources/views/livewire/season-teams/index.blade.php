@@ -14,45 +14,54 @@
     </div>
 
     {{-- Filtros --}}
-    <div class="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 lg:flex-row lg:items-center">
-        <div class="relative flex-1">
+    {{-- Cuadricula y no fila: un <select> con opciones largas (nombre de la
+         competencia) crece a su opcion mas larga y desborda la pantalla.
+         min-w-0 + w-full lo obligan a respetar su columna. --}}
+    <div class="grid grid-cols-1 gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 sm:grid-cols-2 xl:grid-cols-6">
+        <div class="relative min-w-0 sm:col-span-2 xl:col-span-2">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" wire:model.live.debounce.400ms="search"
                    placeholder="Buscar equipo..."
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
-        <select wire:model.live="seasonFilter"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <select wire:model.live="seasonFilter" title="Competencia"
+                class="w-full min-w-0 truncate rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 sm:col-span-2 xl:col-span-2">
             <option value="">Todas las competencias</option>
-            @foreach ($filterSeasons as $season)
-                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
+            @foreach ($filterSeasons->groupBy(fn ($s) => $s->gamesEdition->name) as $editionName => $seasons)
+                <optgroup label="{{ \Illuminate\Support\Str::limit($editionName, 60) }}">
+                    @foreach ($seasons as $season)
+                        <option value="{{ $season->id }}">{{ $season->name }}</option>
+                    @endforeach
+                </optgroup>
             @endforeach
         </select>
 
-        <select wire:model.live="categoryFilter"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <select wire:model.live="categoryFilter" title="Categoría"
+                class="w-full min-w-0 truncate rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 xl:col-span-1">
             <option value="">Todas las categorías</option>
             @foreach ($filterCategories as $category)
                 <option value="{{ $category->id }}">{{ $category->name }} ({{ $category->gender->label() }})</option>
             @endforeach
         </select>
 
-        <select wire:model.live="statusFilter"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <select wire:model.live="statusFilter" title="Estado"
+                class="w-full min-w-0 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 xl:col-span-1">
             <option value="all">Todos los estados</option>
             <option value="active">Activas</option>
             <option value="inactive">Inactivas</option>
         </select>
 
-        <select wire:model.live="perPage"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="10">10 por página</option>
-            <option value="15">15 por página</option>
-            <option value="25">25 por página</option>
-            <option value="50">50 por página</option>
-        </select>
-        <x-export-button />
+        <div class="flex min-w-0 gap-3 sm:col-span-2 xl:col-span-2 xl:col-start-5">
+            <select wire:model.live="perPage" title="Filas por página"
+                    class="w-full min-w-0 flex-1 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="10">10 por página</option>
+                <option value="15">15 por página</option>
+                <option value="25">25 por página</option>
+                <option value="50">50 por página</option>
+            </select>
+            <x-export-button />
+        </div>
     </div>
 
     {{-- Tabla --}}
