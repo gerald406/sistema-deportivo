@@ -270,6 +270,7 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | `tests/Feature/Stages/DirectPodiumTest.php` | F5 |
 | `tests/Feature/Stages/TiebreakTest.php` | F5 |
 | `tests/Feature/Stages/StandardStagesTest.php` | D18 |
+| `tests/Feature/Stages/StageListingTest.php` (listado de fases en /fases) | D18 |
 | `tests/Feature/Stages/RedCardSuspensionTest.php` (antes `YellowCardSuspensionTest`, D17) | F5 |
 | `tests/Feature/Scores/AwardServiceTest.php` | F6 |
 | `tests/Feature/Smoke/ProductionConfigTest.php` | F7 |

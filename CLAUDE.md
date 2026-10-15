@@ -49,8 +49,10 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
      por serie + "Fase final" con tercer puesto (fútbol, futsal, básquet, vóley, tenis de mesa);
      `podium_series` → una fase de podio por serie (clasifica 1) + "Final" de podio (ajedrez,
      suizo fuera del sistema, D18); `podium_only` → solo "Final" de podio (lo demás). En /fases,
-     "Generar fases de todas" lo aplica a cada competencia activa sin fases
-     (`createMissingStandardStages()`). El podio de una fase con serie solo admite delegaciones
+     "Generar fases de todas" lo aplica a cada competencia activa sin fases de la olimpiada
+     elegida (`createMissingStandardStages()`). Sin competencia elegida, /fases lista todas las
+     fases de la olimpiada (paginado, filtros por deporte, nivel, género, modo, serie y avance,
+     Excel) y avisa qué competencias activas no tienen fases. El podio de una fase con serie solo admite delegaciones
      de esa serie (`DirectPodiumService`).
    - `BracketService::generate()` arma la llave con byes para los primeros de la lista y crea
      todos los partidos enlazados (`next_match_id`); `advance()` mueve al ganador (y al perdedor
