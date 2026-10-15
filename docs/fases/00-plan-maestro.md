@@ -181,6 +181,7 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | `DirectPodiumService` | `save(SeasonStage $stage, array $places, User $actor): void` (`$places`: por puesto, una fila `['team_id' => int, 'season_team_player_id' => ?int]` o una lista de filas si el puesto es compartido; guardar reemplaza el podio; en una fase con serie solo admite delegaciones de esa serie, D18). Constante `PLACES` | F5 |
 | `SuspensionService` | `generateForMatch()`: toda roja da 1 partido (D17 quitó la acumulación de amarillas y la sanción del capitán) | F5 |
 | `ResultService` | `close()` acepta `tiebreak_type`, `tiebreak_winner_side`, `tiebreak_home`, `tiebreak_away`; errores de desempate en la clave `tiebreak` | F5 |
+| `SeasonTeamPlayerService` (+) | `registerMany(Season, Team, array $playerIds, User): array{added, warnings, rejected}` (constante `BULK_MAX`); `updateInline(SeasonTeamPlayer, string $field, mixed $value, User)` (constante `INLINE_FIELDS`) | D23 |
 | `DelegationEnrollmentService` | `editionsFor(User)`, `delegationsFor(User, GamesEdition)`, `board(GamesEdition, Team)`, `kindOf(Season)`, `canEnroll()`/`ensureCanEnroll(User, Season, Team)`, `enroll(Season, Team, User): SeasonTeam`, `withdraw(SeasonTeam, User): bool\|string` | D22 |
 | `GeneralRegistrationFormService` | `prepare(SeasonTeam): array`; `seasonTeamsOf(GamesEdition, Team): Collection`; `canPrint(User, SeasonTeam): bool` (= `SeasonTeamPlayerPolicy::managesSeasonTeam`); constante `COPIES` | D21 |
 | `AwardService` | `rebuild(GamesEdition $edition): void`; `table(GamesEdition $edition): Collection`; `detail(GamesEdition $edition, Team $team): Collection` | F6 |
@@ -279,6 +280,7 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | `tests/Feature/Editions/PlayerResolutionTest.php` | D20 |
 | `tests/Feature/Editions/GeneralRegistrationFormTest.php` | D21 |
 | `tests/Feature/Editions/DelegationEnrollmentTest.php` | D22 |
+| `tests/Feature/Competitions/RosterBulkTest.php` | D23 |
 | `tests/Feature/Stages/RedCardSuspensionTest.php` (antes `YellowCardSuspensionTest`, D17) | F5 |
 | `tests/Feature/Scores/AwardServiceTest.php` | F6 |
 | `tests/Feature/Smoke/ProductionConfigTest.php` | F7 |

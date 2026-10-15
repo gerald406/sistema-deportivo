@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Rosters;
 
+use App\Enums\EmploymentType;
+use App\Enums\Gender;
 use App\Enums\SeasonTeamPlayerStatus;
+use App\Enums\StaffType;
 use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
@@ -68,6 +71,24 @@ class Index extends Component
 
     /** Buscador de participantes dentro del modal (solo los de sus delegaciones). */
     public string $playerSearch = '';
+
+    // --- Agregar varios (D23): seleccion multiple sobre el plantel filtrado ---
+    public bool $showBulk = false;
+
+    public string $bulkSearch = '';
+
+    public string $bulkStaffFilter = '';
+
+    public string $bulkEmploymentFilter = '';
+
+    /** Ocultar a quienes tienen observaciones o no pueden entrar. */
+    public bool $bulkOnlyEligible = false;
+
+    /** @var list<string> ids de players marcados (wire:model de checkboxes: strings) */
+    public array $bulkSelected = [];
+
+    /** Resumen del ultimo "Agregar seleccionados": added / warnings / rejected. */
+    public ?array $bulkResult = null;
 
     public array $form = [
         'season_id' => '',
@@ -264,6 +285,152 @@ class Index extends Component
         $this->dispatch('toast', type: 'success', message: 'Plantel actualizado correctamente.');
     }
 
+    /** Plantel filtrado (?inscripcion=) sobre el que se agregan varios; null si no hay uno elegido. */
+    public function bulkSeasonTeam(): ?SeasonTeam
+    {
+        if (! ctype_digit($this->seasonTeamFilter)) {
+            return null;
+        }
+
+        $seasonTeam = app(SeasonTeamService::class)->scopeVisibleTo(SeasonTeam::query(), auth()->user())
+            ->with(['team:id,name', 'season.gamesEdition', 'season.event', 'season.category'])
+            ->find((int) $this->seasonTeamFilter);
+
+        return $seasonTeam && app(SeasonTeamPlayerService::class)->canRegisterFor(auth()->user(), $seasonTeam->season, $seasonTeam->team)
+            ? $seasonTeam
+            : null;
+    }
+
+    public function openBulk(): void
+    {
+        $this->authorize('create', SeasonTeamPlayer::class);
+        abort_unless($this->bulkSeasonTeam(), 404);
+
+        $this->bulkSearch = $this->bulkStaffFilter = $this->bulkEmploymentFilter = '';
+        $this->bulkOnlyEligible = false;
+        $this->bulkSelected = [];
+        $this->bulkResult = null;
+        $this->showBulk = true;
+    }
+
+    public function closeBulk(): void
+    {
+        $this->showBulk = false;
+        $this->bulkSelected = [];
+        $this->bulkResult = null;
+    }
+
+    public function staffTypeOptions(): array
+    {
+        return StaffType::cases();
+    }
+
+    public function employmentTypeOptions(): array
+    {
+        return EmploymentType::cases();
+    }
+
+    /**
+     * Candidatos para el plantel elegido: participantes activos de las
+     * delegaciones del usuario (mismo alcance que el buscador), del genero
+     * de la disciplina y que aun no estan en este plantel. Cada uno con su
+     * aptitud segun RosterRuleService: ok, warn (entra con observaciones) o
+     * blocked (no puede entrar: ya esta en otra delegacion en esta
+     * disciplina, o la fila del cuadro es bloqueante).
+     *
+     * @return Collection<int, object{player: Player, state: string, reasons: list<string>}>
+     */
+    public function bulkCandidates(): Collection
+    {
+        $seasonTeam = $this->bulkSeasonTeam();
+
+        if (! $seasonTeam) {
+            return collect();
+        }
+
+        $season = $seasonTeam->season;
+        $rules = app(RosterRuleService::class);
+        $term = trim($this->bulkSearch);
+
+        return $this->reachablePlayers()
+            ->whereDoesntHave('seasonTeamPlayers', fn ($q) => $q->where('season_team_id', $seasonTeam->id))
+            ->when(in_array($season->gender, [Gender::Male, Gender::Female], true), fn ($q) => $q->where('gender', $season->gender->value))
+            ->when($term !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('first_name', 'like', "%{$term}%")
+                ->orWhere('last_name', 'like', "%{$term}%")
+                ->orWhere('dni', 'like', "%{$term}%")))
+            ->when(StaffType::tryFrom($this->bulkStaffFilter), fn ($q, StaffType $t) => $q->where('staff_type', $t->value))
+            ->when(EmploymentType::tryFrom($this->bulkEmploymentFilter), fn ($q, EmploymentType $t) => $q->where('employment_type', $t->value))
+            ->with(['seasonTeamPlayers' => fn ($q) => $q->whereHas('seasonTeam', fn ($s) => $s->where('season_id', $season->id))->with('seasonTeam.team:id,name')])
+            ->orderBy('last_name')->orderBy('first_name')
+            ->limit(SeasonTeamPlayerService::BULK_MAX)
+            ->get()
+            ->map(function (Player $player) use ($seasonTeam, $season, $rules) {
+                $clash = $player->seasonTeamPlayers->first();
+
+                if ($clash) {
+                    return (object) ['player' => $player, 'state' => 'blocked', 'reasons' => ["Ya está con {$clash->seasonTeam->team->name} en esta disciplina."]];
+                }
+
+                $reasons = $rules->violations($season, $seasonTeam->team, $player);
+                $state = $reasons === [] ? 'ok' : ($rules->isBlocking($season) ? 'blocked' : 'warn');
+
+                return (object) ['player' => $player, 'state' => $state, 'reasons' => $reasons];
+            })
+            ->when($this->bulkOnlyEligible, fn ($c) => $c->where('state', 'ok'))
+            ->values();
+    }
+
+    /** Marca todos los aptos (sin observaciones) de la lista visible. */
+    public function selectAllEligible(): void
+    {
+        $this->bulkSelected = $this->bulkCandidates()->where('state', 'ok')
+            ->map(fn ($c) => (string) $c->player->id)->values()->all();
+    }
+
+    public function addSelected(SeasonTeamPlayerService $service): void
+    {
+        $this->authorize('create', SeasonTeamPlayer::class);
+        $seasonTeam = $this->bulkSeasonTeam() ?? abort(404);
+
+        try {
+            $result = $service->registerMany($seasonTeam->season, $seasonTeam->team, $this->bulkSelected, auth()->user());
+        } catch (ValidationException $e) {
+            $this->dispatch('toast', type: 'error', message: collect($e->errors())->flatten()->first());
+
+            return;
+        }
+
+        $this->bulkResult = $result;
+        $this->bulkSelected = [];
+        $this->resetPage();
+
+        $added = count($result['added']);
+        $rejected = count($result['rejected']);
+
+        $this->dispatch('toast', type: $rejected > 0 ? 'warning' : 'success', message: $rejected > 0
+            ? "Se agregaron {$added}; {$rejected} no se pudieron agregar (ver el resumen)."
+            : "Se agregaron {$added} al plantel.");
+    }
+
+    /**
+     * Edicion en linea de camiseta, posicion o capitania (D23). Las reglas
+     * las aplica SeasonTeamPlayerService::updateInline(); un error vuelve
+     * como aviso y la fila se redibuja con el dato guardado.
+     */
+    public function updateInline(int $id, string $field, mixed $value, SeasonTeamPlayerService $service): void
+    {
+        $entry = $this->findVisibleEntry($id);
+        $this->authorize('update', $entry);
+
+        try {
+            $service->updateInline($entry, $field, $value, auth()->user());
+            $this->dispatch('toast', type: 'success', message: 'Guardado.');
+        } catch (ValidationException $e) {
+            $this->dispatch('toast', type: 'error', message: collect($e->errors())->flatten()->first());
+        }
+    }
+
     public function delete(int $id, SeasonTeamPlayerService $service): void
     {
         $entry = $this->findVisibleEntry($id);
@@ -312,8 +479,14 @@ class Index extends Component
             );
         }
 
+        // Posiciones por deporte, para el selector en linea de esta pagina.
+        $positions = SportPosition::whereIn('sport_id', $entries->getCollection()->pluck('seasonTeam.season.sport_id')->filter()->unique())
+            ->orderBy('sort_order')->orderBy('name')->get(['id', 'sport_id', 'name'])->groupBy('sport_id');
+
         return view('livewire.rosters.index', [
             'entries' => $entries,
+            'positionsBySport' => $positions,
+            'bulkTeam' => $this->bulkSeasonTeam(),
             'notices' => $notices,
             'missing' => $missing,
             // Mismo alcance que /inscripciones: el filtro no lista delegaciones ajenas.
@@ -343,7 +516,7 @@ class Index extends Component
             ->with([
                 'player:id,first_name,last_name,dni,birth_date,gender,photo_path,documents_verified_at', 'position:id,name',
                 'seasonTeam:id,season_id,team_id,category_id', 'seasonTeam.team:id,name',
-                'seasonTeam.season:id,name,status,games_edition_id,games_edition_event_id,category_id,gender',
+                'seasonTeam.season:id,name,status,games_edition_id,games_edition_event_id,category_id,gender,sport_id',
                 'seasonTeam.season.gamesEdition:id,name,organizer_id,start_date',
                 'seasonTeam.season.event:id,min_players,max_players,rules_blocking',
                 'seasonTeam.season.category:id,name,min_age',

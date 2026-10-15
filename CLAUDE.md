@@ -128,7 +128,9 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
    (`SeasonTeamPolicy`, `SeasonTeamService`).
 5. **Participantes en el plantel (`SeasonTeamPlayer`)**: los inscribe el DELEGADO (titular o
    suplente) eligiendo competencia y delegación
-   (`SeasonTeamPlayerService::registerInCompetition()`, que autoriza con `canRegisterFor()`),
+   (`SeasonTeamPlayerService::registerInCompetition()`, que autoriza con `canRegisterFor()`;
+   en lote con `registerMany()`, que pasa a cada uno por el mismo camino, y camiseta, posición y
+   capitán en línea con `updateInline()`, D23),
    y nunca en delegaciones ajenas. El organizador de la olimpiada y el admin conservan acceso de supervisión
    (`SeasonTeamPlayerPolicy::managesSeasonTeam()`).
 
