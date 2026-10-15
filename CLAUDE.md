@@ -69,6 +69,9 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
      y lado ganador (`TiebreakType`). Fuera de una llave el empate sigue permitido.
    - No se reabre un partido si la ronda siguiente ya se jugó (`BracketService::ensureCanReopen()`).
    - Las gestiona quien gestiona la competencia (`SeasonAccess::manages()`), pantalla /fases.
+   - /partidos solo PROGRAMA (D24): jornada, fecha y hora, sede y estado
+     (`GameMatchService::schedule()`). Los partidos y sus participantes los crea la llave; no hay
+     alta de partidos sueltos ni participantes o carriles en ese modal.
 9. **Sanciones automáticas: solo rojas.** Al cerrar un partido, cada roja (directa o por doble
    amarilla) da 1 partido de sanción, sea o no capitán el expulsado (`SuspensionService`). La
    acumulación de amarillas y la sanción especial al capitán se manejan **fuera del sistema**

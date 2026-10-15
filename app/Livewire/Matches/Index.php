@@ -4,15 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Matches;
 
-use App\Enums\MatchModality;
 use App\Enums\MatchStatus;
-use App\Enums\RoundType;
-use App\Enums\SeasonTeamPlayerStatus;
-use App\Enums\SportFormatType;
 use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
 use App\Livewire\Concerns\Sortable;
-use App\Models\Discipline;
 use App\Models\EventParticipant;
 use App\Models\GameMatch;
 use App\Models\Matchday;
@@ -32,6 +27,12 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+/**
+ * Programacion de partidos (D24). Los partidos nacen en /fases al generar
+ * la llave (BracketService), con sus participantes; aqui solo se programan:
+ * jornada, fecha y hora, sede y estado (GameMatchService::schedule()).
+ * Competencia, disciplina, ronda y participantes se muestran sin editar.
+ */
 #[Layout('layouts.admin')]
 #[Title('Partidos')]
 class Index extends Component
@@ -58,29 +59,11 @@ class Index extends Component
     public ?int $editingId = null;
 
     public array $form = [
-        'season_id' => '',
         'matchday_id' => '',
-        'discipline_id' => '',
         'venue_id' => '',
-        'round_type' => 'regular',
-        'modality' => '',
         'scheduled_at' => '',
         'status' => 'pending',
     ];
-
-    /** Enfrentamientos: 'teams' (season_team) o 'players' (season_team_player). */
-    public string $participantMode = 'teams';
-
-    public string $homeId = '';
-
-    public string $awayId = '';
-
-    /**
-     * Individual / postas: filas [id, lane].
-     *
-     * @var array<int, array{id: string|int, lane: string}>
-     */
-    public array $entries = [];
 
     public function mount(): void
     {
@@ -113,68 +96,36 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function updatedFormSeasonId(): void
-    {
-        $this->form['matchday_id'] = '';
-        $this->form['discipline_id'] = '';
-        $this->resetParticipants();
-    }
-
-    public function updatedFormDisciplineId(): void
-    {
-        $this->resetParticipants();
-    }
-
-    public function updatedParticipantMode(): void
-    {
-        $this->homeId = '';
-        $this->awayId = '';
-    }
-
     // ---------------- opciones del formulario ----------------
 
-    public function roundOptions(): array
+    /** Partido en edicion, con lo que viene de la llave (solo lectura en el modal). */
+    public function editingMatch(): ?GameMatch
     {
-        return RoundType::cases();
-    }
-
-    public function modalityOptions(): array
-    {
-        return MatchModality::cases();
-    }
-
-    public function seasonOptions(): Collection
-    {
-        return SeasonAccess::manageableSeasons(auth()->user());
-    }
-
-    /**
-     * Competencia del formulario, solo si el usuario la gestiona: season_id
-     * viene del navegador y las opciones (jornadas, equipos, plantel) no
-     * deben revelar datos de competencias ajenas (el delegado no gestiona
-     * ninguna). Incluye Cerradas para poder abrir un partido existente.
-     */
-    public function formSeason(): ?Season
-    {
-        return ctype_digit((string) $this->form['season_id'])
-            ? SeasonAccess::manageableSeasons(auth()->user(), includeClosed: true)->firstWhere('id', (int) $this->form['season_id'])
+        return $this->editingId
+            ? $this->findVisibleMatch($this->editingId)->load([
+                'season:id,name,games_edition_id,sport_id,status', 'season.gamesEdition:id,name', 'season.sport:id,name',
+                'discipline:id,name', 'stage:id,name',
+                'participants' => fn ($q) => $q->orderByRaw("FIELD(side, 'home', 'away')")->orderBy('id')
+                    ->with(['participant' => fn (MorphTo $m) => $m->morphWith([
+                        SeasonTeam::class => ['team:id,name'],
+                        SeasonTeamPlayer::class => ['player:id,first_name,last_name'],
+                    ])]),
+            ])
             : null;
     }
 
+    /**
+     * Jornadas de la competencia del partido en edicion. La competencia se
+     * busca entre las que el usuario gestiona (incluye Cerradas para poder
+     * abrir un partido existente).
+     */
     public function matchdayOptions(): Collection
     {
-        $season = $this->formSeason();
+        $season = $this->editingSeason();
 
         return $season
             ? Matchday::where('season_id', $season->id)->orderBy('start_date')->orderBy('id')->get(['id', 'name', 'is_completed'])
             : collect();
-    }
-
-    public function disciplineOptions(): Collection
-    {
-        $season = $this->formSeason();
-
-        return $season ? Discipline::where('sport_id', $season->sport_id)->orderBy('name')->get(['id', 'name', 'format_type']) : collect();
     }
 
     public function venueOptions(): Collection
@@ -184,123 +135,34 @@ class Index extends Component
             ->orderBy('name')->get(['id', 'name']);
     }
 
-    /** Formato efectivo del partido que se esta armando (null si falta la competencia). */
-    public function format(): ?SportFormatType
-    {
-        $season = $this->formSeason();
+    // ---------------- programacion ----------------
 
-        if (! $season) {
-            return null;
-        }
-
-        $discipline = ctype_digit((string) $this->form['discipline_id']) ? Discipline::find($this->form['discipline_id']) : null;
-
-        return app(GameMatchService::class)->formatFor($season, $discipline);
-    }
-
-    public function teamOptions(): Collection
-    {
-        $season = $this->formSeason();
-
-        return $season
-            ? SeasonTeam::with('team:id,name')->where('season_id', $season->id)->where('is_active', true)->get()
-                ->map(fn ($st) => ['id' => $st->id, 'label' => $st->team->name])->sortBy('label')->values()
-            : collect();
-    }
-
-    public function playerOptions(): Collection
-    {
-        $season = $this->formSeason();
-
-        return $season
-            ? SeasonTeamPlayer::with(['player:id,first_name,last_name', 'seasonTeam.team:id,name'])
-                ->where('status', SeasonTeamPlayerStatus::Active->value)
-                ->whereHas('seasonTeam', fn ($q) => $q->where('season_id', $season->id)->where('is_active', true))
-                ->get()
-                ->map(fn ($e) => ['id' => $e->id, 'label' => "{$e->player->last_name}, {$e->player->first_name} — {$e->seasonTeam->team->name}"])
-                ->sortBy('label')->values()
-            : collect();
-    }
-
-    public function addEntry(): void
-    {
-        $this->entries[] = ['id' => '', 'lane' => ''];
-    }
-
-    public function removeEntry(int $index): void
-    {
-        unset($this->entries[$index]);
-        $this->entries = array_values($this->entries);
-    }
-
-    // ---------------- CRUD ----------------
-
-    public function create(): void
-    {
-        $this->authorize('create', GameMatch::class);
-
-        $this->resetForm();
-
-        if (ctype_digit($this->seasonFilter) && $this->seasonOptions()->contains('id', (int) $this->seasonFilter)) {
-            $this->form['season_id'] = (int) $this->seasonFilter;
-
-            if (ctype_digit($this->matchdayFilter)) {
-                $this->form['matchday_id'] = (int) $this->matchdayFilter;
-            }
-        }
-
-        $this->showModal = true;
-    }
-
-    public function edit(int $id, GameMatchService $service): void
+    public function edit(int $id): void
     {
         $match = $this->findVisibleMatch($id);
         $this->authorize('update', $match);
 
         $this->editingId = $match->id;
         $this->form = [
-            'season_id' => $match->season_id,
             'matchday_id' => $match->matchday_id,
-            'discipline_id' => $match->discipline_id ?? '',
             'venue_id' => $match->venue_id ?? '',
-            'round_type' => $match->round_type->value,
-            'modality' => $match->modality?->value ?? '',
             'scheduled_at' => $match->scheduled_at?->format('Y-m-d\TH:i') ?? '',
             'status' => $match->status->value,
         ];
-
-        $this->resetParticipants();
-        $current = $service->currentParticipants($match);
-
-        if ($this->format() === SportFormatType::HeadToHead) {
-            $this->participantMode = ($current[0]['type'] ?? 'season_team') === 'season_team_player' ? 'players' : 'teams';
-            $this->homeId = (string) (collect($current)->firstWhere('side', 'home')['id'] ?? '');
-            $this->awayId = (string) (collect($current)->firstWhere('side', 'away')['id'] ?? '');
-        } else {
-            $this->entries = array_map(fn ($p) => ['id' => (string) $p['id'], 'lane' => (string) ($p['lane'] ?? '')], $current) ?: [['id' => '', 'lane' => '']];
-        }
-
+        $this->resetErrorBag();
         $this->showModal = true;
     }
 
     public function save(GameMatchService $service): void
     {
-        $data = $this->validate($this->rules())['form'];
-        $participants = $this->participantsPayload();
-        $actor = auth()->user();
+        $match = $this->findVisibleMatch($this->editingId ?? 0);
+        $this->authorize('update', $match);
 
-        if ($this->editingId) {
-            $match = $this->findVisibleMatch($this->editingId);
-            $this->authorize('update', $match);
-            $service->update($match, $data, $participants, $actor);
-        } else {
-            $this->authorize('create', GameMatch::class);
-            $service->register($data, $participants, $actor);
-        }
+        $service->schedule($match, $this->validate($this->rules())['form'], auth()->user());
 
         $this->showModal = false;
         $this->resetForm();
-        $this->dispatch('toast', type: 'success', message: 'Partido guardado correctamente.');
+        $this->dispatch('toast', type: 'success', message: 'Partido programado correctamente.');
     }
 
     public function delete(int $id, GameMatchService $service): void
@@ -416,6 +278,16 @@ class Index extends Component
         return ['scheduled_at', 'status', 'round_type', 'participants_count'];
     }
 
+    /** Competencia del partido en edicion, solo si el usuario la gestiona. */
+    private function editingSeason(): ?Season
+    {
+        $seasonId = $this->editingId ? GameMatch::whereKey($this->editingId)->value('season_id') : null;
+
+        return $seasonId
+            ? SeasonAccess::manageableSeasons(auth()->user(), includeClosed: true)->firstWhere('id', $seasonId)
+            : null;
+    }
+
     /**
      * Ids que llegan del navegador se buscan acotados al alcance del
      * usuario (GameMatchService::scopeVisibleTo): un partido ajeno da 404
@@ -428,75 +300,33 @@ class Index extends Component
             ->findOrFail($id);
     }
 
-    /** Traduce el estado del formulario al formato de GameMatchService. */
-    private function participantsPayload(): array
-    {
-        $format = $this->format();
-
-        if ($format === SportFormatType::HeadToHead) {
-            $type = $this->participantMode === 'players' ? 'season_team_player' : 'season_team';
-
-            return array_values(array_filter([
-                ctype_digit($this->homeId) ? ['type' => $type, 'id' => (int) $this->homeId, 'side' => 'home', 'lane' => null] : null,
-                ctype_digit($this->awayId) ? ['type' => $type, 'id' => (int) $this->awayId, 'side' => 'away', 'lane' => null] : null,
-            ]));
-        }
-
-        $type = $format === SportFormatType::TeamRelay ? 'season_team' : 'season_team_player';
-
-        return collect($this->entries)
-            ->filter(fn ($e) => ctype_digit((string) $e['id']))
-            ->map(fn ($e) => ['type' => $type, 'id' => (int) $e['id'], 'side' => null, 'lane' => trim((string) $e['lane']) ?: null])
-            ->values()->all();
-    }
-
-    private function resetParticipants(): void
-    {
-        $this->participantMode = 'teams';
-        $this->homeId = '';
-        $this->awayId = '';
-        $this->entries = [['id' => '', 'lane' => '']];
-    }
-
     private function resetForm(): void
     {
         $this->editingId = null;
         $this->form = [
-            'season_id' => '',
             'matchday_id' => '',
-            'discipline_id' => '',
             'venue_id' => '',
-            'round_type' => 'regular',
-            'modality' => '',
             'scheduled_at' => '',
             'status' => 'pending',
         ];
-        $this->resetParticipants();
         $this->resetErrorBag();
     }
 
-    /** Reglas de negocio (formato, participantes, trigger): GameMatchService. */
+    /** Que la jornada sea de la competencia, las fechas y el estado: GameMatchService::schedule(). */
     private function rules(): array
     {
         return [
-            'form.season_id' => ['required', 'integer', Rule::exists('seasons', 'id')],
             'form.matchday_id' => ['required', 'integer', Rule::exists('matchdays', 'id')],
-            'form.discipline_id' => ['nullable', 'integer', Rule::exists('disciplines', 'id')],
             'form.venue_id' => ['nullable', 'integer', Rule::exists('venues', 'id')],
-            'form.round_type' => ['required', Rule::enum(RoundType::class)],
-            'form.modality' => ['nullable', Rule::enum(MatchModality::class)],
             'form.scheduled_at' => ['nullable', 'date'],
-            'form.status' => ['required', Rule::in([MatchStatus::Pending->value, MatchStatus::Canceled->value, MatchStatus::Played->value, MatchStatus::Walkover->value])],
-            'participantMode' => ['required', Rule::in(['teams', 'players'])],
+            'form.status' => ['required', Rule::in(array_column(MatchStatus::cases(), 'value'))],
         ];
     }
 
     protected function validationAttributes(): array
     {
         return [
-            'form.season_id' => 'competencia',
             'form.matchday_id' => 'jornada',
-            'form.discipline_id' => 'disciplina',
             'form.venue_id' => 'sede',
             'form.scheduled_at' => 'fecha y hora',
         ];

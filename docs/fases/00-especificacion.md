@@ -51,6 +51,7 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D21 | La ficha de inscripción es **general por delegación y disciplina** (bases VII.c): lista todo el plantel, sale por duplicado e incluye la declaración jurada de la Dirección (VII.d). Firman solo el delegado y el director(a) (`teams.director_name`), no cada participante. La ficha individual queda como opción | 14/10 |
 | D22 | El delegado inscribe a su delegación en las disciplinas (colectivas e individuales) en una sola pantalla, y desde cada una arma el plantel. Cierre de inscripciones por olimpiada (`registration_deadline`; Puno: 23/10, bases VII.a): después solo el organizador inscribe o retira | 14/10 |
 | D23 | El plantel se arma por selección múltiple: lista de participantes de la delegación con su aptitud (apto, con observaciones, no puede), "seleccionar todos los aptos" y alta en lote con camiseta y posición vacías; se agregan los válidos y se informa el resto. Camiseta, posición y capitán se editan en línea en la tabla (marcar un capitán se la quita al anterior) | 14/10 |
+| D24 | /partidos solo programa: jornada, fecha y hora, sede y estado. Los partidos nacen en /fases al generar la llave, con sus participantes; ya no se crean partidos sueltos ni se eligen participantes o carriles en el modal | 15/10 |
 
 Supuestos míos (cada uno es un valor por defecto editable). **Todos (S1 a S6) confirmados por el
 cliente el 13/10:**
