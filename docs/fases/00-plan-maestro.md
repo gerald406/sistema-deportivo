@@ -89,6 +89,8 @@ la siguiente con una prueba omitida ni marcada como pendiente.
 | M14 | F5 | `2026_10_19_090300_add_discipline_rules_to_games_editions_table` | `yellow_cards_limit`, `captain_red_matches` |
 | M15 | F6 | `2026_10_24_090000_create_edition_awards_table` | Podios con puntos (derivado) |
 | M16 | F6 | `2026_10_24_090100_add_total_points_to_games_edition_medals_table` | `total_points` |
+| M17 | D17 | `2026_10_25_090000_simplify_games_editions_table` | − `host_venue_id`, − `yellow_cards_limit`, − `captain_red_matches`; fechas obligatorias |
+| M18 | D18 | `2026_10_25_090100_add_standard_stages_to_sports_table` | `sports.standard_stages`; ajedrez = `podium_series` |
 
 Después de cada migración nueva: `php artisan migrate` en la base de trabajo.
 
@@ -96,7 +98,8 @@ Después de cada migración nueva: `php artisan migrate` en la base de trabajo.
 
 | Tabla | Columnas (tipo; nulo; FK y borrado) | Únicos |
 |---|---|---|
-| `games_editions` (+) | `logo` string nulo; `organizer_id` → `users` RESTRICT; `yellow_cards_limit` int nulo; `captain_red_matches` int nulo | — |
+| `games_editions` (+/−) | `logo` string nulo; `organizer_id` → `users` RESTRICT; `start_date` y `end_date` obligatorias; − `host_venue_id` (M17). `yellow_cards_limit` y `captain_red_matches` (M14) se quitaron en M17 | — |
+| `sports` (+) | `standard_stages` enum `bracket_series`, `podium_series`, `podium_only` nulo (M18, D18) | — |
 | `seasons` (−/+) | − `tournament_id`; `games_edition_id` obligatorio RESTRICT; `games_edition_event_id` nulo → `games_edition_events` RESTRICT; `category_id` nulo → `categories` RESTRICT; `gender` enum `M`,`F`,`X` nulo; `discipline_id` nulo → `disciplines` RESTRICT | (`games_edition_id`, `name`) |
 | `games_edition_groups` | `games_edition_id` CASCADE; `name` string(50); `sort_order` int def. 0 | (`games_edition_id`, `name`) |
 | `games_edition_teams` | `games_edition_id` RESTRICT; `team_id` RESTRICT; `group_id` nulo → `games_edition_groups` RESTRICT; `delegate_id` nulo → `users` SET NULL; `substitute_delegate_id` nulo → `users` SET NULL; `status` enum def. `registered`; `fee_paid` bool def. false; `observations` text nulo | (`games_edition_id`, `team_id`) |
@@ -122,6 +125,7 @@ Después de cada migración nueva: `php artisan migrate` en la base de trabajo.
 | `StaffType` | `Teacher` (`teacher`), `Administrative` (`administrative`) | F4 |
 | `EmploymentType` | `Appointed` (`appointed`), `Contracted` (`contracted`) | F4 |
 | `StageMode` | `Matches` (`matches`), `DirectPodium` (`direct_podium`) | F5 |
+| `StandardStages` | `BracketSeries` (`bracket_series`), `PodiumSeries` (`podium_series`), `PodiumOnly` (`podium_only`); `forFormat()` | D18 |
 | `TiebreakType` | `ExtraTime` (`extra_time`), `Penalties` (`penalties`), `FreeThrows` (`free_throws`), `CoinToss` (`coin_toss`) | F5 |
 | `RoundType` (+) | `ThirdPlace` (`third_place`) | F5 |
 
@@ -159,20 +163,20 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | | `manages(User $actor, GamesEdition $edition): bool` | F1 |
 | | `scopeManagedBy(Builder $query, User $actor): Builder` | F1 |
 | | `scopeVisibleTo(Builder $query, User $actor): Builder` (ya existe) | F1 |
-| `SeasonService` | `editionsFor(User $actor): Collection` (antes `tournamentsFor`) | F1 |
+| `SeasonService` | `editionsFor(User $actor): Collection` (antes `tournamentsFor`); sin `register()` y `update()` limitado a `EDITABLE` (D19) | F1, D19 |
 | `EditionGroupService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionGroup`; `update(GamesEditionGroup $group, array $data, User $actor): GamesEditionGroup`; `delete(GamesEditionGroup $group, User $actor): bool\|string` | F2 |
 | `EditionTeamService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionTeam`; `update(GamesEditionTeam $entry, array $data, User $actor): GamesEditionTeam`; `delete(GamesEditionTeam $entry, User $actor): bool\|string`; `delegateOptions(): Collection`; `assignableTeams(User $actor): Builder`; `scopeDelegatedTo(Builder $teams, User $actor): Builder` | F2 |
 | `DelegateAccountService` | `createQuickAccount(array $data, User $actor): User` (admin u organizador con olimpiada; rol forzado `delegado`) | F2 |
-| `EditionEventService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionEvent`; `update(GamesEditionEvent $event, array $data, User $actor): GamesEditionEvent`; `delete(GamesEditionEvent $event, User $actor): bool\|string` (solo admin) | F3 |
+| `EditionEventService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionEvent`; `update(GamesEditionEvent $event, array $data, User $actor): GamesEditionEvent`; `delete(GamesEditionEvent $event, User $actor): bool\|string` (solo admin); `register()` y `update()` generan las competencias que falten (D19) | F3, D19 |
 | `CompetitionGeneratorService` | `generate(GamesEdition $edition, User $actor): array{created: int, existing: int, skipped: int}` (`skipped` = filas activas sin deporte); constante `DEFAULT_PHASE` | F4 |
 | `RosterRuleService` | `evaluate(Season $season, Team $team, Player $player): array{errors: string[], warnings: string[]}` (ya clasifica: `errors` si la fila es bloqueante, `warnings` si no); `violations(...): string[]` (sin clasificar); `isBlocking(Season): bool`; `referenceYear(Season): int`; `missingForMinimum(Season, int $activeCount): int` | F4 |
 | `SeasonTeamService` | `ensureFor(Season $season, Team $team): SeasonTeam` | F4 |
 | `SeasonTeamPlayerService` | `registerInCompetition(Season $season, Team $team, array $data, User $actor): SeasonTeamPlayer`; `canRegisterFor(User, Season, Team): bool`; `competitionsFor(User): Collection`; `delegationsFor(User, Season): Collection`. Se eliminan `seasonTeamsFor()` y `ageAtSeason()` | F4 |
 | `PlayerRegistrationService` | `setDocumentsVerified(Player $player, bool $verified, User $actor): Player`; `canVerifyDocuments(User, Player): bool`. `register()`/`update()` solo aceptan los campos del formulario | F4 |
-| `StageService` | `register(Season $season, array $data, User $actor): SeasonStage`; `update(SeasonStage $stage, array $data, User $actor): SeasonStage`; `delete(SeasonStage $stage, User $actor): bool\|string`; `createStandardStages(Season $season, User $actor): Collection`; `winners(SeasonStage $stage): Collection` | F5 |
+| `StageService` | `register(Season $season, array $data, User $actor): SeasonStage`; `update(SeasonStage $stage, array $data, User $actor): SeasonStage`; `delete(SeasonStage $stage, User $actor): bool\|string`; `createStandardStages(Season $season, User $actor): Collection` (estructura según `standardStagesFor()`, D18); `createMissingStandardStages(iterable $seasons, User $actor): array`; `standardStagesFor(Season $season): StandardStages`; `winners(SeasonStage $stage): Collection` | F5, D18 |
 | `BracketService` | `generate(SeasonStage $stage, array $seasonTeamIdsInSeedOrder, User $actor): Collection`; `advance(GameMatch $match): void`; `clear(SeasonStage $stage, User $actor): bool\|string`; `ensureCanReopen(GameMatch $match): void`; `seedOrder(int $size): array`; constante `REOPEN_BLOCKED` | F5 |
-| `DirectPodiumService` | `save(SeasonStage $stage, array $places, User $actor): void` (`$places`: por puesto, una fila `['team_id' => int, 'season_team_player_id' => ?int]` o una lista de filas si el puesto es compartido; guardar reemplaza el podio). Constante `PLACES` | F5 |
-| `SuspensionService` | constantes `YELLOW_CODE`, `YELLOW_ACCUMULATION_REASON`; `generateForMatch()` aplica `yellow_cards_limit` y `captain_red_matches` de la olimpiada | F5 |
+| `DirectPodiumService` | `save(SeasonStage $stage, array $places, User $actor): void` (`$places`: por puesto, una fila `['team_id' => int, 'season_team_player_id' => ?int]` o una lista de filas si el puesto es compartido; guardar reemplaza el podio; en una fase con serie solo admite delegaciones de esa serie, D18). Constante `PLACES` | F5 |
+| `SuspensionService` | `generateForMatch()`: toda roja da 1 partido (D17 quitó la acumulación de amarillas y la sanción del capitán) | F5 |
 | `ResultService` | `close()` acepta `tiebreak_type`, `tiebreak_winner_side`, `tiebreak_home`, `tiebreak_away`; errores de desempate en la clave `tiebreak` | F5 |
 | `AwardService` | `rebuild(GamesEdition $edition): void`; `table(GamesEdition $edition): Collection`; `detail(GamesEdition $edition, Team $team): Collection` | F6 |
 
@@ -265,7 +269,8 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | `tests/Feature/Stages/BracketTest.php` | F5 |
 | `tests/Feature/Stages/DirectPodiumTest.php` | F5 |
 | `tests/Feature/Stages/TiebreakTest.php` | F5 |
-| `tests/Feature/Stages/YellowCardSuspensionTest.php` | F5 |
+| `tests/Feature/Stages/StandardStagesTest.php` | D18 |
+| `tests/Feature/Stages/RedCardSuspensionTest.php` (antes `YellowCardSuspensionTest`, D17) | F5 |
 | `tests/Feature/Scores/AwardServiceTest.php` | F6 |
 | `tests/Feature/Smoke/ProductionConfigTest.php` | F7 |
 

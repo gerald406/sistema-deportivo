@@ -6,11 +6,11 @@ namespace App\Services;
 
 use App\Models\Season;
 use App\Models\GamesEdition;
-use App\Models\GamesEditionEvent;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -25,49 +25,36 @@ use Illuminate\Validation\ValidationException;
  *   - scoring_configs.rules (JSON) no se edita todavia: queda NULL hasta
  *     definir el calculo de SeasonStanding.
  *   - Una competencia con historial no se borra: se cierra o desactiva.
+ *   - No se crean a mano (D19): salen del cuadro de puntaje
+ *     (CompetitionGeneratorService).
  */
 class SeasonService
 {
+    /** Lo unico que se edita de una competencia: el resto viene del cuadro de puntaje. */
+    public const EDITABLE = ['name', 'start_date', 'end_date', 'status', 'is_active'];
+
     /**
-     * @param array{games_edition_id: int, sport_id: int, name: string, start_date: string|null, end_date: string|null, status: string, is_active: bool} $data
+     * Las competencias no se crean a mano: las crea
+     * CompetitionGeneratorService desde el cuadro de puntaje. Aqui solo se
+     * ajustan nombre, fechas, estado, activa y fases de puntaje; olimpiada,
+     * deporte, prueba, nivel, genero y fila del cuadro se ignoran aunque
+     * lleguen en $data (vienen del navegador).
+     *
+     * @param array{name: string, start_date: string|null, end_date: string|null, status: string, is_active: bool} $data
      * @param array<int, array{id?: int|string|null, phase_name: string, pts_win: int, pts_draw: int, pts_loss: int, pts_walkover: int}> $phases
      */
-    public function register(array $data, array $phases, User $actor): Season
-    {
-        $this->ensureCanUseEdition((int) $data['games_edition_id'], $actor);
-        $this->ensureEventBelongsToEdition($data);
-        $this->ensureHasPhases($phases);
-
-        return DB::transaction(function () use ($data, $phases) {
-            $season = Season::create($data);
-            $this->syncPhases($season, $phases);
-
-            return $season;
-        });
-    }
-
     public function update(Season $season, array $data, array $phases, User $actor): Season
     {
-        $this->ensureCanUseEdition((int) $data['games_edition_id'], $actor);
-        $this->ensureEventBelongsToEdition($data);
+        $this->ensureCanUseEdition($season->games_edition_id, $actor);
         $this->ensureHasPhases($phases);
 
-        // Cambiar el deporte de una competencia que ya tiene equipos o
-        // partidos romperia la coherencia con disciplinas, posiciones y
-        // tipos de evento (todos dependen del deporte).
-        if ((int) $data['sport_id'] !== $season->sport_id
-            && ($season->seasonTeams()->exists() || $season->matches()->exists())) {
-            throw ValidationException::withMessages([
-                'form.sport_id' => 'No se puede cambiar el deporte: la competencia ya tiene equipos inscritos o partidos.',
-            ]);
-        }
+        $data = Arr::only($data, self::EDITABLE);
 
         return DB::transaction(function () use ($season, $data, $phases) {
             $season->update($data);
             $this->syncPhases($season, $phases);
 
-            // Activar/desactivar la competencia o cambiar su fila del
-            // cuadro cambia el puntaje general.
+            // Activar/desactivar la competencia cambia el puntaje general.
             app(AwardService::class)->rebuild($season->gamesEdition()->first());
 
             return $season;
@@ -106,7 +93,7 @@ class SeasonService
     }
 
     /**
-     * Olimpiadas en las que $actor puede crear/mover competencias: el admin en
+     * Olimpiadas cuyas competencias $actor puede editar: el admin en
      * cualquiera, el organizador solo en las suyas (misma regla que
      * SeasonPolicy::update, que mira gamesEdition.organizer_id).
      */
@@ -120,23 +107,10 @@ class SeasonService
 
     private function ensureCanUseEdition(int $gamesEditionId, User $actor): void
     {
-        // SeasonPolicy::create no conoce la olimpiada destino: sin esto un
-        // organizador podria crear (o mover) competencias en olimpiadas ajenas
-        // mandando otro games_edition_id desde el navegador.
+        // Se revalida aqui y no solo en SeasonPolicy: cualquier metodo
+        // publico del componente es invocable desde el navegador.
         if (! $this->editionsFor($actor)->contains('id', $gamesEditionId)) {
             throw new AuthorizationException('Solo puedes gestionar competencias de tus propias olimpiadas.');
-        }
-    }
-
-    /** La fila del cuadro (opcional) debe ser de la misma olimpiada. */
-    private function ensureEventBelongsToEdition(array $data): void
-    {
-        $eventId = $data['games_edition_event_id'] ?? null;
-
-        if ($eventId !== null && ! GamesEditionEvent::whereKey($eventId)->where('games_edition_id', $data['games_edition_id'])->exists()) {
-            throw ValidationException::withMessages([
-                'form.games_edition_event_id' => 'La fila del cuadro no pertenece a esta olimpiada.',
-            ]);
         }
     }
 

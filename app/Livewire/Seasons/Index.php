@@ -16,7 +16,6 @@ use App\Models\Sport;
 use App\Services\CompetitionGeneratorService;
 use App\Services\SeasonService;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -24,9 +23,10 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Competencias de la olimpiada elegida (deporte x nivel x genero). Lo
- * normal es generarlas desde el cuadro de puntaje; el formulario manual
- * queda para ajustarlas o agregar alguna fuera del cuadro.
+ * Competencias de la olimpiada elegida (deporte x nivel x genero). No se
+ * crean a mano (D19): salen del cuadro de puntaje, al guardarlo
+ * (EditionEventService) o con "Generar competencias". Aqui solo se ajustan
+ * nombre, fechas, estado, activa y fases de puntaje.
  */
 #[Layout('layouts.admin')]
 #[Title('Competencias')]
@@ -57,10 +57,6 @@ class Index extends Component
     public ?int $editingId = null;
 
     public array $form = [
-        'sport_id' => '',
-        'category_id' => '',
-        'gender' => '',
-        'games_edition_event_id' => '',
         'name' => '',
         'start_date' => '',
         'end_date' => '',
@@ -99,26 +95,12 @@ class Index extends Component
         return Gender::cases();
     }
 
-    public function sportOptions(): Collection
+    /** Competencia en edicion, con lo que viene del cuadro (solo lectura en el modal). */
+    public function editingSeason(): ?Season
     {
-        return Sport::where('is_active', true)
-            ->when($this->form['sport_id'] !== '', fn ($q) => $q->orWhere('id', $this->form['sport_id']))
-            ->orderBy('name')
-            ->get(['id', 'name']);
-    }
-
-    public function categoryOptions(): Collection
-    {
-        return Category::where('is_active', true)
-            ->when($this->form['category_id'] !== '', fn ($q) => $q->orWhere('id', $this->form['category_id']))
-            ->orderBy('min_age')->orderBy('name')
-            ->get(['id', 'name']);
-    }
-
-    /** Filas del cuadro de puntaje de la olimpiada elegida. */
-    public function eventOptions(): Collection
-    {
-        return $this->edition()?->events()->get(['id', 'label']) ?? collect();
+        return $this->editingId
+            ? $this->findSeason($this->editingId)->load('sport:id,name', 'discipline:id,name', 'category:id,name', 'event:id,label')
+            : null;
     }
 
     /** Crea las competencias que falten segun el cuadro de puntaje. */
@@ -138,17 +120,6 @@ class Index extends Component
         $this->dispatch('toast', type: 'success', message: $message);
     }
 
-    public function create(): void
-    {
-        $edition = $this->editionOrFail();
-        $this->authorize('manage', $edition);
-
-        $this->resetForm();
-        $this->form['start_date'] = $edition->start_date?->format('Y-m-d') ?? '';
-        $this->form['end_date'] = $edition->end_date?->format('Y-m-d') ?? '';
-        $this->showModal = true;
-    }
-
     public function edit(int $id): void
     {
         $season = $this->findSeason($id)->load('scoringConfigs');
@@ -156,10 +127,6 @@ class Index extends Component
 
         $this->editingId = $season->id;
         $this->form = [
-            'sport_id' => $season->sport_id,
-            'category_id' => $season->category_id ?? '',
-            'gender' => $season->gender?->value ?? '',
-            'games_edition_event_id' => $season->games_edition_event_id ?? '',
             'name' => $season->name,
             'start_date' => $season->start_date?->format('Y-m-d') ?? '',
             'end_date' => $season->end_date?->format('Y-m-d') ?? '',
@@ -208,27 +175,18 @@ class Index extends Component
 
     public function save(SeasonService $service): void
     {
-        $edition = $this->editionOrFail();
-        $validated = $this->validate($this->rules($edition->id));
-        $data = $validated['form'];
-        $actor = auth()->user();
+        // Solo se edita: las competencias nuevas salen del cuadro de puntaje.
+        $season = $this->findSeason($this->editingId ?? 0);
+        $this->authorize('update', $season);
 
-        foreach (['start_date', 'end_date', 'category_id', 'gender', 'games_edition_event_id'] as $field) {
+        $validated = $this->validate($this->rules($season->games_edition_id));
+        $data = $validated['form'];
+
+        foreach (['start_date', 'end_date'] as $field) {
             $data[$field] = in_array($data[$field], ['', null], true) ? null : $data[$field];
         }
 
-        // La olimpiada no viene del formulario: es la elegida en pantalla,
-        // que SelectsEdition ya acoto a las que el usuario gestiona.
-        $data['games_edition_id'] = $edition->id;
-
-        if ($this->editingId) {
-            $season = $this->findSeason($this->editingId);
-            $this->authorize('update', $season);
-            $service->update($season, $data, $validated['phases'], $actor);
-        } else {
-            $this->authorize('manage', $edition);
-            $service->register($data, $validated['phases'], $actor);
-        }
+        $service->update($season, $data, $validated['phases'], auth()->user());
 
         $this->showModal = false;
         $this->resetForm();
@@ -335,10 +293,6 @@ class Index extends Component
     {
         $this->editingId = null;
         $this->form = [
-            'sport_id' => '',
-            'category_id' => '',
-            'gender' => '',
-            'games_edition_event_id' => '',
             'name' => '',
             'start_date' => '',
             'end_date' => '',
@@ -356,11 +310,6 @@ class Index extends Component
         $points = ['required', 'integer', 'between:-99,99'];
 
         return [
-            'form.sport_id' => ['required', 'integer', Rule::exists('sports', 'id')],
-            'form.category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')],
-            'form.gender' => ['nullable', Rule::enum(Gender::class)],
-            // La fila del cuadro debe ser de ESTA olimpiada.
-            'form.games_edition_event_id' => ['nullable', 'integer', Rule::exists('games_edition_events', 'id')->where('games_edition_id', $editionId)],
             'form.name' => [
                 'required', 'string', 'max:100',
                 Rule::unique('seasons', 'name')->where('games_edition_id', $editionId)->ignore($this->editingId),
@@ -382,10 +331,6 @@ class Index extends Component
     protected function validationAttributes(): array
     {
         return [
-            'form.sport_id' => 'deporte',
-            'form.category_id' => 'nivel',
-            'form.gender' => 'género',
-            'form.games_edition_event_id' => 'fila del cuadro',
             'form.name' => 'nombre',
             'form.start_date' => 'fecha de inicio',
             'form.end_date' => 'fecha de fin',

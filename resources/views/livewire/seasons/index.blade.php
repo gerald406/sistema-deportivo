@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Competencias</h1>
-            <p class="text-sm text-gray-500">Cada competencia es un deporte en un nivel y género de la olimpiada. Se generan desde el cuadro de puntaje.</p>
+            <p class="text-sm text-gray-500">Cada competencia es un deporte en un nivel y género de la olimpiada. Se crean solas desde el cuadro de puntaje; aquí solo se ajustan.</p>
         </div>
 
         @if ($edition)
@@ -17,10 +17,6 @@
                             }).then((r) => { if (r.isConfirmed) $wire.generate() })"
                             class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> Generar competencias
-                    </button>
-                    <button wire:click="create" type="button"
-                            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                        <i class="fa-solid fa-plus"></i> Nueva competencia
                     </button>
                 </div>
             @endcan
@@ -161,63 +157,36 @@
 
     @endif
 
-    {{-- Modal crear/editar (Season + sub-formulario de fases de puntaje) --}}
+    {{-- Modal editar (Season + sub-formulario de fases de puntaje). Las competencias no se crean a mano. --}}
     <div x-data="{ show: @entangle('showModal') }" x-show="show" x-cloak
          class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div x-show="show" x-transition.opacity @click="$wire.closeModal()" class="fixed inset-0 bg-gray-900/50"></div>
 
         <div x-show="show" x-transition class="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <h2 class="text-lg font-semibold text-gray-900">
-                {{ $editingId ? 'Editar competencia' : 'Nueva competencia' }}
-            </h2>
+            <h2 class="text-lg font-semibold text-gray-900">Editar competencia</h2>
 
             <form wire:submit="save" class="mt-4 space-y-4">
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Deporte</label>
-                        <select wire:model="form.sport_id"
-                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Selecciona un deporte</option>
-                            @foreach ($this->sportOptions() as $sport)
-                                <option value="{{ $sport->id }}">{{ $sport->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('form.sport_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Nivel <span class="font-normal text-gray-400">(opcional)</span></label>
-                        <select wire:model="form.category_id"
-                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Sin nivel</option>
-                            @foreach ($this->categoryOptions() as $category)
-                                <option value="{{ $category->id }}">{{ $category->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('form.category_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Género <span class="font-normal text-gray-400">(opcional)</span></label>
-                        <select wire:model="form.gender"
-                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Sin género</option>
-                            @foreach ($this->genderOptions() as $option)
-                                <option value="{{ $option->value }}">{{ $option->label() }}</option>
-                            @endforeach
-                        </select>
-                        @error('form.gender') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Fila del cuadro de puntaje <span class="font-normal text-gray-400">(opcional)</span></label>
-                        <select wire:model="form.games_edition_event_id"
-                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Ninguna (no suma al puntaje general)</option>
-                            @foreach ($this->eventOptions() as $event)
-                                <option value="{{ $event->id }}">{{ $event->label }}</option>
-                            @endforeach
-                        </select>
-                        @error('form.games_edition_event_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                </div>
+                @if ($current = $this->editingSeason())
+                    {{-- Viene del cuadro de puntaje: no se edita aquí. --}}
+                    <dl class="grid grid-cols-2 gap-3 rounded-lg bg-gray-50 p-3 text-sm sm:grid-cols-4">
+                        <div>
+                            <dt class="text-xs text-gray-500">Deporte</dt>
+                            <dd class="font-medium text-gray-800">{{ $current->sport->name }}{{ $current->discipline ? ' — '.$current->discipline->name : '' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-gray-500">Nivel</dt>
+                            <dd class="font-medium text-gray-800">{{ $current->category?->name ?? 'Sin nivel' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-gray-500">Género</dt>
+                            <dd class="font-medium text-gray-800">{{ $current->gender?->label() ?? 'Sin género' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-gray-500">Fila del cuadro</dt>
+                            <dd class="font-medium text-gray-800">{{ $current->event?->label ?? 'Ninguna' }}</dd>
+                        </div>
+                    </dl>
+                @endif
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Nombre</label>

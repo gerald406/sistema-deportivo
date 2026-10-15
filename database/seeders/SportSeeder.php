@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Enums\SportFormatType;
+use App\Enums\StandardStages;
 use App\Models\Sport;
 use Illuminate\Database\Seeder;
 
@@ -14,8 +15,10 @@ use Illuminate\Database\Seeder;
  * danza) se cargan como deporte de ranking para poder tener competencia y
  * podio como cualquier otro (S6).
  *
- * El slug es la identidad: lo usan los demas seeders. `config` solo se
- * escribe al crear, para no pisar lo que el admin haya ajustado.
+ * El slug es la identidad: lo usan los demas seeders. `config` y las
+ * fases estandar solo se escriben al crear, para no pisar lo que el admin
+ * haya ajustado. Ajedrez: series por sistema suizo fuera del sistema y
+ * final de podio (D18).
  */
 class SportSeeder extends Seeder
 {
@@ -41,11 +44,14 @@ class SportSeeder extends Seeder
             'danza' => ['Danza', $ranked, null],
         ];
 
+        $standardStages = ['ajedrez' => StandardStages::PodiumSeries];
+
         foreach ($sports as $slug => [$name, $format, $config]) {
             $sport = Sport::firstOrNew(['slug' => $slug]);
 
             if (! $sport->exists) {
                 $sport->config = $config;
+                $sport->standard_stages = $standardStages[$slug] ?? null;
             }
 
             $sport->fill(['name' => $name, 'format_type' => $format, 'is_active' => true])->save();

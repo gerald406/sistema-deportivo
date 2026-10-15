@@ -44,8 +44,14 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
 
 8. **Fases, llaves y podios.** Una competencia tiene fases (`SeasonStage`): de **partidos**
    (llave de eliminación simple) o de **podio directo** (solo 1.º, 2.º y 3.º, `SeasonStageResult`).
-   - `StageService::createStandardStages()`: enfrentamiento → una fase por serie + "Fase final"
-     con tercer puesto; cualquier otro formato → "Final" de podio directo.
+   - `StageService::createStandardStages()` arma la estructura de `sports.standard_stages`
+     (enum `StandardStages`; vacío = según el formato): `bracket_series` → una fase de partidos
+     por serie + "Fase final" con tercer puesto (fútbol, futsal, básquet, vóley, tenis de mesa);
+     `podium_series` → una fase de podio por serie (clasifica 1) + "Final" de podio (ajedrez,
+     suizo fuera del sistema, D18); `podium_only` → solo "Final" de podio (lo demás). En /fases,
+     "Generar fases de todas" lo aplica a cada competencia activa sin fases
+     (`createMissingStandardStages()`). El podio de una fase con serie solo admite delegaciones
+     de esa serie (`DirectPodiumService`).
    - `BracketService::generate()` arma la llave con byes para los primeros de la lista y crea
      todos los partidos enlazados (`next_match_id`); `advance()` mueve al ganador (y al perdedor
      al partido por el tercer puesto) desde `ResultService::afterResultChanged()`.
@@ -53,9 +59,12 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
      y lado ganador (`TiebreakType`). Fuera de una llave el empate sigue permitido.
    - No se reabre un partido si la ronda siguiente ya se jugó (`BracketService::ensureCanReopen()`).
    - Las gestiona quien gestiona la competencia (`SeasonAccess::manages()`), pantalla /fases.
-9. **Sanciones = datos de la olimpiada.** `games_editions.yellow_cards_limit` (amarillas
-   acumuladas en una competencia que dan 1 partido) y `captain_red_matches` (partidos al capitán
-   expulsado). Vacío = la regla no se aplica. Solo `SuspensionService` las interpreta.
+9. **Sanciones automáticas: solo rojas.** Al cerrar un partido, cada roja (directa o por doble
+   amarilla) da 1 partido de sanción, sea o no capitán el expulsado (`SuspensionService`). La
+   acumulación de amarillas y la sanción especial al capitán se manejan **fuera del sistema**
+   (decisión del cliente); si se decide una, el organizador la registra como sanción manual.
+   La olimpiada guarda solo nombre, organizador, fechas de inicio y fin (obligatorias), logo y
+   estado: no tiene sede principal ni reglas disciplinarias.
 
 10. **Puntaje general = dato derivado.** `AwardService::rebuild()` borra y recalcula
    `edition_awards` y `games_edition_medals` de la olimpiada: cada podio (de la ÚLTIMA fase de
@@ -75,11 +84,14 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
    olimpiada es el unico eje. La regla "quien gestiona la olimpiada" vive en un solo sitio:
    `GamesEditionService::manages()`.
 2. **Competencias (`Season`, pantalla /competencias)**: deporte × nivel × género (y prueba en
-   atletismo). Lo normal es **generarlas** desde el cuadro de puntaje
+   atletismo). **Nunca se crean a mano** (D19): salen del cuadro de puntaje
    (`CompetitionGeneratorService::generate()`, idempotente: solo agrega, nunca modifica ni
-   reactiva); también se crean a mano. Solo quien gestiona la olimpiada (`SeasonPolicy`,
-   `SeasonService::ensureCanUseEdition()`). Una competencia que no corresponde se **desactiva**,
-   no se borra (el generador la volvería a crear).
+   reactiva), que corre solo cada vez que el admin guarda una fila (`EditionEventService`) y
+   también con el botón "Generar competencias". `SeasonService::update()` solo cambia nombre,
+   fechas, estado, activa y fases de puntaje (`SeasonService::EDITABLE`); deporte, prueba,
+   nivel, género y fila del cuadro no se editan. Solo quien gestiona la olimpiada
+   (`SeasonPolicy`, `SeasonService::ensureCanUseEdition()`). Una competencia que no corresponde
+   se **desactiva**, no se borra (el generador la volvería a crear).
 3. **Delegaciones (`Team`)**: las crea, edita y borra el ORGANIZADOR o el ADMIN (`teams.manage`).
    El delegado NO entra a /equipos ni edita su delegación: solo registra participantes
    (`TeamPolicy`, `TeamRegistrationService`). El organizador solo ve y gestiona las delegaciones

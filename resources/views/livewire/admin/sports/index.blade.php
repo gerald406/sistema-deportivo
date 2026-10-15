@@ -107,6 +107,17 @@
                         @endforeach
                     </select>
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fases estándar</label>
+                    <select wire:model="sportForm.standard_stages" class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">Según el formato</option>
+                        @foreach ($this->standardStagesOptions() as $option)
+                            <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">Lo que crea "Crear fases estándar" en /fases. Según el formato: enfrentamiento = series en llave + fase final; lo demás = solo podio.</p>
+                    @error('sportForm.standard_stages') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
                 <label class="flex items-center gap-2">
                     <input type="checkbox" wire:model="sportForm.is_active" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                     <span class="text-sm text-gray-700">Activo</span>

@@ -35,7 +35,10 @@ class EditionEventService
     {
         $this->ensureAdmin($actor);
 
-        return $edition->events()->create($this->validated($edition, $data));
+        $event = $edition->events()->create($this->validated($edition, $data));
+        $this->generateCompetitions($edition, $actor);
+
+        return $event;
     }
 
     /**
@@ -49,8 +52,19 @@ class EditionEventService
 
         // Los puntos de la fila cambian el puntaje general.
         app(AwardService::class)->rebuild($event->edition);
+        $this->generateCompetitions($event->edition, $actor);
 
         return $event;
+    }
+
+    /**
+     * Las competencias no se crean a mano (D19): cada vez que el cuadro
+     * cambia se crean las que falten. El generador solo AGREGA: una fila
+     * desactivada no desactiva sus competencias (eso se hace en /competencias).
+     */
+    private function generateCompetitions(GamesEdition $edition, User $actor): void
+    {
+        app(CompetitionGeneratorService::class)->generate($edition, $actor);
     }
 
     /**

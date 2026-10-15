@@ -211,6 +211,9 @@ Cambios respecto al plan, hechos al implementar:
 - El mensaje del trigger de disciplina ya no se muestra tal cual (decía "temporada").
 - La olimpiada de Puno ya existente en la base de trabajo recibió `yellow_cards_limit = 2` y
   `captain_red_matches = 2` con una actualización puntual (el seeder solo los fija al crearla).
+- **Revertido después (D17, 14/10):** la acumulación de amarillas y la sanción especial al
+  capitán se manejan fuera del sistema. La migración `simplify_games_editions_table` quitó
+  ambas columnas y `YellowCardSuspensionTest` pasó a ser `RedCardSuspensionTest`.
 - Pruebas añadidas fuera de las tablas: reglas de las fases, misma delegación dos veces en el
   podio, pantallas con una llave a medio jugar, medallas solo de la fase final, marcador del
   desempate coherente con el ganador, dos participantes contados por separado, y las de pantalla.

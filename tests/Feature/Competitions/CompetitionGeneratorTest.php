@@ -262,6 +262,61 @@ class CompetitionGeneratorTest extends TestCase
             ->assertOk()->assertSee('Voleibol Libre Damas')->assertSee('Generar competencias');
     }
 
+    /** D19: guardar el cuadro crea las competencias que falten, sin pulsar "Generar". */
+    public function test_saving_a_scoring_row_creates_its_competitions(): void
+    {
+        $sport = Sport::create(['name' => 'Voleibol', 'slug' => 'voleibol', 'format_type' => 'head_to_head', 'is_active' => true]);
+        $service = app(EditionEventService::class);
+        $data = [
+            'label' => 'Voleibol Libre', 'sort_order' => 1, 'sport_id' => $sport->id, 'category_id' => $this->libre->id,
+            'gender_scope' => 'both', 'separate_podiums' => true, 'per_discipline' => false,
+            'pts_first' => 20, 'pts_second' => 16, 'pts_third' => 12, 'min_players' => '', 'max_players' => '',
+            'rules_blocking' => false, 'is_active' => true,
+        ];
+
+        $row = $service->register($this->edition, $data, $this->admin());
+        $this->assertSame(['Voleibol Libre Damas', 'Voleibol Libre Varones'], Season::where('games_edition_event_id', $row->id)->orderBy('name')->pluck('name')->all());
+
+        // Editar la fila no duplica; ampliar su alcance si agrega lo que falta.
+        $service->update($row, ['gender_scope' => 'both', 'pts_first' => 24] + $data, $this->admin());
+        $this->assertSame(2, Season::count());
+
+        $service->register($this->edition, ['label' => 'Voleibol Libre mixto', 'gender_scope' => 'none', 'sort_order' => 2] + $data, $this->admin());
+        $this->assertSame(3, Season::count());
+    }
+
+    public function test_competitions_are_not_created_by_hand(): void
+    {
+        $season = Season::factory()->create(['games_edition_id' => $this->edition->id, 'name' => 'Voleibol Libre Damas']);
+
+        $this->actingAs($this->edition->organizer)->get(route('seasons.index'))
+            ->assertOk()->assertDontSee('Nueva competencia');
+
+        // Editar solo cambia lo editable; deporte, nivel y genero se muestran sin editar.
+        Livewire::actingAs($this->edition->organizer)->test(SeasonsIndex::class)
+            ->call('edit', $season->id)
+            ->assertSee($season->sport->name)
+            ->set('form.name', 'Vóley Libre Damas')
+            ->set('form.is_active', false)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $season->refresh();
+        $this->assertSame('Vóley Libre Damas', $season->name);
+        $this->assertFalse($season->is_active);
+
+        // Sin competencia en edicion, guardar no crea nada.
+        try {
+            Livewire::actingAs($this->edition->organizer)->test(SeasonsIndex::class)
+                ->set('form.name', 'Inventada')
+                ->call('save')
+                ->assertNotFound();
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $this->addToAssertionCount(1);
+        }
+        $this->assertSame(1, Season::count());
+    }
+
     public function test_screen_lists_only_competitions_of_managed_editions(): void
     {
         $foreign = Season::factory()->create(['name' => 'Competencia Ajena']);

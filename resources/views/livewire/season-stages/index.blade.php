@@ -5,8 +5,18 @@
             <p class="text-sm text-gray-500">Cómo se juega cada competencia: series y fase final con partidos, o podio directo (solo 1.º, 2.º y 3.º).</p>
         </div>
 
-        @if ($season)
-            <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-2">
+            <button type="button"
+                    x-on:click="Swal.fire({
+                        title: 'Generar fases de todas las competencias',
+                        text: 'Se crearán las fases estándar de cada competencia activa que aún no tenga fases. Las que ya tienen fases no se modifican.',
+                        icon: 'question', showCancelButton: true,
+                        confirmButtonText: 'Generar', cancelButtonText: 'Cancelar', confirmButtonColor: '#059669',
+                    }).then((r) => { if (r.isConfirmed) $wire.createStandardForAll() })"
+                    class="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600">
+                <i class="fa-solid fa-layer-group"></i> Generar fases de todas
+            </button>
+            @if ($season)
                 <x-export-button />
                 @if ($stages->isEmpty())
                     <button wire:click="createStandard" type="button"
@@ -18,8 +28,8 @@
                         class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
                     <i class="fa-solid fa-plus"></i> Nueva fase
                 </button>
-            </div>
-        @endif
+            @endif
+        </div>
     </div>
 
     {{-- Selector de competencia --}}

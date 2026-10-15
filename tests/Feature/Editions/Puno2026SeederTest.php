@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Editions;
 
 use App\Enums\SportFormatType;
+use App\Enums\StandardStages;
 use App\Models\Category;
 use App\Models\Discipline;
 use App\Models\GamesEdition;
@@ -71,6 +72,12 @@ class Puno2026SeederTest extends TestCase
 
         $this->assertEqualsCanonicalizing($slugs, Sport::where('is_active', true)->pluck('slug')->all());
 
+        // D18: solo ajedrez define sus fases estandar; el resto sigue su formato.
+        $this->assertSame(
+            ['ajedrez' => StandardStages::PodiumSeries->value],
+            Sport::whereNotNull('standard_stages')->get()->mapWithKeys(fn ($s) => [$s->slug => $s->standard_stages->value])->all(),
+        );
+
         $athletics = Discipline::where('sport_id', Sport::where('slug', 'atletismo')->value('id'))->where('is_active', true)->get();
         $this->assertEqualsCanonicalizing(
             ['100 metros', '400 metros', '1500 metros', '3000 metros', 'Salto largo', 'Lanzamiento de peso', 'Lanzamiento de disco', 'Posta 4x100'],
@@ -99,7 +106,6 @@ class Puno2026SeederTest extends TestCase
         $this->assertSame('2026-10-28', $edition->start_date->toDateString());
         $this->assertSame('2026-10-30', $edition->end_date->toDateString());
         $this->assertNotNull($edition->organizer_id);
-        $this->assertSame([2, 2], [$edition->yellow_cards_limit, $edition->captain_red_matches]); // Art. 15 y 14
 
         $perGroup = $edition->groups()->withCount('editionTeams')->get()->pluck('edition_teams_count', 'name')->all();
         $this->assertSame(['Serie A' => 5, 'Serie B' => 4, 'Serie C' => 5, 'Serie D' => 4], $perGroup);
@@ -201,5 +207,19 @@ class Puno2026SeederTest extends TestCase
 
         $this->assertSame($before, $counts());
         $this->assertSame(15, $this->points(26)[0]);
+    }
+
+    /** La prueba con el nombre anterior se renombra; no queda duplicada. */
+    public function test_old_discipline_name_is_renamed_instead_of_duplicated(): void
+    {
+        $atletismo = Sport::where('slug', 'atletismo')->firstOrFail();
+        $discipline = Discipline::where('sport_id', $atletismo->id)->where('name', '100 metros')->firstOrFail();
+        $discipline->update(['name' => '100 metros llanos']);
+        $total = Discipline::count();
+
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertSame('100 metros', $discipline->fresh()->name);
+        $this->assertSame($total, Discipline::count());
     }
 }

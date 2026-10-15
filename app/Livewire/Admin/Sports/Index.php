@@ -6,6 +6,7 @@ namespace App\Livewire\Admin\Sports;
 
 use App\Enums\BetterDirection;
 use App\Enums\SportFormatType;
+use App\Enums\StandardStages;
 use App\Enums\UnitOfMeasure;
 use App\Livewire\Concerns\ExportsExcel;
 use App\Livewire\Concerns\LimitsPerPage;
@@ -46,6 +47,7 @@ class Index extends Component
         'name' => '',
         'slug' => '',
         'format_type' => 'head_to_head',
+        'standard_stages' => '',
         'is_active' => true,
     ];
 
@@ -96,6 +98,11 @@ class Index extends Component
         return SportFormatType::cases();
     }
 
+    public function standardStagesOptions(): array
+    {
+        return StandardStages::cases();
+    }
+
     public function unitOfMeasureOptions(): array
     {
         return UnitOfMeasure::cases();
@@ -127,6 +134,7 @@ class Index extends Component
             'name' => $sport->name,
             'slug' => $sport->slug,
             'format_type' => $sport->format_type->value,
+            'standard_stages' => $sport->standard_stages?->value ?? '',
             'is_active' => $sport->is_active,
         ];
         $this->showSportModal = true;
@@ -141,8 +149,12 @@ class Index extends Component
                 Rule::unique('sports', 'slug')->ignore($this->editingSportId),
             ],
             'sportForm.format_type' => ['required', Rule::in(array_column(SportFormatType::cases(), 'value'))],
+            'sportForm.standard_stages' => ['nullable', Rule::enum(StandardStages::class)],
             'sportForm.is_active' => ['boolean'],
         ])['sportForm'];
+
+        // Vacio = las fases estandar se deducen del formato.
+        $data['standard_stages'] = ($data['standard_stages'] ?? '') !== '' ? $data['standard_stages'] : null;
 
         if ($this->editingSportId) {
             $service->updateSport(Sport::findOrFail($this->editingSportId), $data);
@@ -296,6 +308,7 @@ class Index extends Component
         return [
             'Nombre' => fn (Sport $s) => $s->name,
             'Formato' => fn (Sport $s) => $s->format_type->label(),
+            'Fases estándar' => fn (Sport $s) => $s->standard_stages?->label() ?? 'Según el formato',
             'Disciplinas' => fn (Sport $s) => $s->disciplines_count,
             'Estado' => fn (Sport $s) => $s->is_active ? 'Activo' : 'Inactivo',
         ];
@@ -324,6 +337,7 @@ class Index extends Component
             'name' => '',
             'slug' => '',
             'format_type' => 'head_to_head',
+            'standard_stages' => '',
             'is_active' => true,
         ];
         $this->resetErrorBag();

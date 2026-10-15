@@ -33,9 +33,4 @@ class Venue extends Model
     {
         return $this->hasMany(GameMatch::class);
     }
-
-    public function gamesEditionsHosted(): HasMany
-    {
-        return $this->hasMany(GamesEdition::class, 'host_venue_id');
-    }
 }
