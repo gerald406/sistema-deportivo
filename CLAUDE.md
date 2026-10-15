@@ -117,11 +117,15 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
    (`EditionEventService` revalida `hasRole('admin')`); el organizador de la olimpiada solo lo ve.
    Puntos y topes de plantel son opcionales: vacío = sin puntos / sin restricción. Los datos
    reales de Puno 2026 se cargan con `php artisan db:seed --class=Puno2026Seeder` (no destructivo).
-4. **Inscripciones a una competencia (`SeasonTeam`)**: nacen solas cuando se registra el primer
-   participante de la delegación en esa competencia (`SeasonTeamService::ensureFor()`, que exige
-   que la delegación esté inscrita en la olimpiada y no retirada ni descalificada). El delegado
-   NUNCA crea ni edita `SeasonTeam` directamente; el ORGANIZADOR o el ADMIN las editan o retiran
-   en /inscripciones (`SeasonTeamPolicy`, `SeasonTeamService`).
+4. **Inscripciones a una competencia (`SeasonTeam`)** (D22, cambió la regla anterior): el
+   DELEGADO (titular o suplente) inscribe y retira a SU delegación en las disciplinas desde
+   /inscripcion-disciplinas (`DelegationEnrollmentService::enroll()`/`withdraw()`), solo hasta
+   `games_editions.registration_deadline` (incluido ese día); quien gestiona la olimpiada lo hace
+   siempre. Retirar exige plantel vacío. También nacen al registrar el primer participante
+   (`SeasonTeamService::ensureFor()`, que exige delegación inscrita y no retirada ni
+   descalificada), con el mismo cierre. Una inscripción desactivada por el organizador solo la
+   reactiva él. Categoría, estado y retiro con historial: ORGANIZADOR o ADMIN en /inscripciones
+   (`SeasonTeamPolicy`, `SeasonTeamService`).
 5. **Participantes en el plantel (`SeasonTeamPlayer`)**: los inscribe el DELEGADO (titular o
    suplente) eligiendo competencia y delegación
    (`SeasonTeamPlayerService::registerInCompetition()`, que autoriza con `canRegisterFor()`),

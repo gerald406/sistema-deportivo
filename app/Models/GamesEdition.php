@@ -19,6 +19,7 @@ class GamesEdition extends Model
         'organizer_id',
         'start_date',
         'end_date',
+        'registration_deadline',
         'is_active',
     ];
 
@@ -27,8 +28,19 @@ class GamesEdition extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'registration_deadline' => 'date',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * El delegado aun puede inscribir a su delegacion en disciplinas (D22):
+     * hasta el final del dia de cierre, en hora de la aplicacion. Sin
+     * fecha = siempre abierto.
+     */
+    public function registrationOpen(): bool
+    {
+        return $this->registration_deadline === null || now()->lte($this->registration_deadline->copy()->endOfDay());
     }
 
     /** Organizador responsable: gestiona todo lo que cuelga de la olimpiada. */

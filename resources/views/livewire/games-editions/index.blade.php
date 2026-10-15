@@ -160,6 +160,14 @@
                 </div>
 
                 <div>
+                    <label class="block text-sm font-medium text-gray-700">Cierre de inscripciones <span class="font-normal text-gray-400">(opcional)</span></label>
+                    <input type="date" wire:model="form.registration_deadline"
+                           class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <p class="mt-1 text-xs text-gray-400">Último día en que los delegados inscriben su delegación en las disciplinas. Después, solo el organizador.</p>
+                    @error('form.registration_deadline') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
                     <label class="block text-sm font-medium text-gray-700">Logo</label>
                     <div class="mt-2 flex items-center gap-4">
                         @if ($newLogo)

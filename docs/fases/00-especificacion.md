@@ -49,6 +49,7 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D19 | Las competencias no se registran una a una: salen del cuadro de puntaje (se crean solas al guardarlo y con el botón "Generar competencias", que se conserva). Al editar solo cambian nombre, fechas, estado, activa y fases de puntaje. Atletismo: las 8 pruebas en los 3 niveles, damas y varones | 14/10 |
 | D20 | Cada participante puede tener su resolución de nombramiento o contrato en PDF (opcional, con aviso "Sin resolución"), para verificación y reclamos. La ven su delegación, el organizador y el admin. Verificados los documentos, el delegado ya no la reemplaza (solo el organizador o el admin) | 14/10 |
 | D21 | La ficha de inscripción es **general por delegación y disciplina** (bases VII.c): lista todo el plantel, sale por duplicado e incluye la declaración jurada de la Dirección (VII.d). Firman solo el delegado y el director(a) (`teams.director_name`), no cada participante. La ficha individual queda como opción | 14/10 |
+| D22 | El delegado inscribe a su delegación en las disciplinas (colectivas e individuales) en una sola pantalla, y desde cada una arma el plantel. Cierre de inscripciones por olimpiada (`registration_deadline`; Puno: 23/10, bases VII.a): después solo el organizador inscribe o retira | 14/10 |
 
 Supuestos míos (cada uno es un valor por defecto editable). **Todos (S1 a S6) confirmados por el
 cliente el 13/10:**

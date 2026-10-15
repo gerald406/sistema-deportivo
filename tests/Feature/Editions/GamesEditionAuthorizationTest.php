@@ -217,6 +217,20 @@ class GamesEditionAuthorizationTest extends TestCase
         $this->assertSame('2026-10-30', GamesEdition::sole()->end_date->toDateString());
     }
 
+    public function test_registration_deadline_is_optional_and_not_after_the_end(): void
+    {
+        $edition = GamesEdition::factory()->create(['organizer_id' => $this->organizer()->id, 'end_date' => '2026-10-30']);
+        $form = fn () => Livewire::actingAs($this->admin())->test(GamesEditionsIndex::class)->call('edit', $edition->id);
+
+        $form()->set('form.registration_deadline', '2026-10-31')->call('save')->assertHasErrors('form.registration_deadline');
+
+        $form()->set('form.registration_deadline', '2026-10-23')->call('save')->assertHasNoErrors();
+        $this->assertSame('2026-10-23', $edition->refresh()->registration_deadline->toDateString());
+
+        $form()->set('form.registration_deadline', '')->call('save')->assertHasNoErrors();
+        $this->assertNull($edition->refresh()->registration_deadline);
+    }
+
     public function test_organizer_sees_only_own_editions(): void
     {
         $organizer = $this->organizer();

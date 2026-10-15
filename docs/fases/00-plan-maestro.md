@@ -93,6 +93,7 @@ la siguiente con una prueba omitida ni marcada como pendiente.
 | M18 | D18 | `2026_10_25_090100_add_standard_stages_to_sports_table` | `sports.standard_stages`; ajedrez = `podium_series` |
 | M19 | D20 | `2026_10_25_090200_add_resolution_to_players_table` | `resolution_path`, `resolution_uploaded_at`, `resolution_uploaded_by` |
 | M20 | D21 | `2026_10_25_090300_add_director_name_to_teams_table` | `teams.director_name` |
+| M21 | D22 | `2026_10_25_090400_add_registration_deadline_to_games_editions_table` | `games_editions.registration_deadline` |
 
 Después de cada migración nueva: `php artisan migrate` en la base de trabajo.
 
@@ -180,6 +181,7 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | `DirectPodiumService` | `save(SeasonStage $stage, array $places, User $actor): void` (`$places`: por puesto, una fila `['team_id' => int, 'season_team_player_id' => ?int]` o una lista de filas si el puesto es compartido; guardar reemplaza el podio; en una fase con serie solo admite delegaciones de esa serie, D18). Constante `PLACES` | F5 |
 | `SuspensionService` | `generateForMatch()`: toda roja da 1 partido (D17 quitó la acumulación de amarillas y la sanción del capitán) | F5 |
 | `ResultService` | `close()` acepta `tiebreak_type`, `tiebreak_winner_side`, `tiebreak_home`, `tiebreak_away`; errores de desempate en la clave `tiebreak` | F5 |
+| `DelegationEnrollmentService` | `editionsFor(User)`, `delegationsFor(User, GamesEdition)`, `board(GamesEdition, Team)`, `kindOf(Season)`, `canEnroll()`/`ensureCanEnroll(User, Season, Team)`, `enroll(Season, Team, User): SeasonTeam`, `withdraw(SeasonTeam, User): bool\|string` | D22 |
 | `GeneralRegistrationFormService` | `prepare(SeasonTeam): array`; `seasonTeamsOf(GamesEdition, Team): Collection`; `canPrint(User, SeasonTeam): bool` (= `SeasonTeamPlayerPolicy::managesSeasonTeam`); constante `COPIES` | D21 |
 | `AwardService` | `rebuild(GamesEdition $edition): void`; `table(GamesEdition $edition): Collection`; `detail(GamesEdition $edition, Team $team): Collection` | F6 |
 
@@ -276,6 +278,7 @@ Cada cambio de permisos va en **dos** sitios: `RolePermissionSeeder` y una migra
 | `tests/Feature/Stages/StageListingTest.php` (listado de fases en /fases) | D18 |
 | `tests/Feature/Editions/PlayerResolutionTest.php` | D20 |
 | `tests/Feature/Editions/GeneralRegistrationFormTest.php` | D21 |
+| `tests/Feature/Editions/DelegationEnrollmentTest.php` | D22 |
 | `tests/Feature/Stages/RedCardSuspensionTest.php` (antes `YellowCardSuspensionTest`, D17) | F5 |
 | `tests/Feature/Scores/AwardServiceTest.php` | F6 |
 | `tests/Feature/Smoke/ProductionConfigTest.php` | F7 |

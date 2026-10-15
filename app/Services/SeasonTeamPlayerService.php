@@ -63,6 +63,16 @@ class SeasonTeamPlayerService
             throw ValidationException::withMessages(['form.season_id' => 'La competencia está cerrada: el plantel ya no se modifica.']);
         }
 
+        // Si este participante crearia la inscripcion en la disciplina, rige
+        // lo mismo que al inscribirla (D22): el delegado solo hasta el cierre.
+        if (! SeasonTeam::where('season_id', $season->id)->where('team_id', $team->id)->exists()) {
+            try {
+                app(DelegationEnrollmentService::class)->ensureCanEnroll($actor, $season, $team);
+            } catch (ValidationException $e) {
+                throw ValidationException::withMessages(['form.season_id' => $e->errors()['enrollment'] ?? $e->getMessage()]);
+            }
+        }
+
         // Transaccion: si el participante es rechazado, la inscripcion de
         // la delegacion recien creada no queda vacia.
         return DB::transaction(function () use ($season, $team, $data, $actor) {

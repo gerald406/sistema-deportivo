@@ -45,6 +45,7 @@ class Index extends Component
         'organizer_id' => '',
         'start_date' => '',
         'end_date' => '',
+        'registration_deadline' => '',
         'is_active' => true,
     ];
 
@@ -103,6 +104,7 @@ class Index extends Component
             'organizer_id' => $edition->organizer_id,
             'start_date' => $edition->start_date?->format('Y-m-d') ?? '',
             'end_date' => $edition->end_date?->format('Y-m-d') ?? '',
+            'registration_deadline' => $edition->registration_deadline?->format('Y-m-d') ?? '',
             'is_active' => $edition->is_active,
         ];
         $this->existingLogoUrl = $edition->logo ? Storage::disk('public')->url($edition->logo) : null;
@@ -112,6 +114,7 @@ class Index extends Component
     public function save(GamesEditionService $service): void
     {
         $data = $this->validate($this->rules())['form'];
+        $data['registration_deadline'] = $data['registration_deadline'] ?: null;
         $actor = auth()->user();
 
         if ($this->editingId) {
@@ -250,6 +253,7 @@ class Index extends Component
             'organizer_id' => '',
             'start_date' => '',
             'end_date' => '',
+            'registration_deadline' => '',
             'is_active' => true,
         ];
         $this->newLogo = null;
@@ -272,6 +276,7 @@ class Index extends Component
             'form.organizer_id' => ['nullable', 'integer'],
             'form.start_date' => ['required', 'date'],
             'form.end_date' => ['required', 'date', 'after_or_equal:form.start_date'],
+            'form.registration_deadline' => ['nullable', 'date', 'before_or_equal:form.end_date'],
             'form.is_active' => ['boolean'],
             'newLogo' => ['nullable', 'image', 'max:2048'],
         ];
@@ -284,6 +289,7 @@ class Index extends Component
             'form.organizer_id' => 'organizador',
             'form.start_date' => 'fecha de inicio',
             'form.end_date' => 'fecha de fin',
+            'form.registration_deadline' => 'cierre de inscripciones',
             'newLogo' => 'logo',
         ];
     }
