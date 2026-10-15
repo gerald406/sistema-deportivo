@@ -24,8 +24,9 @@ use Illuminate\Validation\ValidationException;
  * ("Flujo de permisos" punto 4 de CLAUDE.md):
  *   - Organizador (de esa olimpiada) y admin: inscriben cualquier equipo, en
  *     Borrador o En curso, y eligen delegado de competencia.
- *   - CAMBIO DE REGLA: el delegado ya NO inscribe (antes lo hacia con sus
- *     equipos en Borrador). No crea ni edita season_team en ningun estado.
+ *   - El delegado no usa register()/update() (formulario de /inscripciones):
+ *     inscribe a SU delegacion por DelegationEnrollmentService (D22), que
+ *     termina en ensureFor() y respeta el cierre de inscripciones.
  *   - Nadie inscribe en una competencia Cerrada.
  */
 class SeasonTeamService

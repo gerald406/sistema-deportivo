@@ -117,6 +117,8 @@ class Puno2026Seeder extends Seeder
                 'organizer_id' => $organizer->id,
                 'start_date' => '2026-10-28',
                 'end_date' => '2026-10-30',
+                // Bases VII.a: inscripciones hasta el 23 de octubre (D22).
+                'registration_deadline' => '2026-10-23',
                 'is_active' => true,
             ]
         );

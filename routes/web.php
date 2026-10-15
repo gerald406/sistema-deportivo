@@ -11,6 +11,7 @@ use App\Livewire\Admin\Sports\Index as AdminSportsIndex;
 use App\Livewire\Admin\Users\Index as AdminUsersIndex;
 use App\Livewire\Categories\Index as CategoriesIndex;
 use App\Livewire\Dashboard;
+use App\Livewire\DelegationEnrollment\Index as DelegationEnrollmentIndex;
 use App\Livewire\EditionEvents\Index as EditionEventsIndex;
 use App\Livewire\EditionGroups\Index as EditionGroupsIndex;
 use App\Livewire\EditionTeams\Index as EditionTeamsIndex;
@@ -88,6 +89,10 @@ Route::middleware([
     // Fases de una competencia: series, fase final, llaves y podio directo.
     Route::get('/fases', SeasonStagesIndex::class)
         ->name('season-stages.index');
+
+    // Inscripcion por disciplina (D22): el delegado marca sus disciplinas y va a cada plantel.
+    Route::get('/inscripcion-disciplinas', DelegationEnrollmentIndex::class)
+        ->name('enrollment.index');
 
     Route::get('/inscripciones', SeasonTeamsIndex::class)
         ->name('season-teams.index');

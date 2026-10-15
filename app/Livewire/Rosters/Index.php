@@ -41,7 +41,8 @@ class Index extends Component
 
     public string $search = '';
 
-    /** Inscripcion (season_team) cuyo plantel se muestra; '' = todas. */
+    /** Inscripcion (season_team) cuyo plantel se muestra; '' = todas. En la URL para llegar desde Inscripcion por disciplina. */
+    #[Url(as: 'inscripcion')]
     public string $seasonTeamFilter = '';
 
     /** all | active | injured | suspended | inactive */
