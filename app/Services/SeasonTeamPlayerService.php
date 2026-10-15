@@ -42,6 +42,12 @@ use Illuminate\Validation\ValidationException;
  */
 class SeasonTeamPlayerService
 {
+    /** Tope de participantes por alta multiple (registerMany()). */
+    public const BULK_MAX = 100;
+
+    /** Campos que se editan en linea desde la tabla del plantel (updateInline()). */
+    public const INLINE_FIELDS = ['shirt_number', 'position_id', 'is_captain'];
+
     public function __construct(private RosterRuleService $rules, private GamesEditionService $editions)
     {
     }
@@ -79,6 +85,101 @@ class SeasonTeamPlayerService
             $seasonTeam = app(SeasonTeamService::class)->ensureFor($season, $team);
 
             return $this->register(['season_team_id' => $seasonTeam->id] + $data, $actor);
+        });
+    }
+
+    /**
+     * Alta de varios participantes de una vez (D23): cada uno pasa por
+     * registerInCompetition(), con todas sus reglas, y entra con camiseta y
+     * posicion vacias, sin capitania y habilitado. Se agregan los validos y
+     * se informa el resto, para no perder toda la seleccion por un caso.
+     *
+     * @param  list<int|string>  $playerIds
+     * @return array{added: list<string>, warnings: list<string>, rejected: list<string>}
+     */
+    public function registerMany(Season $season, Team $team, array $playerIds, User $actor): array
+    {
+        if (! $this->canRegisterFor($actor, $season, $team)) {
+            throw new AuthorizationException('Solo los delegados de la delegación o el organizador de la olimpiada gestionan este plantel.');
+        }
+
+        $ids = collect($playerIds)->map(fn ($id) => (int) $id)->filter(fn (int $id) => $id > 0)->unique()->values();
+
+        if ($ids->isEmpty()) {
+            throw ValidationException::withMessages(['bulk' => 'Selecciona al menos un participante.']);
+        }
+
+        if ($ids->count() > self::BULK_MAX) {
+            throw ValidationException::withMessages(['bulk' => 'Puedes agregar hasta '.self::BULK_MAX.' participantes por vez.']);
+        }
+
+        $result = ['added' => [], 'warnings' => [], 'rejected' => []];
+
+        foreach (Player::whereIn('id', $ids)->orderBy('last_name')->orderBy('first_name')->get() as $player) {
+            $name = $player->fullName();
+
+            try {
+                $this->registerInCompetition($season, $team, [
+                    'player_id' => $player->id, 'shirt_number' => null, 'position_id' => null, 'is_captain' => false,
+                    'status' => SeasonTeamPlayerStatus::Active->value, 'enrolled_at' => now()->toDateString(), 'observations' => null,
+                ], $actor);
+
+                $result['added'][] = $name;
+
+                foreach ($this->rules->evaluate($season, $team, $player)['warnings'] as $warning) {
+                    $result['warnings'][] = "{$name}: {$warning}";
+                }
+            } catch (ValidationException $e) {
+                $result['rejected'][] = "{$name}: ".collect($e->errors())->flatten()->first();
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Edicion en linea desde la tabla del plantel (D23): un solo campo
+     * (camiseta, posicion o capitania), con las mismas reglas que update().
+     * Marcar a alguien como capitan le quita la capitania al anterior: un
+     * capitan por plantel sin pasos extra.
+     */
+    public function updateInline(SeasonTeamPlayer $entry, string $field, mixed $value, User $actor): SeasonTeamPlayer
+    {
+        $entry->load('seasonTeam.season.gamesEdition');
+
+        if (! SeasonTeamPlayerPolicy::managesSeasonTeam($actor, $entry->seasonTeam)) {
+            throw new AuthorizationException('Solo el delegado del equipo o el organizador de la olimpiada gestionan este plantel.');
+        }
+
+        if (! in_array($field, self::INLINE_FIELDS, true)) {
+            throw ValidationException::withMessages(['inline' => 'Ese dato no se edita desde la tabla.']);
+        }
+
+        $value = match ($field) {
+            'is_captain' => (bool) $value,
+            default => $value === '' || $value === null ? null : (int) $value,
+        };
+
+        if ($field === 'shirt_number' && $value !== null && ($value < 0 || $value > 999)) {
+            throw ValidationException::withMessages(['form.shirt_number' => 'La camiseta debe ser un número de 0 a 999.']);
+        }
+
+        $data = [
+            'shirt_number' => $entry->shirt_number,
+            'position_id' => $entry->position_id,
+            'is_captain' => $entry->is_captain,
+            'status' => $entry->status->value,
+            'enrolled_at' => $entry->enrolled_at->toDateString(),
+            'observations' => $entry->observations,
+            $field => $value,
+        ];
+
+        return DB::transaction(function () use ($entry, $field, $value, $data) {
+            if ($field === 'is_captain' && $value) {
+                SeasonTeamPlayer::where('season_team_id', $entry->season_team_id)->whereKeyNot($entry->id)->update(['is_captain' => false]);
+            }
+
+            return $this->update($entry, $data);
         });
     }
 

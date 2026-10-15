@@ -87,6 +87,12 @@
                 </button>
 
                 @can('create', \App\Models\SeasonTeamPlayer::class)
+                    @if ($bulkTeam)
+                        <button wire:click="openBulk" type="button"
+                                class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+                            <i class="fa-solid fa-users-line"></i> Agregar varios
+                        </button>
+                    @endif
                     <button wire:click="create" type="button"
                             class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
                         <i class="fa-solid fa-user-plus"></i> Agregar participante
@@ -97,38 +103,45 @@
     </div>
 
     {{-- Filtros --}}
-    <div class="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 lg:flex-row lg:items-center">
-        <div class="relative flex-1">
+    {{-- Cuadricula: el select de planteles (delegacion — competencia) desbordaba en fila. --}}
+    <div class="grid grid-cols-1 gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 sm:grid-cols-2 xl:grid-cols-6">
+        <div class="relative min-w-0 sm:col-span-2 xl:col-span-2">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" wire:model.live.debounce.400ms="search"
                    placeholder="Buscar participante o DNI..."
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
-        <select wire:model.live="seasonTeamFilter"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <select wire:model.live="seasonTeamFilter" title="Plantel"
+                class="w-full min-w-0 truncate rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 sm:col-span-2 xl:col-span-2">
             <option value="">Todos los planteles</option>
-            @foreach ($filterSeasonTeams as $st)
-                <option value="{{ $st->id }}">{{ $st->team->name }} — {{ $st->season->name }}</option>
+            @foreach ($filterSeasonTeams->groupBy(fn ($st) => $st->team->name) as $teamName => $group)
+                <optgroup label="{{ $teamName }}">
+                    @foreach ($group as $st)
+                        <option value="{{ $st->id }}">{{ $st->season->name }}</option>
+                    @endforeach
+                </optgroup>
             @endforeach
         </select>
 
-        <select wire:model.live="rosterStatusFilter"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <select wire:model.live="rosterStatusFilter" title="Estado"
+                class="w-full min-w-0 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 xl:col-span-1">
             <option value="all">Todos los estados</option>
             @foreach ($this->statusOptions() as $option)
                 <option value="{{ $option->value }}">{{ $option->label() }}</option>
             @endforeach
         </select>
 
-        <select wire:model.live="perPage"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="10">10 por página</option>
-            <option value="15">15 por página</option>
-            <option value="25">25 por página</option>
-            <option value="50">50 por página</option>
-        </select>
-        <x-export-button />
+        <div class="flex min-w-0 gap-3 xl:col-span-1">
+            <select wire:model.live="perPage" title="Filas por página"
+                    class="w-full min-w-0 flex-1 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="10">10 por página</option>
+                <option value="15">15 por página</option>
+                <option value="25">25 por página</option>
+                <option value="50">50 por página</option>
+            </select>
+            <x-export-button />
+        </div>
     </div>
 
     {{-- Tabla --}}
@@ -156,7 +169,10 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($entries as $entry)
                         @php($canPrint = auth()->user()->can('printCard', $entry))
-                        <tr wire:key="roster-{{ $entry->id }}">
+                        {{-- Edicion en linea (D23): fuera del modo carnets y con permiso de editar la ficha --}}
+                        @php($inline = ! $cardMode && auth()->user()->can('update', $entry))
+                        {{-- updated_at en la clave: tras guardar (o un error) la fila se redibuja con el dato real --}}
+                        <tr wire:key="roster-{{ $entry->id }}-{{ $entry->updated_at?->timestamp }}">
                             @if ($cardMode)
                                 <td class="px-4 py-3">
                                     @if ($canPrint)
@@ -167,7 +183,16 @@
                                     @endif
                                 </td>
                             @endif
-                            <td class="px-4 py-3 font-semibold text-gray-700">{{ $entry->shirt_number ?? '—' }}</td>
+                            <td class="px-4 py-3 font-semibold text-gray-700">
+                                @if ($inline)
+                                    <input type="number" min="0" max="999" value="{{ $entry->shirt_number }}" placeholder="—"
+                                           aria-label="Camiseta de {{ $entry->player->fullName() }}"
+                                           wire:change="updateInline({{ $entry->id }}, 'shirt_number', $event.target.value)"
+                                           class="w-16 rounded-md border-gray-300 px-2 py-1 text-center text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                @else
+                                    {{ $entry->shirt_number ?? '—' }}
+                                @endif
+                            </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-3">
                                     <img class="h-8 w-8 rounded-full border object-cover"
@@ -176,7 +201,12 @@
                                     <div>
                                         <p class="font-medium text-gray-900">
                                             {{ $entry->player->last_name }}, {{ $entry->player->first_name }}
-                                            @if ($entry->is_captain)
+                                            @if ($inline)
+                                                {{-- Un capitan por plantel: marcar aqui se la quita al anterior --}}
+                                                <button type="button" wire:click="updateInline({{ $entry->id }}, 'is_captain', {{ $entry->is_captain ? 0 : 1 }})"
+                                                        title="{{ $entry->is_captain ? 'Quitar capitanía' : 'Hacer capitán' }}"
+                                                        class="ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold {{ $entry->is_captain ? 'bg-indigo-600 text-white' : 'border border-dashed border-gray-300 text-gray-400 hover:border-indigo-400 hover:text-indigo-600' }}">C</button>
+                                            @elseif ($entry->is_captain)
                                                 <span class="ml-1 rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white" title="Capitán">C</span>
                                             @endif
                                         </p>
@@ -202,7 +232,21 @@
                                     </p>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-gray-600">{{ $entry->position?->name ?? '—' }}</td>
+                            <td class="px-4 py-3 text-gray-600">
+                                @php($sportPositions = $positionsBySport[$entry->seasonTeam->season->sport_id] ?? collect())
+                                @if ($inline && $sportPositions->isNotEmpty())
+                                    <select wire:change="updateInline({{ $entry->id }}, 'position_id', $event.target.value)"
+                                            aria-label="Posición de {{ $entry->player->fullName() }}"
+                                            class="w-full min-w-[8rem] rounded-md border-gray-300 py-1 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        <option value="">—</option>
+                                        @foreach ($sportPositions as $position)
+                                            <option value="{{ $position->id }}" @selected($entry->position_id === $position->id)>{{ $position->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    {{ $entry->position?->name ?? '—' }}
+                                @endif
+                            </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $entry->status->badgeClasses() }}">
                                     {{ $entry->status->label() }}
@@ -399,6 +443,154 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+    {{-- Agregar varios (D23): seleccion multiple con la aptitud de cada participante a la vista --}}
+    <div x-data="{ show: @entangle('showBulk') }" x-show="show" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div x-show="show" x-transition.opacity @click="$wire.closeBulk()" class="fixed inset-0 bg-gray-900/50"></div>
+
+        <div x-show="show" x-transition class="relative flex max-h-[92vh] w-full max-w-4xl flex-col rounded-xl bg-white shadow-xl">
+            @if ($showBulk && $bulkTeam)
+                @php($candidates = $this->bulkCandidates())
+                @php($current = $bulkTeam->roster()->where('status', '!=', \App\Enums\SeasonTeamPlayerStatus::Inactive->value)->count())
+                @php($max = $bulkTeam->season->event?->max_players)
+                @php($min = $bulkTeam->season->event?->min_players)
+
+                <div class="border-b px-6 py-4">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Agregar participantes</h2>
+                            <p class="text-sm text-gray-500">{{ $bulkTeam->season->name }} · {{ $bulkTeam->team->name }}</p>
+                        </div>
+                        <div class="text-right text-sm">
+                            <p class="font-semibold text-gray-800">Plantel {{ $current }}{{ $max ? ' / '.$max : '' }}</p>
+                            @if ($min && $current < $min)
+                                <p class="text-xs text-amber-700">Faltan {{ $min - $current }} para el mínimo ({{ $min }})</p>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        <div class="relative min-w-0 lg:col-span-2">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" wire:model.live.debounce.300ms="bulkSearch" placeholder="Buscar nombre o DNI..."
+                                   class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <select wire:model.live="bulkStaffFilter" class="w-full min-w-0 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">Docentes y administrativos</option>
+                            @foreach ($this->staffTypeOptions() as $option)
+                                <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                            @endforeach
+                        </select>
+                        <select wire:model.live="bulkEmploymentFilter" class="w-full min-w-0 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">Nombrados y contratados</option>
+                            @foreach ($this->employmentTypeOptions() as $option)
+                                <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mt-3 flex flex-wrap items-center gap-4 text-sm">
+                        <button type="button" wire:click="selectAllEligible" class="font-medium text-indigo-600 hover:text-indigo-500">
+                            <i class="fa-solid fa-check-double mr-1"></i> Seleccionar todos los aptos ({{ $candidates->where('state', 'ok')->count() }})
+                        </button>
+                        @if (count($bulkSelected) > 0)
+                            <button type="button" wire:click="$set('bulkSelected', [])" class="text-gray-500 hover:text-gray-700">Quitar selección</button>
+                        @endif
+                        <label class="ml-auto flex items-center gap-2 text-gray-600">
+                            <input type="checkbox" wire:model.live="bulkOnlyEligible" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            Solo aptos
+                        </label>
+                    </div>
+                </div>
+
+                {{-- Resumen del ultimo agregado: los validos entraron; el resto, con su motivo --}}
+                @if ($bulkResult)
+                    <div class="border-b bg-gray-50 px-6 py-3 text-sm">
+                        <p class="font-semibold text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i> Se agregaron {{ count($bulkResult['added']) }}.</p>
+                        @if ($bulkResult['rejected'] !== [])
+                            <p class="mt-1 font-semibold text-red-700"><i class="fa-solid fa-circle-xmark mr-1"></i> No se agregaron {{ count($bulkResult['rejected']) }}:</p>
+                            <ul class="ml-5 list-disc text-xs text-red-700">
+                                @foreach ($bulkResult['rejected'] as $line)
+                                    <li>{{ $line }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        @if ($bulkResult['warnings'] !== [])
+                            <p class="mt-1 font-semibold text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Agregados con observaciones:</p>
+                            <ul class="ml-5 list-disc text-xs text-amber-700">
+                                @foreach ($bulkResult['warnings'] as $line)
+                                    <li>{{ $line }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                @endif
+
+                <div class="flex-1 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <tbody class="divide-y divide-gray-100">
+                            @forelse ($candidates as $candidate)
+                                @php($p = $candidate->player)
+                                <tr wire:key="bulk-{{ $p->id }}" class="{{ $candidate->state === 'blocked' ? 'bg-gray-50 text-gray-400' : '' }}">
+                                    <td class="w-10 px-4 py-2">
+                                        <input type="checkbox" value="{{ $p->id }}" wire:model.live="bulkSelected" @disabled($candidate->state === 'blocked')
+                                               aria-label="Seleccionar a {{ $p->fullName() }}"
+                                               class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40">
+                                    </td>
+                                    <td class="px-2 py-2">
+                                        <p class="font-medium {{ $candidate->state === 'blocked' ? '' : 'text-gray-900' }}">{{ $p->last_name }}, {{ $p->first_name }}</p>
+                                        <p class="text-xs text-gray-400">
+                                            DNI {{ $p->dni }}
+                                            @if ($p->birth_date) · {{ (int) $bulkTeam->season->gamesEdition?->start_date?->year - $p->birth_date->year }} años @endif
+                                            · {{ collect([$p->staff_type?->label(), $p->employment_type?->label()])->filter()->implode(' · ') ?: 'Sin tipo' }}
+                                        </p>
+                                    </td>
+                                    <td class="px-4 py-2 text-right">
+                                        @if ($candidate->state === 'ok')
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700"><i class="fa-solid fa-check"></i> Apto</span>
+                                        @elseif ($candidate->state === 'warn')
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"><i class="fa-solid fa-triangle-exclamation"></i> Con observaciones</span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700"><i class="fa-solid fa-ban"></i> No puede</span>
+                                        @endif
+                                        @foreach ($candidate->reasons as $reason)
+                                            <p class="mt-0.5 text-xs {{ $candidate->state === 'warn' ? 'text-amber-700' : 'text-red-600' }}">{{ $reason }}</p>
+                                        @endforeach
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td class="px-6 py-10 text-center text-gray-400">
+                                        No hay participantes disponibles con estos filtros. Regístralos primero en Participantes.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex flex-col gap-3 border-t px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-gray-600">
+                        Seleccionados: <span class="font-semibold">{{ count($bulkSelected) }}</span>
+                        @if ($max)
+                            · Quedan {{ max(0, $max - $current) }} cupos
+                            @if (count($bulkSelected) > max(0, $max - $current))
+                                <span class="text-amber-700">(la selección supera el tope)</span>
+                            @endif
+                        @endif
+                    </p>
+                    <div class="flex gap-3">
+                        <button type="button" wire:click="closeBulk" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">Cerrar</button>
+                        <button type="button" wire:click="addSelected" wire:loading.attr="disabled" @disabled(count($bulkSelected) === 0)
+                                class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
+                            <span wire:loading.remove wire:target="addSelected"><i class="fa-solid fa-user-plus"></i> Agregar {{ count($bulkSelected) }} al plantel</span>
+                            <span wire:loading wire:target="addSelected"><i class="fa-solid fa-spinner fa-spin"></i> Agregando...</span>
+                        </button>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </div>
