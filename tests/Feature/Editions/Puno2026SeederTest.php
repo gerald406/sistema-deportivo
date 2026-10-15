@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Editions;
 
 use App\Enums\SportFormatType;
+use App\Enums\StandardStages;
 use App\Models\Category;
 use App\Models\Discipline;
 use App\Models\GamesEdition;
@@ -70,6 +71,12 @@ class Puno2026SeederTest extends TestCase
         $slugs = ['futbol', 'futsal', 'basquetbol', 'voley', 'ajedrez', 'tenis-de-mesa', 'tiro-al-sapo', 'ciclismo', 'atletismo', 'puntualidad', 'estudiantina', 'danza'];
 
         $this->assertEqualsCanonicalizing($slugs, Sport::where('is_active', true)->pluck('slug')->all());
+
+        // D18: solo ajedrez define sus fases estandar; el resto sigue su formato.
+        $this->assertSame(
+            ['ajedrez' => StandardStages::PodiumSeries->value],
+            Sport::whereNotNull('standard_stages')->get()->mapWithKeys(fn ($s) => [$s->slug => $s->standard_stages->value])->all(),
+        );
 
         $athletics = Discipline::where('sport_id', Sport::where('slug', 'atletismo')->value('id'))->where('is_active', true)->get();
         $this->assertEqualsCanonicalizing(

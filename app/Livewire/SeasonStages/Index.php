@@ -106,15 +106,23 @@ class Index extends Component
         return $this->season()?->gamesEdition->groups()->get(['id', 'name']) ?? collect();
     }
 
-    /** Delegaciones inscritas (y habilitadas) en la olimpiada: las que pueden subir al podio. */
+    /**
+     * Delegaciones inscritas (y habilitadas) en la olimpiada: las que pueden
+     * subir al podio. En la fase de una serie, solo las de esa serie (lo
+     * revalida DirectPodiumService).
+     */
     public function teamOptions(): Collection
     {
         $season = $this->season();
+        $groupId = $season && $this->podiumStageId
+            ? SeasonStage::where('season_id', $season->id)->whereKey($this->podiumStageId)->value('group_id')
+            : null;
 
         return $season
             ? Team::whereHas('editionTeams', fn ($q) => $q
                 ->where('games_edition_id', $season->games_edition_id)
-                ->where('status', EditionTeamStatus::Registered->value))
+                ->where('status', EditionTeamStatus::Registered->value)
+                ->when($groupId, fn ($q) => $q->where('group_id', $groupId)))
                 ->orderBy('name')->get(['id', 'name'])
             : collect();
     }
@@ -142,6 +150,21 @@ class Index extends Component
         $this->dispatch('toast', type: $created->isEmpty() ? 'info' : 'success', message: $created->isEmpty()
             ? 'La competencia ya tiene fases: no se creó ninguna.'
             : 'Fases creadas: '.$created->pluck('name')->implode(', ').'.');
+    }
+
+    /**
+     * Fases estandar para todas las competencias activas (y no cerradas)
+     * que el usuario gestiona y que aun no tienen fases: sin elegir una a
+     * una. StageService revalida cada competencia.
+     */
+    public function createStandardForAll(StageService $service): void
+    {
+        $seasons = SeasonAccess::manageableSeasons(auth()->user())->where('is_active', true);
+        $result = $service->createMissingStandardStages($seasons, auth()->user());
+
+        $this->dispatch('toast', type: $result['seasons'] === 0 ? 'info' : 'success', message: $result['seasons'] === 0
+            ? 'Todas las competencias ya tenían fases: no se creó ninguna.'
+            : "Fases creadas en {$result['seasons']} competencias ({$result['stages']} fases). Ya tenían fases: {$result['existing']}.");
     }
 
     public function create(): void

@@ -6,8 +6,8 @@ namespace App\Services;
 
 use App\Enums\MatchStatus;
 use App\Enums\RoundType;
-use App\Enums\SportFormatType;
 use App\Enums\StageMode;
+use App\Enums\StandardStages;
 use App\Models\GamesEditionGroup;
 use App\Models\Season;
 use App\Models\SeasonStage;
@@ -21,10 +21,11 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Fases de una competencia. Las bases (Art. 8 y 10) juegan los deportes de
- * enfrentamiento en series por eliminacion y una fase final; el resto solo
- * premia 1.o, 2.o y 3.o. Nada de eso esta fijo: las fases son datos que el
- * organizador crea, edita o cambia de modo (p. ej. ajedrez a podio directo
- * si lleva el sistema suizo en papel, D14).
+ * enfrentamiento en series por eliminacion y una fase final; el ajedrez en
+ * series por sistema suizo fuera del sistema (D18) y el resto solo premia
+ * 1.o, 2.o y 3.o. La estructura estandar es un dato del deporte
+ * (sports.standard_stages) y las fases son datos que el organizador crea,
+ * edita o cambia de modo.
  *
  * Las gestiona quien gestiona la competencia (SeasonAccess::manages()).
  */
@@ -100,10 +101,13 @@ class StageService
 
     /**
      * Crea las fases que piden las bases, solo si la competencia aun no
-     * tiene ninguna (devuelve una coleccion vacia si ya tenia):
-     *   - Enfrentamiento: una fase de partidos por cada serie de la
+     * tiene ninguna (devuelve una coleccion vacia si ya tenia). La
+     * estructura sale de standardStagesFor():
+     *   - BracketSeries: una fase de partidos por cada serie de la
      *     olimpiada (clasifica 1) y una "Fase final" con tercer puesto.
-     *   - Cualquier otro formato: una sola "Final" de podio directo.
+     *   - PodiumSeries: una fase de podio directo por serie (clasifica 1)
+     *     y una "Final" de podio directo.
+     *   - PodiumOnly: una sola "Final" de podio directo.
      */
     public function createStandardStages(Season $season, User $actor): Collection
     {
@@ -114,31 +118,76 @@ class StageService
         }
 
         $season->loadMissing('sport', 'discipline', 'gamesEdition.groups');
+        $structure = $this->standardStagesFor($season);
 
-        return DB::transaction(function () use ($season) {
-            if ($this->matches->formatFor($season, $season->discipline) !== SportFormatType::HeadToHead) {
-                return collect([$season->stages()->create([
-                    'name' => self::PODIUM_STAGE, 'sort_order' => 1, 'mode' => StageMode::DirectPodium, 'has_third_place' => false,
-                ])]);
+        return DB::transaction(function () use ($season, $structure) {
+            if ($structure === StandardStages::PodiumOnly) {
+                return collect([$this->createFinal($season, StageMode::DirectPodium, 1)]);
             }
 
+            $mode = $structure === StandardStages::BracketSeries ? StageMode::Matches : StageMode::DirectPodium;
             $stages = collect();
             $order = 0;
 
             foreach ($season->gamesEdition->groups as $group) {
                 $stages->push($season->stages()->create([
-                    'name' => $group->name, 'sort_order' => ++$order, 'mode' => StageMode::Matches,
+                    'name' => $group->name, 'sort_order' => ++$order, 'mode' => $mode,
                     'group_id' => $group->id, 'qualifiers' => 1, 'has_third_place' => false,
                 ]));
             }
 
-            $stages->push($season->stages()->create([
-                'name' => self::FINAL_STAGE, 'sort_order' => ++$order, 'mode' => StageMode::Matches,
-                'has_third_place' => true,
-            ]));
+            $stages->push($this->createFinal($season, $mode, ++$order));
 
             return $stages;
         });
+    }
+
+    /**
+     * createStandardStages() para cada competencia de $seasons que aun no
+     * tenga fases. Cada una se autoriza por separado.
+     *
+     * @param  iterable<Season>  $seasons
+     * @return array{seasons: int, stages: int, existing: int} competencias con fases nuevas, fases creadas y competencias que ya tenian
+     */
+    public function createMissingStandardStages(iterable $seasons, User $actor): array
+    {
+        $result = ['seasons' => 0, 'stages' => 0, 'existing' => 0];
+
+        foreach ($seasons as $season) {
+            $created = $this->createStandardStages($season, $actor);
+
+            if ($created->isEmpty()) {
+                $result['existing']++;
+            } else {
+                $result['seasons']++;
+                $result['stages'] += $created->count();
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Lo que define el deporte (sports.standard_stages) o, si esta vacio,
+     * lo que corresponde al formato efectivo (la prueba manda: la Posta
+     * 4x100 de atletismo es de podio aunque el deporte cambie).
+     */
+    public function standardStagesFor(Season $season): StandardStages
+    {
+        $season->loadMissing('sport', 'discipline');
+
+        return $season->sport->standard_stages
+            ?? StandardStages::forFormat($this->matches->formatFor($season, $season->discipline));
+    }
+
+    private function createFinal(Season $season, StageMode $mode, int $order): SeasonStage
+    {
+        return $season->stages()->create([
+            'name' => $mode === StageMode::Matches ? self::FINAL_STAGE : self::PODIUM_STAGE,
+            'sort_order' => $order,
+            'mode' => $mode,
+            'has_third_place' => $mode === StageMode::Matches,
+        ]);
     }
 
     /**

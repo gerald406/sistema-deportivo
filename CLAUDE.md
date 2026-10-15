@@ -44,8 +44,14 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
 
 8. **Fases, llaves y podios.** Una competencia tiene fases (`SeasonStage`): de **partidos**
    (llave de eliminación simple) o de **podio directo** (solo 1.º, 2.º y 3.º, `SeasonStageResult`).
-   - `StageService::createStandardStages()`: enfrentamiento → una fase por serie + "Fase final"
-     con tercer puesto; cualquier otro formato → "Final" de podio directo.
+   - `StageService::createStandardStages()` arma la estructura de `sports.standard_stages`
+     (enum `StandardStages`; vacío = según el formato): `bracket_series` → una fase de partidos
+     por serie + "Fase final" con tercer puesto (fútbol, futsal, básquet, vóley, tenis de mesa);
+     `podium_series` → una fase de podio por serie (clasifica 1) + "Final" de podio (ajedrez,
+     suizo fuera del sistema, D18); `podium_only` → solo "Final" de podio (lo demás). En /fases,
+     "Generar fases de todas" lo aplica a cada competencia activa sin fases
+     (`createMissingStandardStages()`). El podio de una fase con serie solo admite delegaciones
+     de esa serie (`DirectPodiumService`).
    - `BracketService::generate()` arma la llave con byes para los primeros de la lista y crea
      todos los partidos enlazados (`next_match_id`); `advance()` mueve al ganador (y al perdedor
      al partido por el tercer puesto) desde `ResultService::afterResultChanged()`.

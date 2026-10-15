@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\SportFormatType;
+use App\Enums\StandardStages;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,6 +18,7 @@ class Sport extends Model
         'name',
         'slug',
         'format_type',
+        'standard_stages',
         'config',
         'is_active',
     ];
@@ -25,6 +27,7 @@ class Sport extends Model
     {
         return [
             'format_type' => SportFormatType::class,
+            'standard_stages' => StandardStages::class,
             'config' => 'array',
             'is_active' => 'boolean',
         ];

@@ -105,6 +105,8 @@ class DirectPodiumService
 
         $registered = GamesEditionTeam::where('games_edition_id', $season->games_edition_id)
             ->where('status', EditionTeamStatus::Registered->value)
+            // En la fase de una serie solo suben delegaciones de esa serie.
+            ->when($stage->group_id, fn ($q) => $q->where('group_id', $stage->group_id))
             ->pluck('team_id')
             ->all();
 
@@ -112,7 +114,9 @@ class DirectPodiumService
             $key = "podium.{$row['place']}";
 
             if (! in_array($row['team_id'], $registered, true)) {
-                throw ValidationException::withMessages([$key => 'La delegación no está inscrita en la olimpiada, o está retirada o descalificada.']);
+                throw ValidationException::withMessages([$key => $stage->group_id
+                    ? 'La delegación no pertenece a la serie de esta fase, o está retirada o descalificada.'
+                    : 'La delegación no está inscrita en la olimpiada, o está retirada o descalificada.']);
             }
 
             // La misma delegacion puede subir dos veces al podio solo con
