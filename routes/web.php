@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\GeneralRegistrationFormController;
 use App\Http\Controllers\ManagerialReportController;
 use App\Http\Controllers\PlayerCardController;
 use App\Http\Controllers\PlayerRegistrationController;
@@ -111,6 +112,12 @@ Route::middleware([
         ->name('registrations.team');
     Route::post('/fichas-inscripcion/masivo', [PlayerRegistrationController::class, 'massivePost'])
         ->name('registrations.massive.post');
+
+    // Ficha de inscripcion GENERAL por delegacion y disciplina (D21, bases VII.c y VII.d).
+    Route::get('/inscripciones/{seasonTeam}/ficha-general', [GeneralRegistrationFormController::class, 'single'])
+        ->name('registrations.general');
+    Route::get('/fichas-generales/{gamesEdition}/{team}', [GeneralRegistrationFormController::class, 'byDelegation'])
+        ->name('registrations.general.delegation');
 
     Route::get('/jornadas', MatchdaysIndex::class)
         ->name('matchdays.index');

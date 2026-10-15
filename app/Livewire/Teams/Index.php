@@ -46,6 +46,7 @@ class Index extends Component
 
     public array $form = [
         'name' => '',
+        'director_name' => '',
         'is_active' => true,
     ];
 
@@ -91,6 +92,7 @@ class Index extends Component
         $this->editingId = $team->id;
         $this->form = [
             'name' => $team->name,
+            'director_name' => $team->director_name ?? '',
             'is_active' => $team->is_active,
         ];
         $this->existingLogoUrl = $team->logo_path ? Storage::disk('public')->url($team->logo_path) : null;
@@ -100,6 +102,7 @@ class Index extends Component
     public function save(TeamRegistrationService $service): void
     {
         $data = $this->validate($this->rules())['form'];
+        $data['director_name'] = trim((string) ($data['director_name'] ?? '')) ?: null;
         $actor = auth()->user();
 
         if ($this->editingId) {
@@ -222,6 +225,7 @@ class Index extends Component
         $this->editingId = null;
         $this->form = [
             'name' => '',
+            'director_name' => '',
             'is_active' => true,
         ];
         $this->newLogo = null;
@@ -238,6 +242,7 @@ class Index extends Component
                 'max:150',
                 Rule::unique('teams', 'name')->ignore($this->editingId),
             ],
+            'form.director_name' => ['nullable', 'string', 'max:150'],
             'form.is_active' => ['boolean'],
             'newLogo' => ['nullable', 'image', 'max:2048'],
         ];
@@ -247,6 +252,7 @@ class Index extends Component
     {
         return [
             'form.name' => 'nombre',
+            'form.director_name' => 'director(a)',
             'newLogo' => 'logo',
         ];
     }

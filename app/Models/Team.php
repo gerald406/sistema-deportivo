@@ -15,6 +15,7 @@ class Team extends Model
 
     protected $fillable = [
         'name',
+        'director_name',
         'logo_path',
         'is_active',
         'created_by',

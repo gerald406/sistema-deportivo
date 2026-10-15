@@ -100,6 +100,29 @@ class PlayerRegistrationSelector extends Component
             : collect();
     }
 
+    /**
+     * Fichas generales (D21) de la olimpiada elegida: inscripciones activas
+     * con plantel que el usuario puede imprimir, agrupadas por delegacion.
+     *
+     * @return Collection<int, Collection<int, \App\Models\SeasonTeam>> team_id => inscripciones
+     */
+    public function generalForms(): Collection
+    {
+        if (! ctype_digit($this->gamesEditionId)) {
+            return collect();
+        }
+
+        return $this->scopedSeasonTeams()
+            ->where('season_team.is_active', true)
+            ->whereHas('season', fn ($q) => $q->where('is_active', true))
+            ->withCount(['roster as participants_count' => fn ($q) => $q->where('status', '!=', SeasonTeamPlayerStatus::Inactive->value)])
+            ->having('participants_count', '>', 0)
+            ->with(['team:id,name', 'season:id,name'])
+            ->get()
+            ->sortBy(fn ($st) => [$st->team->name, $st->season->name])
+            ->groupBy('team_id');
+    }
+
     public function render()
     {
         return view('livewire.player-registration-selector', [
