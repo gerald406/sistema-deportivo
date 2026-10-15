@@ -61,14 +61,6 @@ class Index extends Component
 
     public ?int $editingId = null;
 
-    /**
-     * Modo carnets (?carnets=1): checkboxes de seleccion multiple y boton
-     * "Generar seleccionados". Solo cambia la vista; cada carnet lo
-     * autoriza PlayerCardController con SeasonTeamPlayerPolicy::printCard.
-     */
-    #[Url(as: 'carnets')]
-    public bool $cardMode = false;
-
     /** Buscador de participantes dentro del modal (solo los de sus delegaciones). */
     public string $playerSearch = '';
 

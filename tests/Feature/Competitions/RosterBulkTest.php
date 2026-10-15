@@ -197,6 +197,18 @@ class RosterBulkTest extends TestCase
         $this->assertCount(0, $screen->instance()->bulkCandidates());
     }
 
+    public function test_rosters_screen_no_longer_offers_cards(): void
+    {
+        $entry = $this->rosterEntry($this->seasonTeam, playerAttributes: ['gender' => 'F']);
+
+        $this->actingAs($this->delegate)->get(route('rosters.index', ['inscripcion' => $this->seasonTeam->id]))
+            ->assertOk()
+            ->assertSee($entry->player->last_name)
+            ->assertDontSee('Carnet (PDF)')
+            ->assertDontSee(route('cards.single', $entry), false)
+            ->assertDontSee('fa-id-card', false);
+    }
+
     public function test_filtered_roster_preloads_the_panel(): void
     {
         $this->screen()->call('openBulk')
