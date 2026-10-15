@@ -46,6 +46,7 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D16 | El buscador de participantes al armar un plantel se limita a los de las delegaciones del usuario. Titular y suplente comparten los participantes que registran; el organizador ve los que registraron los delegados de su olimpiada | 13/10 |
 | D17 | La olimpiada guarda solo nombre, organizador, fechas de inicio y fin (obligatorias), logo y estado: sin sede principal. La acumulación de amarillas (Art. 15) y la sanción de 2 partidos al capitán (Art. 14) se manejan **fuera del sistema**; dentro, toda roja da 1 partido | 14/10 |
 | D18 | Fases estándar por deporte (dato `sports.standard_stages`): fútbol, futsal, básquetbol, voleibol y **tenis de mesa** en 4 series de eliminación simple + fase final con 3.er puesto (Art. 8 y 10). **Ajedrez** (sistema suizo, bases 2.2, fuera del sistema): 4 series de podio directo (clasifica el 1.º) + final de podio. El resto: solo final de podio. Un botón en /fases genera las fases de todas las competencias | 14/10 |
+| D19 | Las competencias no se registran una a una: salen del cuadro de puntaje (se crean solas al guardarlo y con el botón "Generar competencias", que se conserva). Al editar solo cambian nombre, fechas, estado, activa y fases de puntaje. Atletismo: las 8 pruebas en los 3 niveles, damas y varones | 14/10 |
 
 Supuestos míos (cada uno es un valor por defecto editable). **Todos (S1 a S6) confirmados por el
 cliente el 13/10:**

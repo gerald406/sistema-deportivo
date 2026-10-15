@@ -84,11 +84,14 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
    olimpiada es el unico eje. La regla "quien gestiona la olimpiada" vive en un solo sitio:
    `GamesEditionService::manages()`.
 2. **Competencias (`Season`, pantalla /competencias)**: deporte × nivel × género (y prueba en
-   atletismo). Lo normal es **generarlas** desde el cuadro de puntaje
+   atletismo). **Nunca se crean a mano** (D19): salen del cuadro de puntaje
    (`CompetitionGeneratorService::generate()`, idempotente: solo agrega, nunca modifica ni
-   reactiva); también se crean a mano. Solo quien gestiona la olimpiada (`SeasonPolicy`,
-   `SeasonService::ensureCanUseEdition()`). Una competencia que no corresponde se **desactiva**,
-   no se borra (el generador la volvería a crear).
+   reactiva), que corre solo cada vez que el admin guarda una fila (`EditionEventService`) y
+   también con el botón "Generar competencias". `SeasonService::update()` solo cambia nombre,
+   fechas, estado, activa y fases de puntaje (`SeasonService::EDITABLE`); deporte, prueba,
+   nivel, género y fila del cuadro no se editan. Solo quien gestiona la olimpiada
+   (`SeasonPolicy`, `SeasonService::ensureCanUseEdition()`). Una competencia que no corresponde
+   se **desactiva**, no se borra (el generador la volvería a crear).
 3. **Delegaciones (`Team`)**: las crea, edita y borra el ORGANIZADOR o el ADMIN (`teams.manage`).
    El delegado NO entra a /equipos ni edita su delegación: solo registra participantes
    (`TeamPolicy`, `TeamRegistrationService`). El organizador solo ve y gestiona las delegaciones

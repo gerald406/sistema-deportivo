@@ -163,11 +163,11 @@ Ninguno de los modelos nuevos participa en una relación polimórfica. Si eso ca
 | | `manages(User $actor, GamesEdition $edition): bool` | F1 |
 | | `scopeManagedBy(Builder $query, User $actor): Builder` | F1 |
 | | `scopeVisibleTo(Builder $query, User $actor): Builder` (ya existe) | F1 |
-| `SeasonService` | `editionsFor(User $actor): Collection` (antes `tournamentsFor`) | F1 |
+| `SeasonService` | `editionsFor(User $actor): Collection` (antes `tournamentsFor`); sin `register()` y `update()` limitado a `EDITABLE` (D19) | F1, D19 |
 | `EditionGroupService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionGroup`; `update(GamesEditionGroup $group, array $data, User $actor): GamesEditionGroup`; `delete(GamesEditionGroup $group, User $actor): bool\|string` | F2 |
 | `EditionTeamService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionTeam`; `update(GamesEditionTeam $entry, array $data, User $actor): GamesEditionTeam`; `delete(GamesEditionTeam $entry, User $actor): bool\|string`; `delegateOptions(): Collection`; `assignableTeams(User $actor): Builder`; `scopeDelegatedTo(Builder $teams, User $actor): Builder` | F2 |
 | `DelegateAccountService` | `createQuickAccount(array $data, User $actor): User` (admin u organizador con olimpiada; rol forzado `delegado`) | F2 |
-| `EditionEventService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionEvent`; `update(GamesEditionEvent $event, array $data, User $actor): GamesEditionEvent`; `delete(GamesEditionEvent $event, User $actor): bool\|string` (solo admin) | F3 |
+| `EditionEventService` | `register(GamesEdition $edition, array $data, User $actor): GamesEditionEvent`; `update(GamesEditionEvent $event, array $data, User $actor): GamesEditionEvent`; `delete(GamesEditionEvent $event, User $actor): bool\|string` (solo admin); `register()` y `update()` generan las competencias que falten (D19) | F3, D19 |
 | `CompetitionGeneratorService` | `generate(GamesEdition $edition, User $actor): array{created: int, existing: int, skipped: int}` (`skipped` = filas activas sin deporte); constante `DEFAULT_PHASE` | F4 |
 | `RosterRuleService` | `evaluate(Season $season, Team $team, Player $player): array{errors: string[], warnings: string[]}` (ya clasifica: `errors` si la fila es bloqueante, `warnings` si no); `violations(...): string[]` (sin clasificar); `isBlocking(Season): bool`; `referenceYear(Season): int`; `missingForMinimum(Season, int $activeCount): int` | F4 |
 | `SeasonTeamService` | `ensureFor(Season $season, Team $team): SeasonTeam` | F4 |

@@ -145,38 +145,38 @@ class GamesEditionAuthorizationTest extends TestCase
         $this->assertTrue($this->admin()->can('delete', $edition));
     }
 
-    public function test_season_can_only_be_created_in_own_edition(): void
+    public function test_only_own_edition_competitions_are_edited(): void
     {
         $organizer = $this->organizer();
-        $own = GamesEdition::factory()->create(['organizer_id' => $organizer->id]);
-        $foreign = GamesEdition::factory()->create();
-        $sport = Sport::factory()->create();
-        $service = app(SeasonService::class);
+        $foreign = Season::factory()->create(['games_edition_id' => GamesEdition::factory()->create()->id, 'name' => 'Ajena']);
 
-        $data = ['sport_id' => $sport->id, 'name' => 'Fútbol Libre', 'start_date' => null, 'end_date' => null, 'status' => 'draft', 'is_active' => true];
-
-        $season = $service->register($data + ['games_edition_id' => $own->id], $this->phases(), $organizer);
-        $this->assertSame($own->id, $season->games_edition_id);
-
-        $this->expectException(AuthorizationException::class);
-        $service->register($data + ['games_edition_id' => $foreign->id], $this->phases(), $organizer);
-    }
-
-    public function test_season_cannot_be_moved_to_a_foreign_edition(): void
-    {
-        $organizer = $this->organizer();
-        $own = GamesEdition::factory()->create(['organizer_id' => $organizer->id]);
-        $foreign = GamesEdition::factory()->create();
-        $season = Season::factory()->create(['games_edition_id' => $own->id]);
-
-        $data = ['games_edition_id' => $foreign->id, 'sport_id' => $season->sport_id, 'name' => $season->name, 'start_date' => null, 'end_date' => null, 'status' => 'draft', 'is_active' => true];
+        $data = ['name' => 'Tomada', 'start_date' => null, 'end_date' => null, 'status' => 'draft', 'is_active' => true];
 
         try {
-            app(SeasonService::class)->update($season, $data, $this->phases(), $organizer);
-            $this->fail('Se movió la competencia a una olimpiada ajena.');
+            app(SeasonService::class)->update($foreign, $data, $this->phases(), $organizer);
+            $this->fail('Se editó una competencia de una olimpiada ajena.');
         } catch (AuthorizationException) {
-            $this->assertSame($own->id, $season->refresh()->games_edition_id);
+            $this->assertSame('Ajena', $foreign->refresh()->name);
         }
+    }
+
+    public function test_competition_keeps_what_comes_from_the_scoring_table(): void
+    {
+        $organizer = $this->organizer();
+        $own = GamesEdition::factory()->create(['organizer_id' => $organizer->id]);
+        $foreign = GamesEdition::factory()->create();
+        $season = Season::factory()->create(['games_edition_id' => $own->id, 'gender' => 'M']);
+        $sportId = $season->sport_id;
+
+        // Olimpiada, deporte y genero llegan del navegador: se ignoran.
+        app(SeasonService::class)->update($season, [
+            'games_edition_id' => $foreign->id, 'sport_id' => Sport::factory()->create()->id, 'gender' => 'F',
+            'name' => 'Nombre nuevo', 'start_date' => '2026-10-28', 'end_date' => '2026-10-29', 'status' => 'active', 'is_active' => true,
+        ], $this->phases(), $organizer);
+
+        $season->refresh();
+        $this->assertSame([$own->id, $sportId, 'M'], [$season->games_edition_id, $season->sport_id, $season->gender->value]);
+        $this->assertSame(['Nombre nuevo', '2026-10-29'], [$season->name, $season->end_date->toDateString()]);
     }
 
     public function test_user_organizing_an_edition_cannot_be_deleted(): void
