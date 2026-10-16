@@ -371,7 +371,7 @@ class Index extends Component
         return [
             'form.dni' => [
                 'required',
-                'digits_between:8,12',
+                'digits:8',
                 Rule::unique('players', 'dni')->ignore($this->editingId),
             ],
             'form.first_name' => ['required', 'string', 'max:100'],
