@@ -38,7 +38,7 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D8 | Software a medida: una sola estructura (Olimpiada); las reglas de reglamento son datos editables | 12/10 |
 | D9 | Delegado titular y suplente por delegación, con los mismos permisos | 29/09 |
 | D10 | Edad por año de nacimiento: año de la olimpiada − año de nacimiento ≥ edad mínima del nivel. Se puede jugar en un nivel menor, y en varios niveles y deportes | 29/09 |
-| D11 | Las reglas de reglamento advierten; solo bloquean si se marcan como bloqueantes | 29/09 |
+| D11 | Las reglas de reglamento advierten; solo bloquean si se marcan como bloqueantes (edad y género: bloquean siempre, D26) | 29/09 |
 | D12 | Fuera del sistema: jurados, Comisión de Justicia, ventana de reclamos, sanción de 2 años, intentos y marcas de lanzamientos, pase de lista | 29/09 |
 | D13 | Lanzamientos, salto, sapo, ciclismo, danza, estudiantina y puntualidad: solo se registra 1.º, 2.º y 3.º | 29/09 |
 | D14 | Ajedrez: emparejamiento manual por el organizador | 29/09 |
@@ -53,6 +53,7 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D23 | El plantel se arma por selección múltiple: lista de participantes de la delegación con su aptitud (apto, con observaciones, no puede), "seleccionar todos los aptos" y alta en lote con camiseta y posición vacías; se agregan los válidos y se informa el resto. Camiseta, posición y capitán se editan en línea en la tabla (marcar un capitán se la quita al anterior) | 14/10 |
 | D24 | /partidos solo programa: jornada, fecha y hora, sede y estado. Los partidos nacen en /fases al generar la llave, con sus participantes; ya no se crean partidos sueltos ni se eligen participantes o carriles en el modal | 15/10 |
 | D25 | /inscripcion-disciplinas es la única puerta para inscribir a una delegación en una disciplina, para todos los roles. /planteles solo ofrece y admite las disciplinas marcadas (inscripción activa) y, en cada una, las delegaciones inscritas; agregar un participante ya no crea la inscripción. Reemplaza a S3 | 15/10 |
+| D26 | Edad (por año de nacimiento) y género del nivel y de la competencia **bloquean siempre**: quien no los cumple no entra al plantel, ni por el alta individual ni por la múltiple (sin fecha de nacimiento o sin género tampoco). El tope de plantel y "una sola delegación por olimpiada" siguen advirtiendo salvo fila bloqueante (D11). Los ya inscritos no se quitan solos: se listan para que decida la organización | 15/10 |
 
 Supuestos míos (cada uno es un valor por defecto editable). **Todos (S1 a S6) confirmados por el
 cliente el 13/10:**

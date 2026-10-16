@@ -303,16 +303,40 @@ class RosterRuleTest extends TestCase
 
     public function test_non_blocking_rules_register_with_warnings(): void
     {
-        $season = $this->competition('Máster', row: ['rules_blocking' => false]);
-        $young = $this->player('2000-01-01');
+        // El tope y "una sola delegacion" siguen la fila: aqui solo advierten.
+        $season = $this->competition('Máster', row: ['rules_blocking' => false, 'max_players' => 1]);
+        $this->enroll($season, $this->player('1980-01-01'), actor: $this->delegate);
+        $second = $this->player('1980-01-01');
 
-        $result = app(RosterRuleService::class)->evaluate($season, $this->team, $young);
+        $result = app(RosterRuleService::class)->evaluate($season, $this->team, $second);
         $this->assertSame([], $result['errors']);
-        $this->assertCount(1, $result['warnings']);
+        $this->assertSame(['El plantel ya tiene 1 de 1 permitidos.'], $result['warnings']);
 
-        $entry = $this->enroll($season, $young, actor: $this->delegate);
+        $entry = $this->enroll($season, $second, actor: $this->delegate);
 
-        $this->assertDatabaseHas('season_team_player', ['id' => $entry->id, 'player_id' => $young->id, 'status' => 'active']);
+        $this->assertDatabaseHas('season_team_player', ['id' => $entry->id, 'player_id' => $second->id, 'status' => 'active']);
+    }
+
+    public function test_age_and_gender_always_block(): void
+    {
+        // D26: aunque la fila solo advierta, edad y genero no se negocian.
+        $season = $this->competition('Máster', 'M', ['rules_blocking' => false]);
+        $young = $this->player('2000-01-01');
+        $woman = $this->player('1980-01-01', 'F');
+        $noBirthDate = $this->player(attributes: ['birth_date' => null]);
+
+        $this->assertCount(1, app(RosterRuleService::class)->evaluate($season, $this->team, $young)['errors']);
+
+        foreach ([[$young, 'Máster exige 40'], [$woman, 'La competencia es de'], [$noBirthDate, 'no tiene fecha de nacimiento']] as [$player, $message]) {
+            try {
+                $this->enroll($season, $player, actor: $this->delegate);
+                $this->fail('Se inscribió a un participante que no cumple la edad o el género.');
+            } catch (ValidationException $e) {
+                $this->assertStringContainsString($message, $e->errors()['form.player_id'][0]);
+            }
+        }
+
+        $this->assertSame(0, SeasonTeamPlayer::count());
     }
 
     public function test_blocking_rules_reject(): void
@@ -436,7 +460,8 @@ class RosterRuleTest extends TestCase
     public function test_delegate_adds_a_participant_from_the_screen(): void
     {
         $season = $this->competition('Máster', 'M', ['min_players' => 3, 'max_players' => 10], 'Futsal');
-        $player = $this->player('2000-01-01', 'M', ['created_by' => $this->delegate->id]);
+        $player = $this->player('1980-01-01', 'M', ['created_by' => $this->delegate->id]);
+        $young = $this->player('2000-01-01', 'M', ['created_by' => $this->delegate->id]);
 
         Livewire::actingAs($this->delegate)->test(RostersIndex::class)
             ->call('create')
@@ -446,14 +471,23 @@ class RosterRuleTest extends TestCase
             ->set('form.shirt_number', 9)
             ->call('save')
             ->assertHasNoErrors()
-            ->assertDispatched('toast', type: 'warning');
+            ->assertDispatched('toast', type: 'success');
 
         $this->assertDatabaseHas('season_team_player', ['player_id' => $player->id, 'shirt_number' => 9]);
 
-        // El listado muestra la advertencia de edad y el aviso de minimo.
+        // Quien no cumple la edad se avisa antes de guardar y no entra.
+        Livewire::actingAs($this->delegate)->test(RostersIndex::class)
+            ->call('create')
+            ->set('form.season_id', $season->id)
+            ->call('selectPlayer', $young->id)
+            ->assertSee('Máster exige 40')
+            ->call('save')
+            ->assertHasErrors('form.player_id');
+        $this->assertDatabaseMissing('season_team_player', ['player_id' => $young->id]);
+
+        // El listado muestra el aviso de minimo.
         $this->actingAs($this->delegate)->get(route('rosters.index'))
             ->assertOk()
-            ->assertSee('Máster exige 40')
             ->assertSee('Faltan 2 para el mínimo');
     }
 
@@ -468,7 +502,7 @@ class RosterRuleTest extends TestCase
         $this->registerDelegation($this->edition, $otherTeam, $otherDelegate);
 
         $mine = $this->player(attributes: ['last_name' => 'Zapana']);
-        $bySubstitute = Player::factory()->create(['last_name' => 'Zapata', 'created_by' => $substitute->id]);
+        $bySubstitute = Player::factory()->create(['last_name' => 'Zapata', 'gender' => 'M', 'created_by' => $substitute->id]);
         $foreign = Player::factory()->create(['last_name' => 'Zapater', 'dni' => '70000001', 'created_by' => $otherDelegate->id]);
 
         $names = fn (User $actor, string $term) => Livewire::actingAs($actor)->test(RostersIndex::class)

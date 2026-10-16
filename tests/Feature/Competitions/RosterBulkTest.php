@@ -85,7 +85,7 @@ class RosterBulkTest extends TestCase
     public function test_candidates_show_who_fits_before_choosing(): void
     {
         $this->woman('Apaza');
-        $this->woman('Joven', '2005-01-01');                                                     // 21 en 2026: menor que Libre
+        $this->woman('Joven', '2005-01-01');                                                     // 21 en 2026: menor que Libre, no puede (D26)
         Player::factory()->create(['last_name' => 'Varon', 'gender' => 'M', 'created_by' => $this->delegate->id]); // otro genero: no sale
         $already = $this->woman('Ya');
         $this->rosterEntry($this->seasonTeam, playerAttributes: [])->update(['player_id' => $already->id]);
@@ -99,7 +99,7 @@ class RosterBulkTest extends TestCase
 
         $screen = $this->screen()->call('openBulk')->assertSet('showBulk', true);
 
-        $this->assertSame(['Apaza' => 'ok', 'Choque' => 'blocked', 'Joven' => 'warn'], $this->states($screen));
+        $this->assertSame(['Apaza' => 'ok', 'Choque' => 'blocked', 'Joven' => 'blocked'], $this->states($screen));
 
         $screen->call('selectAllEligible');
         $this->assertSame([(string) Player::where('last_name', 'Apaza')->value('id')], $screen->get('bulkSelected'));
@@ -140,13 +140,31 @@ class RosterBulkTest extends TestCase
 
     public function test_warnings_do_not_block_when_rules_only_warn(): void
     {
+        // Tope 3 lleno en una fila que solo advierte: la cuarta entra con observacion.
+        foreach (range(1, 3) as $i) {
+            $this->rosterEntry($this->seasonTeam, playerAttributes: ['gender' => 'F']);
+        }
+        $fourth = $this->woman('Cuarta');
+
+        $screen = $this->screen()->call('openBulk');
+        $this->assertSame('warn', $this->states($screen)['Cuarta']);
+
+        $result = app(SeasonTeamPlayerService::class)->registerMany($this->volley, $this->team, [$fourth->id], $this->delegate);
+
+        $this->assertSame([$fourth->fullName()], $result['added']);
+        $this->assertCount(1, $result['warnings']);
+        $this->assertSame([], $result['rejected']);
+    }
+
+    public function test_age_blocks_even_when_rules_only_warn(): void
+    {
         $young = $this->woman('Joven', '2005-01-01');
 
         $result = app(SeasonTeamPlayerService::class)->registerMany($this->volley, $this->team, [$young->id], $this->delegate);
 
-        $this->assertSame([$young->fullName()], $result['added']);
-        $this->assertCount(1, $result['warnings']);
-        $this->assertSame([], $result['rejected']);
+        $this->assertSame([], $result['added']);
+        $this->assertStringContainsString('Libre exige 25', $result['rejected'][0]);
+        $this->assertSame(0, $this->seasonTeam->roster()->count());
     }
 
     public function test_other_delegations_and_foreign_players_are_rejected(): void
