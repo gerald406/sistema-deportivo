@@ -47,8 +47,10 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
 7. **Reglas de plantel = datos.** Género, edad por AÑO de nacimiento (año de la olimpiada − año
    de nacimiento ≥ edad mínima del nivel; sin edad máxima), tope de plantel y "una sola
    delegación por olimpiada" salen de la competencia (`seasons.category_id`, `seasons.gender`) y
-   de su fila del cuadro. Las evalúa `RosterRuleService`; **advierten** salvo que la fila tenga
-   `rules_blocking`. Ningún otro Service reimplementa estas reglas.
+   de su fila del cuadro. Las evalúa `RosterRuleService`: **edad y género bloquean siempre**
+   (D26; sin fecha de nacimiento o sin género tampoco entra); tope de plantel y "una sola
+   delegación" **advierten** salvo que la fila tenga `rules_blocking`. Ningún otro Service
+   reimplementa estas reglas.
 
 8. **Fases, llaves y podios.** Una competencia tiene fases (`SeasonStage`): de **partidos**
    (llave de eliminación simple) o de **podio directo** (solo 1.º, 2.º y 3.º, `SeasonStageResult`).

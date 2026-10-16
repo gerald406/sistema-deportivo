@@ -378,8 +378,8 @@ class Index extends Component
      * buscador), del genero de la disciplina y que aun no estan en ese
      * plantel. Cada uno con su aptitud segun RosterRuleService: ok, warn
      * (entra con observaciones) o blocked (no puede entrar: ya esta en
-     * otra delegacion en esta disciplina, o la fila del cuadro es
-     * bloqueante).
+     * otra delegacion en esta disciplina, no cumple la edad o el genero, o
+     * la fila del cuadro es bloqueante).
      *
      * @return Collection<int, object{player: Player, state: string, reasons: list<string>}>
      */
@@ -415,10 +415,10 @@ class Index extends Component
                     return (object) ['player' => $player, 'state' => 'blocked', 'reasons' => ["Ya está con {$clash->seasonTeam->team->name} en esta disciplina."]];
                 }
 
-                $reasons = $rules->violations($season, $team, $player);
-                $state = $reasons === [] ? 'ok' : ($rules->isBlocking($season) ? 'blocked' : 'warn');
+                ['errors' => $errors, 'warnings' => $warnings] = $rules->evaluate($season, $team, $player);
+                $state = $errors !== [] ? 'blocked' : ($warnings !== [] ? 'warn' : 'ok');
 
-                return (object) ['player' => $player, 'state' => $state, 'reasons' => $reasons];
+                return (object) ['player' => $player, 'state' => $state, 'reasons' => [...$errors, ...$warnings]];
             })
             ->when($this->bulkOnlyEligible, fn ($c) => $c->where('state', 'ok'))
             ->values();

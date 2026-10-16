@@ -23,7 +23,9 @@ use App\Models\Team;
  *   R3  Tope de plantel de la fila del cuadro (max_players).
  *   R4  Un participante, una sola delegacion en toda la olimpiada.
  *
- * Por defecto las reglas ADVIERTEN (D11). Solo bloquean si la fila del
+ * R1 y R2 BLOQUEAN siempre (D26): los datos (nivel y genero de la
+ * competencia) siguen siendo configurables, pero quien no los cumple no
+ * entra. R3 y R4 advierten por defecto (D11) y solo bloquean si la fila del
  * cuadro esta marcada como bloqueante. evaluate() ya hace esa
  * clasificacion: quien llama rechaza si hay `errors` y muestra `warnings`.
  * El minimo de participantes nunca bloquea (ver missingForMinimum()).
@@ -38,11 +40,12 @@ class RosterRuleService
      */
     public function evaluate(Season $season, Team $team, Player $player): array
     {
-        $violations = $this->violations($season, $team, $player);
+        $always = $this->filled([$this->genderViolation($season, $player), $this->ageViolation($season, $player)]);
+        $byRow = $this->filled([$this->rosterLimitViolation($season, $team, $player), $this->otherDelegationViolation($season, $team, $player)]);
 
         return $this->isBlocking($season)
-            ? ['errors' => $violations, 'warnings' => []]
-            : ['errors' => [], 'warnings' => $violations];
+            ? ['errors' => [...$always, ...$byRow], 'warnings' => []]
+            : ['errors' => $always, 'warnings' => $byRow];
     }
 
     /**
@@ -60,7 +63,7 @@ class RosterRuleService
         ]));
     }
 
-    /** La fila del cuadro de la competencia pide que sus reglas bloqueen. */
+    /** La fila del cuadro de la competencia pide que R3 y R4 bloqueen (R1 y R2 bloquean siempre). */
     public function isBlocking(Season $season): bool
     {
         return (bool) $season->event?->rules_blocking;
@@ -78,6 +81,12 @@ class RosterRuleService
         $min = $season->event?->min_players;
 
         return $min === null ? 0 : max(0, $min - $activeCount);
+    }
+
+    /** @return list<string> */
+    private function filled(array $violations): array
+    {
+        return array_values(array_filter($violations));
     }
 
     private function genderViolation(Season $season, Player $player): ?string
