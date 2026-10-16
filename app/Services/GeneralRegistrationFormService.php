@@ -19,8 +19,9 @@ use Illuminate\Support\Collection;
  * (season_team), con la lista de su plantel. Las bases piden "Fichas de
  * inscripcion general por delegacion ... por duplicado para cada
  * disciplina" (VII.c) y una declaracion jurada de la Direccion (VII.d):
- * van juntas, y solo firman el delegado y el director(a), no cada
- * participante.
+ * van juntas. D30: la lista lleva solo N.o, apellidos y nombres, DNI
+ * enmascarado y edad; la Direccion otorga representacion al delegado y
+ * firma solo el delegado.
  *
  * Quien la imprime: la misma regla que las fichas individuales y los
  * carnets (SeasonTeamPlayerPolicy::managesSeasonTeam): el admin, el
@@ -62,8 +63,10 @@ class GeneralRegistrationFormService
 
     /**
      * Datos de una ficha. Participantes: el plantel sin los dados de baja,
-     * por apellidos. Edad = ano de la olimpiada - ano de nacimiento (regla
-     * 7 de CLAUDE.md), la misma que valida RosterRuleService.
+     * por apellidos, con solo lo que lleva la lista (D30). Edad = ano de la
+     * olimpiada - ano de nacimiento (regla 7 de CLAUDE.md), la misma que
+     * valida RosterRuleService. El DNI va con sus ultimos digitos ocultos
+     * (maskDni()): la ficha circula impresa.
      *
      * @return array<string, mixed>
      */
@@ -86,15 +89,9 @@ class GeneralRegistrationFormService
             ->values()
             ->map(fn (SeasonTeamPlayer $e, int $i) => [
                 'number' => $i + 1,
-                'name' => mb_strtoupper($e->player->last_name).', '.$e->player->first_name,
-                'dni' => $e->player->dni,
-                'birthDate' => $e->player->birth_date?->format('d/m/Y'),
+                'name' => mb_strtoupper($e->player->last_name.', '.$e->player->first_name),
+                'dni' => $this->maskDni($e->player->dni),
                 'age' => $e->player->birth_date ? $year - (int) $e->player->birth_date->format('Y') : null,
-                'gender' => $e->player->gender?->label(),
-                'staffType' => $e->player->staff_type?->label(),
-                'employmentType' => $e->player->employment_type?->label(),
-                'isCaptain' => (bool) $e->is_captain,
-                'shirt' => $e->shirt_number,
             ]);
 
         return [
@@ -102,13 +99,54 @@ class GeneralRegistrationFormService
             'season' => $seasonTeam->season,
             'team' => $seasonTeam->team,
             'participants' => $participants,
+            'participantsInWords' => $this->countInWords($participants->count()),
             'delegateName' => $editionEntry?->delegate?->name,
             'substituteName' => $editionEntry?->substituteDelegate?->name,
-            'directorName' => $seasonTeam->team->director_name,
             'registered' => $editionEntry?->status === EditionTeamStatus::Registered,
             'issueDate' => now()->format('d/m/Y'),
             'editionLogo' => $this->images->toBase64($edition->logo),
             'teamLogo' => $this->images->toBase64($seasonTeam->team->logo_path),
         ];
+    }
+
+    /** Primeros 4 digitos visibles y el resto con asteriscos: 45531234 -> 4553****. */
+    public function maskDni(?string $dni): string
+    {
+        $dni = trim((string) $dni);
+
+        return $dni === '' ? '—' : mb_substr($dni, 0, 4).str_repeat('*', max(0, mb_strlen($dni) - 4));
+    }
+
+    /**
+     * Cantidad en letras y cifras para la declaracion jurada, en masculino
+     * ante "participantes": 6 -> "seis (6)", 21 -> "veintiún (21)". Sin
+     * depender de la extension intl del servidor.
+     */
+    public function countInWords(int $n): string
+    {
+        return ($n >= 0 && $n < 1000 ? $this->spanishNumber($n) : (string) $n)." ({$n})";
+    }
+
+    private function spanishNumber(int $n): string
+    {
+        $units = ['cero', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve',
+            'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve',
+            'veinte', 'veintiún', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis', 'veintisiete', 'veintiocho', 'veintinueve'];
+        $tens = [3 => 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+        $hundreds = [1 => 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+
+        if ($n < 30) {
+            return $units[$n];
+        }
+
+        if ($n < 100) {
+            return $tens[intdiv($n, 10)].($n % 10 ? ' y '.$units[$n % 10] : '');
+        }
+
+        if ($n === 100) {
+            return 'cien';
+        }
+
+        return $hundreds[intdiv($n, 100)].($n % 100 ? ' '.$this->spanishNumber($n % 100) : '');
     }
 }
