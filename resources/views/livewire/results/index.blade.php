@@ -9,39 +9,46 @@
         </p>
     </div>
 
-    {{-- Filtros --}}
-    <div class="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 lg:flex-row lg:items-center">
-        <div class="relative flex-1">
+    {{-- Filtros en cuadricula (igual que /partidos): en fila, el select de competencias
+         (olimpiada — competencia) desbordaba la ventana. --}}
+    <div class="grid grid-cols-1 gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="relative min-w-0">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" wire:model.live.debounce.400ms="search"
                    placeholder="Buscar equipo o participante..."
                    class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
         </div>
 
-        <select wire:model.live="seasonFilter"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <select wire:model.live="seasonFilter" title="Competencia"
+                class="w-full min-w-0 truncate rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="">Todas las competencias</option>
-            @foreach ($filterSeasons as $season)
-                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }}</option>
+            @foreach ($filterSeasons->groupBy(fn ($s) => $s->gamesEdition->name) as $editionName => $group)
+                <optgroup label="{{ \Illuminate\Support\Str::limit($editionName, 60) }}">
+                    @foreach ($group as $season)
+                        <option value="{{ $season->id }}">{{ $season->name }}</option>
+                    @endforeach
+                </optgroup>
             @endforeach
         </select>
 
-        <select wire:model.live="matchStatusFilter"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <select wire:model.live="matchStatusFilter" title="Estado"
+                class="w-full min-w-0 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
             <option value="all">Todos los estados</option>
             @foreach ($statusOptions as $option)
                 <option value="{{ $option->value }}">{{ $option->label() }}</option>
             @endforeach
         </select>
 
-        <select wire:model.live="perPage"
-                class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="10">10 por página</option>
-            <option value="15">15 por página</option>
-            <option value="25">25 por página</option>
-            <option value="50">50 por página</option>
-        </select>
-        <x-export-button />
+        <div class="flex min-w-0 gap-3">
+            <select wire:model.live="perPage" title="Filas por página"
+                    class="w-full min-w-0 flex-1 rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="10">10 por página</option>
+                <option value="15">15 por página</option>
+                <option value="25">25 por página</option>
+                <option value="50">50 por página</option>
+            </select>
+            <x-export-button />
+        </div>
     </div>
 
     {{-- Tabla --}}
@@ -164,10 +171,10 @@
                             @else
                                 <div class="grid grid-cols-2 gap-4">
                                     @foreach (['homeScore' => $home, 'awayScore' => $away] as $field => $p)
-                                        <div>
+                                        <div class="min-w-0">
                                             <label class="block truncate text-sm font-medium text-gray-700">{{ $this->label($p) }}</label>
                                             <input type="number" min="0" wire:model="{{ $field }}"
-                                                   class="mt-1 w-full rounded-lg border-gray-300 text-lg focus:border-indigo-500 focus:ring-indigo-500">
+                                                   class="mt-1 w-full min-w-0 rounded-lg border-gray-300 text-lg focus:border-indigo-500 focus:ring-indigo-500">
                                             @error('result.'.($field === 'homeScore' ? 'home' : 'away')) <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                         </div>
                                     @endforeach
@@ -182,7 +189,7 @@
 
                                     <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <select wire:model.live="tiebreakType"
-                                                class="rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                                class="w-full min-w-0 rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                                             <option value="">Sin desempate</option>
                                             @foreach (\App\Enums\TiebreakType::cases() as $option)
                                                 <option value="{{ $option->value }}">{{ $option->label() }}</option>
@@ -191,7 +198,7 @@
 
                                         @if ($tiebreakType !== '')
                                             <select wire:model="tiebreakWinner"
-                                                    class="rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                                    class="w-full min-w-0 truncate rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                                                 <option value="">¿Quién ganó el desempate?</option>
                                                 <option value="home">{{ $this->label($home) }}</option>
                                                 <option value="away">{{ $this->label($away) }}</option>
@@ -201,10 +208,10 @@
 
                                     @if ($tiebreakType !== '' && $tiebreakType !== \App\Enums\TiebreakType::CoinToss->value)
                                         <div class="mt-2 grid grid-cols-2 gap-3">
-                                            <input type="number" min="0" wire:model="tiebreakHome" placeholder="Desempate local (opcional)"
-                                                   class="rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                            <input type="number" min="0" wire:model="tiebreakAway" placeholder="Desempate visitante (opcional)"
-                                                   class="rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <input type="number" min="0" wire:model="tiebreakHome" placeholder="Local (opcional)" title="Desempate local (opcional)"
+                                                   class="w-full min-w-0 rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <input type="number" min="0" wire:model="tiebreakAway" placeholder="Visitante (opcional)" title="Desempate visitante (opcional)"
+                                                   class="w-full min-w-0 rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                                         </div>
                                     @endif
                                 </div>
@@ -221,10 +228,10 @@
                         <div class="space-y-2">
                             @foreach ($editing->participants as $p)
                                 <div wire:key="mark-{{ $p->id }}" class="flex items-center gap-3">
-                                    <span class="w-12 text-xs text-gray-400">{{ $p->lane_or_board ? 'C'.$p->lane_or_board : '' }}</span>
-                                    <span class="flex-1 truncate text-sm text-gray-800">{{ $this->label($p) }}</span>
+                                    <span class="w-10 shrink-0 text-xs text-gray-400">{{ $p->lane_or_board ? 'C'.$p->lane_or_board : '' }}</span>
+                                    <span class="min-w-0 flex-1 truncate text-sm text-gray-800" title="{{ $this->label($p) }}">{{ $this->label($p) }}</span>
                                     <input type="number" step="0.0001" min="0" wire:model="marks.{{ $p->id }}"
-                                           class="w-32 rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                           class="w-28 shrink-0 rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                                 @error('results.'.$p->id) <p class="text-xs text-red-600">{{ $message }}</p> @enderror
                             @endforeach
