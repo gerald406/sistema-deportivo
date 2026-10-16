@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Series</h1>
-            <p class="text-sm text-gray-500">Grupos de la olimpiada (A, B, C, D…). Las delegaciones se asignan a su serie al inscribirlas.</p>
+            <p class="text-sm text-gray-500">Grupos de la olimpiada (A, B, C, D…). Aquí se crean, renombran y ordenan las series.</p>
         </div>
 
         @if ($edition)
@@ -23,6 +23,15 @@
             No tienes ninguna olimpiada a tu cargo.
         </div>
     @else
+        {{-- D28: las delegaciones se mueven de serie en Delegaciones inscritas --}}
+        <div class="flex items-start gap-3 rounded-xl bg-sky-50 p-4 text-sm text-sky-800 ring-1 ring-sky-200">
+            <i class="fa-solid fa-circle-info mt-0.5"></i>
+            <p>
+                Para agregar, quitar o mover delegaciones entre series, edítalas en
+                <a href="{{ route('edition-teams.index', ['olimpiada' => $edition->id]) }}" class="font-medium underline">Delegaciones inscritas</a>
+                (campo <strong>Serie</strong>). Hazlo antes de generar las llaves y podios en Fases. Pulsa el número de delegaciones de una serie para ver solo las suyas.
+            </p>
+        </div>
         <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
             <div class="overflow-x-auto">
                 <table class="w-full divide-y divide-gray-200 text-sm">
@@ -40,7 +49,8 @@
                                 <td class="px-4 py-3 text-gray-600">{{ $group->sort_order }}</td>
                                 <td class="px-4 py-3 font-medium text-gray-900">{{ $group->name }}</td>
                                 <td class="px-4 py-3 text-gray-600">
-                                    <span class="font-medium text-gray-900">{{ $group->edition_teams_count }}</span>
+                                    <a href="{{ route('edition-teams.index', ['olimpiada' => $edition->id, 'serie' => $group->id]) }}"
+                                       class="font-medium text-indigo-600 hover:underline" title="Ver y mover las delegaciones de {{ $group->name }}">{{ $group->edition_teams_count }}</a>
                                     @if ($group->editionTeams->isNotEmpty())
                                         <span class="text-xs text-gray-400">· {{ $group->editionTeams->pluck('team.name')->sort()->implode(', ') }}</span>
                                     @endif
