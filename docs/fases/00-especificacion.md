@@ -54,6 +54,7 @@ contradicen o callan, el dato es configurable y queda vacío hasta que la comisi
 | D24 | /partidos solo programa: jornada, fecha y hora, sede y estado. Los partidos nacen en /fases al generar la llave, con sus participantes; ya no se crean partidos sueltos ni se eligen participantes o carriles en el modal | 15/10 |
 | D25 | /inscripcion-disciplinas es la única puerta para inscribir a una delegación en una disciplina, para todos los roles. /planteles solo ofrece y admite las disciplinas marcadas (inscripción activa) y, en cada una, las delegaciones inscritas; agregar un participante ya no crea la inscripción. Reemplaza a S3 | 15/10 |
 | D26 | Edad (por año de nacimiento) y género del nivel y de la competencia **bloquean siempre**: quien no los cumple no entra al plantel, ni por el alta individual ni por la múltiple (sin fecha de nacimiento o sin género tampoco). El tope de plantel y "una sola delegación por olimpiada" siguen advirtiendo salvo fila bloqueante (D11). Los ya inscritos no se quitan solos: se listan para que decida la organización | 15/10 |
+| D27 | /jornadas no crea jornadas: nacen con la llave en /fases, una por ronda. Solo se editan sus fechas (acotan la programación de sus partidos), observaciones y si está completada; la competencia y el nombre los fija la llave. Se borran solo las vacías | 15/10 |
 
 Supuestos míos (cada uno es un valor por defecto editable). **Todos (S1 a S6) confirmados por el
 cliente el 13/10:**
