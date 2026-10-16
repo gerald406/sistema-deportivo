@@ -7,6 +7,7 @@ namespace App\Livewire;
 use App\Enums\SeasonTeamPlayerStatus;
 use App\Models\Season;
 use App\Models\GamesEdition;
+use App\Models\Team;
 use App\Services\PlayerCardService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -25,6 +26,11 @@ use Livewire\Component;
  * Alcance: PlayerCardService::printableSeasonTeams() = la misma regla que
  * SeasonTeamPlayerPolicy::printCard (el delegado ve donde es el delegado
  * EFECTIVO). El Controller revalida cada id con la Policy.
+ *
+ * Solo se ofrecen competencias con ficha posible: inscripcion activa, en
+ * competencia activa y con al menos un participante que no este de baja
+ * (withParticipants()). Si el usuario tiene una sola delegacion (el
+ * delegado), no la elige: se muestra y se fija sola al elegir competencia.
  */
 #[Layout('layouts.admin')]
 #[Title('Fichas de Inscripción')]
@@ -58,7 +64,8 @@ class PlayerRegistrationSelector extends Component
 
     public function updatedSeasonId(): void
     {
-        $this->seasonTeamId = '';
+        $options = $this->seasonTeams();
+        $this->seasonTeamId = $options->count() === 1 ? (string) $options->first()->id : '';
         $this->selected = [];
     }
 
@@ -87,7 +94,7 @@ class PlayerRegistrationSelector extends Component
             return collect();
         }
 
-        $ids = $this->scopedSeasonTeams()->distinct()->pluck('season_team.season_id');
+        $ids = $this->withParticipants($this->scopedSeasonTeams())->distinct()->pluck('season_team.season_id');
 
         return Season::whereIn('id', $ids)->where('games_edition_id', (int) $this->gamesEditionId)
             ->orderByDesc('start_date')->orderBy('name')->get(['id', 'name', 'status']);
@@ -96,8 +103,20 @@ class PlayerRegistrationSelector extends Component
     public function seasonTeams(): Collection
     {
         return ctype_digit($this->seasonId)
-            ? $this->scopedSeasonTeams()->where('season_team.season_id', (int) $this->seasonId)->with('team:id,name')->get()->sortBy('team.name')->values()
+            ? $this->withParticipants($this->scopedSeasonTeams())->where('season_team.season_id', (int) $this->seasonId)->with('team:id,name')->get()->sortBy('team.name')->values()
             : collect();
+    }
+
+    /** La unica delegacion con fichas del usuario en la olimpiada (el delegado), o null si elige entre varias. */
+    public function singleDelegation(): ?Team
+    {
+        if (! ctype_digit($this->gamesEditionId)) {
+            return null;
+        }
+
+        $teamIds = $this->withParticipants($this->scopedSeasonTeams())->distinct()->pluck('season_team.team_id');
+
+        return $teamIds->count() === 1 ? Team::find($teamIds->first(), ['id', 'name']) : null;
     }
 
     /**
@@ -145,6 +164,15 @@ class PlayerRegistrationSelector extends Component
     {
         return $this->printableSeasonTeams()
             ->when(ctype_digit($this->gamesEditionId), fn ($q) => $q->whereHas('season', fn ($s) => $s->where('games_edition_id', (int) $this->gamesEditionId)));
+    }
+
+    /** Inscripciones con ficha posible: activas, de competencia activa y con plantel habilitado. */
+    private function withParticipants(Builder $seasonTeams): Builder
+    {
+        return $seasonTeams
+            ->where('season_team.is_active', true)
+            ->whereHas('season', fn ($q) => $q->where('is_active', true))
+            ->whereHas('roster', fn ($q) => $q->where('status', '!=', SeasonTeamPlayerStatus::Inactive->value));
     }
 
     /** Fichas visibles con los filtros actuales (sin las dadas de baja, como la referencia con is_active). */
