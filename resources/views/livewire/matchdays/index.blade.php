@@ -2,15 +2,19 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Jornadas</h1>
-            <p class="text-sm text-gray-500">Fechas o rondas de cada competencia; agrupan los partidos.</p>
+            <p class="text-sm text-gray-500">Rondas de cada competencia; agrupan los partidos.</p>
         </div>
+    </div>
 
-        @can('create', \App\Models\Matchday::class)
-            <button wire:click="create" type="button"
-                    class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                <i class="fa-solid fa-plus"></i> Nueva jornada
-            </button>
-        @endcan
+    {{-- Las jornadas no se crean aqui (D27) --}}
+    <div class="flex items-start gap-3 rounded-xl bg-sky-50 p-4 text-sm text-sky-800 ring-1 ring-sky-200">
+        <i class="fa-solid fa-circle-info mt-0.5"></i>
+        <p>
+            Las jornadas nacen solas al pulsar <strong>Generar llave</strong> en
+            <a href="{{ route('season-stages.index') }}" class="font-medium underline">Fases</a>: una por ronda, con sus partidos y
+            delegaciones. Aquí solo ajustas sus fechas, observaciones y si ya se jugó; la hora y la sede de cada partido se ponen en
+            <a href="{{ route('matches.index') }}" class="font-medium underline">Partidos</a>.
+        </p>
     </div>
 
     {{-- Filtros --}}
@@ -119,41 +123,23 @@
         </div>
     </div>
 
-    {{-- Modal crear/editar --}}
+    {{-- Modal editar --}}
     <div x-data="{ show: @entangle('showModal') }" x-show="show" x-cloak
          class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div x-show="show" x-transition.opacity @click="$wire.closeModal()" class="fixed inset-0 bg-gray-900/50"></div>
 
         <div x-show="show" x-transition class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 class="text-lg font-semibold text-gray-900">
-                {{ $editingId ? 'Editar jornada' : 'Nueva jornada' }}
-            </h2>
+            <h2 class="text-lg font-semibold text-gray-900">Editar jornada</h2>
 
             <form wire:submit="save" class="mt-4 space-y-4">
+                {{-- Competencia y nombre los fija la llave: no se editan. --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Competencia</label>
-                    @if ($editingId)
-                        {{-- La competencia no se cambia: sus partidos quedarían desalineados. --}}
-                        <p class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                            {{ \App\Models\Matchday::with('season.gamesEdition')->find($editingId)?->season->name }}
-                        </p>
-                    @else
-                        <select wire:model="form.season_id"
-                                class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Selecciona una competencia</option>
-                            @foreach ($this->seasonOptions() as $season)
-                                <option value="{{ $season->id }}">{{ $season->gamesEdition->name }} — {{ $season->name }} ({{ $season->sport->name }})</option>
-                            @endforeach
-                        </select>
-                    @endif
+                    <label class="block text-sm font-medium text-gray-700">Jornada</label>
+                    <p class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                        <span class="font-medium">{{ $form['name'] }}</span><br>
+                        <span class="text-xs text-gray-500">{{ \App\Models\Matchday::with('season')->find($editingId)?->season->name }}</span>
+                    </p>
                     @error('form.season_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Nombre</label>
-                    <input type="text" wire:model="form.name" placeholder="Ej: Fecha 1, Cuartos de final"
-                           class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    @error('form.name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -178,15 +164,13 @@
                     @error('form.observations') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
-                @if ($editingId)
-                    <div>
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" wire:model="form.is_completed" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                            <span class="text-sm text-gray-700">Jornada completada</span>
-                        </label>
-                        @error('form.is_completed') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                @endif
+                <div>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" wire:model="form.is_completed" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-sm text-gray-700">Jornada completada</span>
+                    </label>
+                    @error('form.is_completed') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
 
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" wire:click="closeModal" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">

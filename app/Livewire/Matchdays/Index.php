@@ -11,13 +11,16 @@ use App\Models\Matchday;
 use App\Services\MatchdayService;
 use App\Support\SeasonAccess;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+/**
+ * Jornadas: nacen con la llave en /fases (una por ronda, BracketService).
+ * Aqui solo se ajustan fechas, observaciones y cierre; no hay alta manual
+ * (D27), porque una jornada sin partidos de la llave quedaria vacia.
+ */
 #[Layout('layouts.admin')]
 #[Title('Jornadas')]
 class Index extends Component
@@ -75,26 +78,6 @@ class Index extends Component
         $this->resetPage();
     }
 
-    /** Competencias (no cerradas) en las que el usuario puede crear jornadas. */
-    public function seasonOptions(): Collection
-    {
-        return SeasonAccess::manageableSeasons(auth()->user());
-    }
-
-    public function create(): void
-    {
-        $this->authorize('create', Matchday::class);
-
-        $this->resetForm();
-
-        if (ctype_digit($this->seasonFilter) && $this->seasonOptions()->contains('id', (int) $this->seasonFilter)) {
-            $this->form['season_id'] = (int) $this->seasonFilter;
-            $this->form['name'] = 'Fecha ' . (Matchday::where('season_id', (int) $this->seasonFilter)->count() + 1);
-        }
-
-        $this->showModal = true;
-    }
-
     public function edit(int $id): void
     {
         $matchday = Matchday::findOrFail($id);
@@ -112,22 +95,21 @@ class Index extends Component
         $this->showModal = true;
     }
 
+    /** Solo edita: las jornadas nacen con la llave (BracketService), no se crean aqui. */
     public function save(MatchdayService $service): void
     {
+        abort_unless($this->editingId !== null, 404);
+
+        $matchday = Matchday::findOrFail($this->editingId);
+        $this->authorize('update', $matchday);
+
         $data = $this->validate($this->rules())['form'];
 
         foreach (['start_date', 'end_date', 'observations'] as $field) {
             $data[$field] = trim((string) $data[$field]) === '' ? null : $data[$field];
         }
 
-        if ($this->editingId) {
-            $matchday = Matchday::findOrFail($this->editingId);
-            $this->authorize('update', $matchday);
-            $service->update($matchday, $data, auth()->user());
-        } else {
-            $this->authorize('create', Matchday::class);
-            $service->register($data, auth()->user());
-        }
+        $service->update($matchday, $data, auth()->user());
 
         $this->showModal = false;
         $this->resetForm();
@@ -240,14 +222,8 @@ class Index extends Component
     {
         $hasStart = trim((string) $this->form['start_date']) !== '';
 
+        // Competencia y nombre no se editan: los fija la llave.
         return [
-            'form.season_id' => ['required', 'integer', Rule::exists('seasons', 'id')],
-            'form.name' => [
-                'required', 'string', 'max:50',
-                Rule::unique('matchdays', 'name')
-                    ->where('season_id', (int) $this->form['season_id'])
-                    ->ignore($this->editingId),
-            ],
             'form.start_date' => ['nullable', 'date'],
             'form.end_date' => array_filter(['nullable', 'date', $hasStart ? 'after_or_equal:form.start_date' : null]),
             'form.is_completed' => ['boolean'],
@@ -258,8 +234,6 @@ class Index extends Component
     protected function validationAttributes(): array
     {
         return [
-            'form.season_id' => 'competencia',
-            'form.name' => 'nombre',
             'form.start_date' => 'fecha de inicio',
             'form.end_date' => 'fecha de fin',
         ];

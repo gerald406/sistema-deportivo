@@ -16,7 +16,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Jornadas (fechas) de una competencia. Reglas:
+ * Jornadas (fechas) de una competencia. Las crea la llave
+ * (BracketService::generate(), una por ronda); aqui no hay alta (D27).
+ * Reglas:
  *   - Solo en competencias que $actor gestiona (SeasonAccess) y no Cerradas.
  *   - Las fechas de la jornada deben caer dentro de las de la competencia
  *     (cuando la competencia las tiene).
@@ -24,23 +26,6 @@ use Illuminate\Validation\ValidationException;
  */
 class MatchdayService
 {
-    /**
-     * @param array{season_id: int, name: string, start_date: string|null, end_date: string|null, is_completed: bool, observations: string|null} $data
-     */
-    public function register(array $data, User $actor): Matchday
-    {
-        $season = Season::with('gamesEdition')->findOrFail($data['season_id']);
-        $this->ensureCanSchedule($season, $actor);
-        $this->ensureDatesWithinSeason($season, $data);
-
-        if (! empty($data['is_completed'])) {
-            // Una jornada nueva no tiene partidos: completarla no tiene sentido.
-            $data['is_completed'] = false;
-        }
-
-        return Matchday::create($data);
-    }
-
     /**
      * La competencia de una jornada no se cambia (sus partidos quedarian en
      * otra competencia que la de matches.season_id).
@@ -61,7 +46,8 @@ class MatchdayService
             }
         }
 
-        unset($data['season_id']);
+        // Competencia y nombre los fija la llave: la llave busca su jornada por nombre.
+        unset($data['season_id'], $data['name']);
         $matchday->update($data);
 
         return $matchday;

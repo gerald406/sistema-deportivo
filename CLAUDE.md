@@ -74,6 +74,9 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
    - /partidos solo PROGRAMA (D24): jornada, fecha y hora, sede y estado
      (`GameMatchService::schedule()`). Los partidos y sus participantes los crea la llave; no hay
      alta de partidos sueltos ni participantes o carriles en ese modal.
+   - /jornadas no tiene alta (D27): las jornadas las crea la llave, una por ronda
+     (`BracketService`, que la busca por nombre). Ahí solo se editan fechas, observaciones y
+     "completada"; competencia y nombre no se cambian (`MatchdayService::update()`).
 9. **Sanciones automáticas: solo rojas.** Al cerrar un partido, cada roja (directa o por doble
    amarilla) da 1 partido de sanción, sea o no capitán el expulsado (`SuspensionService`). La
    acumulación de amarillas y la sanción especial al capitán se manejan **fuera del sistema**
