@@ -148,6 +148,51 @@ class GeneralRegistrationFormTest extends TestCase
         $this->assertSame(['Fútbol Libre Varones'], $groups[$this->team->id]->pluck('season.name')->all());
     }
 
+    public function test_selector_only_lists_competitions_with_participants(): void
+    {
+        $this->rosterEntry($this->football, 9);
+        $this->enrollment('Ajedrez Libre Varones');                                         // marcada, sin plantel
+        $this->rosterEntry($this->enrollment('Vóley Libre Damas'), 1)->update(['status' => 'inactive']); // solo bajas
+        $disabled = $this->enrollment('Básquet Libre Varones');
+        $this->rosterEntry($disabled, 4);
+        $disabled->update(['is_active' => false]);                                          // desactivada por la organizacion
+
+        $seasons = Livewire::actingAs($this->delegate)->test(PlayerRegistrationSelector::class)
+            ->set('gamesEditionId', (string) $this->edition->id)
+            ->instance()->seasons();
+
+        $this->assertSame(['Fútbol Libre Varones'], $seasons->pluck('name')->all());
+    }
+
+    public function test_delegate_does_not_choose_the_team(): void
+    {
+        $this->rosterEntry($this->football, 9);
+
+        Livewire::actingAs($this->delegate)->test(PlayerRegistrationSelector::class)
+            ->set('gamesEditionId', (string) $this->edition->id)
+            ->assertSet('seasonTeamId', '')
+            ->assertSee('IESP Yunguyo')
+            ->assertDontSee('-- Todos los equipos --')
+            ->set('seasonId', (string) $this->football->season_id)
+            ->assertSet('seasonTeamId', (string) $this->football->id);
+    }
+
+    public function test_organizer_still_chooses_among_delegations(): void
+    {
+        $this->rosterEntry($this->football, 9);
+        $other = Team::factory()->create(['name' => 'ISP Juli']);
+        $this->registerDelegation($this->edition, $other);
+        $this->rosterEntry($this->enrollment('Fútbol Libre Varones', $other), 10);
+
+        $screen = Livewire::actingAs($this->organizer)->test(PlayerRegistrationSelector::class)
+            ->set('gamesEditionId', (string) $this->edition->id)
+            ->set('seasonId', (string) $this->football->season_id)
+            ->assertSet('seasonTeamId', '')
+            ->assertSee('-- Todos los equipos --');
+
+        $this->assertCount(2, $screen->instance()->seasonTeams());
+    }
+
     public function test_organizer_records_the_director_on_the_delegation(): void
     {
         Livewire::actingAs($this->admin())->test(TeamsIndex::class)

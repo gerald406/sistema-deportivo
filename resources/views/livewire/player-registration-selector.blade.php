@@ -27,15 +27,23 @@
                         <option value="{{ $season->id }}">{{ $season->name }} ({{ $season->status->label() }})</option>
                     @endforeach
                 </select>
+                @if ($gamesEditionId !== '' && $this->seasons()->isEmpty())
+                    <p class="mt-1 text-xs text-amber-700">Aún no hay disciplinas con participantes. Agrégalos en Planteles.</p>
+                @endif
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Equipo</label>
-                <select wire:model.live="seasonTeamId" class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm disabled:bg-gray-100" @disabled($seasonId === '')>
-                    <option value="">-- Todos los equipos --</option>
-                    @foreach ($this->seasonTeams() as $seasonTeam)
-                        <option value="{{ $seasonTeam->id }}">{{ $seasonTeam->team->name }}</option>
-                    @endforeach
-                </select>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Delegación</label>
+                @if ($single = $this->singleDelegation())
+                    {{-- Una sola delegacion (el delegado): no se elige. --}}
+                    <p class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700">{{ $single->name }}</p>
+                @else
+                    <select wire:model.live="seasonTeamId" class="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm disabled:bg-gray-100" @disabled($seasonId === '')>
+                        <option value="">-- Todos los equipos --</option>
+                        @foreach ($this->seasonTeams() as $seasonTeam)
+                            <option value="{{ $seasonTeam->id }}">{{ $seasonTeam->team->name }}</option>
+                        @endforeach
+                    </select>
+                @endif
             </div>
             <div>
                 <label class="mb-1 block text-sm font-medium text-gray-700">Buscar participante</label>
