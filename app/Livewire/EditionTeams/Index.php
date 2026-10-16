@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -33,6 +34,8 @@ class Index extends Component
 
     public string $search = '';
 
+    /** En la URL para llegar desde Series ya filtrado. */
+    #[Url(as: 'serie')]
     public string $groupFilter = '';
 
     /** all | registered | withdrawn | disqualified */
@@ -148,13 +151,42 @@ class Index extends Component
         $this->showModal = true;
     }
 
+    /**
+     * Fases de la serie actual donde la delegacion en edicion ya esta en la
+     * llave o el podio, si el formulario la cambia de serie (D28): avisa,
+     * no bloquea.
+     *
+     * @return list<string>
+     */
+    public function groupChangeWarning(): array
+    {
+        if (! $this->editingId) {
+            return [];
+        }
+
+        $entry = $this->findEntry($this->editingId);
+
+        return (string) ($entry->group_id ?? '') === (string) $this->form['group_id']
+            ? []
+            : app(EditionTeamService::class)->stagesUsingGroup($entry)->all();
+    }
+
     public function save(EditionTeamService $service): void
     {
         $data = $this->validate($this->rules())['form'];
         $actor = auth()->user();
 
         if ($this->editingId) {
+            $warning = $this->groupChangeWarning();
             $service->update($this->findEntry($this->editingId), $data, $actor);
+
+            if ($warning !== []) {
+                $this->showModal = false;
+                $this->resetForm();
+                $this->dispatch('toast', type: 'warning', message: 'Delegación movida de serie. Revisa en Fases la llave o el podio de: '.implode(', ', $warning).'.');
+
+                return;
+            }
         } else {
             $edition = $this->editionOrFail();
             $this->authorize('manage', $edition);

@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Enums\EditionTeamStatus;
 use App\Models\GamesEdition;
 use App\Models\GamesEditionTeam;
+use App\Models\SeasonStage;
 use App\Models\SeasonTeam;
 use App\Models\Team;
 use App\Models\User;
@@ -73,6 +74,35 @@ class EditionTeamService
         $entry->update($this->validated($entry->edition, $data));
 
         return $entry;
+    }
+
+    /**
+     * Fases de la serie actual de la delegacion donde ya esta sentada en la
+     * llave o en el podio (D28). Cambiarla de serie no las rehace: sirve
+     * para avisar antes de moverla, no bloquea.
+     *
+     * @return Collection<int, string> "Competencia — Fase"
+     */
+    public function stagesUsingGroup(GamesEditionTeam $entry): Collection
+    {
+        if ($entry->group_id === null) {
+            return collect();
+        }
+
+        $seasonTeamIds = SeasonTeam::where('team_id', $entry->team_id)
+            ->whereHas('season', fn ($q) => $q->where('games_edition_id', $entry->games_edition_id))
+            ->pluck('id');
+
+        return SeasonStage::query()
+            ->where('group_id', $entry->group_id)
+            ->where(fn ($q) => $q
+                ->whereHas('matches.participants', fn ($p) => $p->where('participant_type', 'season_team')->whereIn('participant_id', $seasonTeamIds))
+                ->orWhereHas('results', fn ($r) => $r->where('team_id', $entry->team_id)))
+            ->with('season:id,name')
+            ->orderBy('season_id')
+            ->get()
+            ->map(fn (SeasonStage $stage) => "{$stage->season->name} — {$stage->name}")
+            ->values();
     }
 
     /**

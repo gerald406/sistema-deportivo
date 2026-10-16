@@ -161,7 +161,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Serie</label>
-                        <select wire:model="form.group_id"
+                        <select wire:model.live="form.group_id"
                                 class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <option value="">Sin serie</option>
                             @foreach ($this->groupOptions() as $group)
@@ -181,6 +181,15 @@
                         @error('form.status') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
+
+                {{-- D28: avisa (no bloquea) si ya esta en una llave o podio de su serie actual --}}
+                @if ($stages = $this->groupChangeWarning())
+                    <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                        La delegación ya está en la llave o el podio de {{ implode(', ', $stages) }}. Cambiarla de serie no los rehace:
+                        después revisa esas fases en Fases (regenerar la llave solo se puede si aún no hay partidos jugados).
+                    </p>
+                @endif
 
                 <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
                     <div class="flex items-center justify-between">

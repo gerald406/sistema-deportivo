@@ -118,7 +118,10 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
 3b. **Series y delegaciones inscritas (`GamesEditionGroup`, `GamesEditionTeam`)**: las gestiona
    quien gestiona la olimpiada. Ahí se asignan la serie, el delegado titular y el suplente, el
    estado (inscrita / retirada / descalificada) y el pago. El organizador solo inscribe
-   delegaciones a su cargo (`EditionGroupService`, `EditionTeamService`). Las pantallas usan el
+   delegaciones a su cargo (`EditionGroupService`, `EditionTeamService`). La serie de cada
+   delegación se cambia en /delegaciones-inscritas (`?serie=` filtra); /series solo crea, renombra
+   y ordena, y enlaza ahí. Mover de serie a quien ya está en una llave o podio de su serie avisa,
+   no bloquea (`EditionTeamService::stagesUsingGroup()`, D28). Las pantallas usan el
    trait `App\Livewire\Concerns\SelectsEdition` (olimpiada en `?olimpiada=`, siempre buscada
    dentro de las que el usuario gestiona).
 3c. **Cuadro de puntaje (`GamesEditionEvent`, pantalla /puntajes)**: lo edita SOLO el admin
