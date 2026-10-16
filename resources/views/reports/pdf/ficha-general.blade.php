@@ -43,7 +43,8 @@ body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; font-size: 8.4
 .decl b { text-transform: uppercase; }
 
 .signs { width: 100%; margin-top: 15mm; }
-.signs td { width: 50%; text-align: center; vertical-align: top; padding: 0 6mm; }
+.signs td { text-align: center; vertical-align: top; }
+.signs .sign-cell { width: 50%; padding: 0 6mm; }
 .sign-line { border-top: 0.9pt solid #000; padding-top: 1.2mm; }
 .sign-name { font-weight: bold; font-size: 8pt; min-height: 3.5mm; }
 .sign-role { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.6pt; color: #333; }
@@ -120,15 +121,12 @@ body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; font-size: 8.4
 
         <table class="list">
             <thead>
+                {{-- D30: solo estas cuatro columnas; el DNI llega enmascarado desde el Service --}}
                 <tr>
-                    <th style="width:6%">N.º</th>
+                    <th style="width:8%">N.º</th>
                     <th>Apellidos y nombres</th>
-                    <th style="width:11%">DNI</th>
-                    <th style="width:11%">F. nac.</th>
-                    <th style="width:6%">Edad</th>
-                    <th style="width:14%">Tipo</th>
-                    <th style="width:12%">Condición</th>
-                    <th style="width:6%">Cap.</th>
+                    <th style="width:18%">DNI</th>
+                    <th style="width:10%">Edad</th>
                 </tr>
             </thead>
             <tbody>
@@ -137,44 +135,42 @@ body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; font-size: 8.4
                         <td class="c">{{ $p['number'] }}</td>
                         <td>{{ $p['name'] }}</td>
                         <td class="c">{{ $p['dni'] }}</td>
-                        <td class="c">{{ $p['birthDate'] ?? '—' }}</td>
                         <td class="c">{{ $p['age'] ?? '—' }}</td>
-                        <td class="c">{{ $p['staffType'] ?? '—' }}</td>
-                        <td class="c">{{ $p['employmentType'] ?? '—' }}</td>
-                        <td class="c">{{ $p['isCaptain'] ? 'Sí' : '' }}</td>
                     </tr>
                 @endforeach
                 {{-- Filas en blanco hasta 12 para que la hoja quede pareja en las disciplinas cortas --}}
                 @for ($i = $form['participants']->count(); $i < 12; $i++)
-                    <tr class="empty-row"><td class="c">{{ $i + 1 }}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                    <tr class="empty-row"><td class="c">{{ $i + 1 }}</td><td></td><td></td><td></td></tr>
                 @endfor
             </tbody>
         </table>
 
+        {{-- D30: texto de la declaracion jurada pedido por la organizacion --}}
+        @php($single = $form['participants']->count() === 1)
         <div class="decl">
-            <b>Declaración jurada de la Dirección (bases, VII.d).</b>
-            El(la) Director(a) de la institución <b>{{ $form['team']->name }}</b> declara bajo juramento que los
-            {{ $form['participants']->count() }} participantes consignados en la presente ficha pertenecen a la institución
-            y gozan de buena salud para participar en la disciplina <b>{{ $form['season']->name }}</b> de los
-            {{ $form['edition']->name }}. El delegado y la Dirección se hacen responsables de la veracidad de los datos.
+            <b>DECLARACIÓN JURADA DE LA DIRECCIÓN (BASES, VII.D).</b>
+            El(la) Director(a) o los(las) Directores(as) de las instituciones que integran la delegación, de común acuerdo,
+            otorgan representación al delegado designado para que, en nombre de la delegación, declare bajo juramento que
+            {{ $single ? 'el' : 'los' }} {{ $form['participantsInWords'] }} {{ $single ? 'participante consignado' : 'participantes consignados' }}
+            en la presente ficha {{ $single ? 'pertenece' : 'pertenecen' }} a las instituciones que representan y
+            {{ $single ? 'goza' : 'gozan' }} de buena salud para participar en la disciplina de
+            <b>{{ mb_strtoupper($form['season']->name) }}</b> de los {{ $form['edition']->name }}.
+            Asimismo, el delegado asume la responsabilidad de consolidar, verificar y presentar la información consignada en la
+            ficha, garantizando su veracidad, en coordinación con los directores de las respectivas instituciones.
         </div>
 
+        {{-- Solo firma el delegado (D30) --}}
         <table class="signs">
             <tr>
-                <td>
+                <td></td>
+                <td class="sign-cell">
                     <div class="sign-line">
                         <div class="sign-name">{{ $form['delegateName'] ?? '' }}</div>
-                        <div class="sign-role">Delegado(a) de la institución</div>
+                        <div class="sign-role">Delegado(a) de la delegación</div>
                         <div class="sign-hint">Firma · DNI: ____________</div>
                     </div>
                 </td>
-                <td>
-                    <div class="sign-line">
-                        <div class="sign-name">{{ $form['directorName'] ?? '' }}</div>
-                        <div class="sign-role">Director(a) de la institución</div>
-                        <div class="sign-hint">Firma y sello</div>
-                    </div>
-                </td>
+                <td></td>
             </tr>
         </table>
 

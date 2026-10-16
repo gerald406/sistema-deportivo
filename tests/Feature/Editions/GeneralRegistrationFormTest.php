@@ -56,26 +56,32 @@ class GeneralRegistrationFormTest extends TestCase
         return SeasonTeam::create(['season_id' => $season->id, 'team_id' => ($team ?? $this->team)->id, 'is_active' => true]);
     }
 
-    public function test_form_lists_the_whole_roster_with_two_signatures_and_the_declaration(): void
+    public function test_form_lists_the_whole_roster_with_the_delegate_signature_and_the_declaration(): void
     {
-        $this->rosterEntry($this->football, 9, ['last_name' => 'Zapana', 'first_name' => 'Luis', 'birth_date' => '1990-12-31']);
-        $this->rosterEntry($this->football, 10, ['last_name' => 'Apaza', 'first_name' => 'Juan', 'birth_date' => '1980-01-01']);
+        $this->rosterEntry($this->football, 9, ['last_name' => 'Zapana', 'first_name' => 'Luis', 'birth_date' => '1990-12-31', 'dni' => '45531234']);
+        $this->rosterEntry($this->football, 10, ['last_name' => 'Apaza', 'first_name' => 'Juan', 'birth_date' => '1980-01-01', 'dni' => '01234567']);
         $this->rosterEntry($this->football, 11, ['last_name' => 'Baja', 'first_name' => 'Pedro'])->update(['status' => 'inactive']);
 
         $form = app(GeneralRegistrationFormService::class)->prepare($this->football);
 
-        // Por apellidos, sin los dados de baja; edad por ano de nacimiento (2026 - 1990).
-        $this->assertSame(['APAZA, Juan', 'ZAPANA, Luis'], $form['participants']->pluck('name')->all());
-        $this->assertSame(36, $form['participants'][1]['age']);
-        $this->assertSame(['Delegado Titular', 'Delegada Accesitaria', 'Mg. Ana Quispe'], [$form['delegateName'], $form['substituteName'], $form['directorName']]);
+        // D30: N.o, APELLIDOS Y NOMBRES en mayuscula, DNI con los 4 ultimos ocultos y edad
+        // (ano de la olimpiada - ano de nacimiento: 2026 - 1990). Por apellidos, sin bajas.
+        $this->assertSame([
+            ['number' => 1, 'name' => 'APAZA, JUAN', 'dni' => '0123****', 'age' => 46],
+            ['number' => 2, 'name' => 'ZAPANA, LUIS', 'dni' => '4553****', 'age' => 36],
+        ], $form['participants']->all());
+        $this->assertSame(['Delegado Titular', 'Delegada Accesitaria'], [$form['delegateName'], $form['substituteName']]);
+        $this->assertSame('dos (2)', $form['participantsInWords']);
 
         $response = $this->actingAs($this->delegate)->get(route('registrations.general', $this->football))->assertOk();
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
     }
 
-    public function test_view_renders_two_copies_and_only_the_two_signatures(): void
+    public function test_view_renders_two_copies_with_only_the_delegate_signature(): void
     {
-        $this->rosterEntry($this->football, 9, ['last_name' => 'Apaza']);
+        foreach (range(1, 6) as $shirt) {
+            $this->rosterEntry($this->football, $shirt, ['dni' => '4553'.str_pad((string) $shirt, 4, '0', STR_PAD_LEFT)]);
+        }
         $form = app(GeneralRegistrationFormService::class)->prepare($this->football);
 
         $html = view('reports.pdf.ficha-general', ['forms' => collect([$form])])->render();
@@ -83,11 +89,33 @@ class GeneralRegistrationFormTest extends TestCase
         $this->assertSame(2, substr_count($html, 'class="sheet"'));
         $this->assertStringContainsString('ORIGINAL', $html);
         $this->assertStringContainsString('COPIA', $html);
-        $this->assertStringContainsString('Declaración jurada de la Dirección', $html);
-        // Dos firmas por copia: delegado y director(a).
-        $this->assertSame(4, substr_count($html, 'class="sign-role"'));
-        $this->assertStringContainsString('Mg. Ana Quispe', $html);
-        $this->assertStringNotContainsString('Firma del Participante', $html);
+
+        // Solo las cuatro columnas: el DNI completo y los otros datos no salen.
+        $this->assertStringContainsString('4553****', $html);
+        $this->assertStringNotContainsString('45530001', $html);
+        foreach (['F. nac.', 'Condición', 'Cap.'] as $removed) {
+            $this->assertStringNotContainsString($removed, $html);
+        }
+
+        // Declaracion jurada (bases VII.d) con el numero en letras y la disciplina en mayuscula,
+        // comparada como texto visible (sin etiquetas ni saltos de linea de la plantilla).
+        $text = preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($html)));
+        $this->assertStringContainsString('DECLARACIÓN JURADA DE LA DIRECCIÓN (BASES, VII.D). El(la) Director(a) o los(las) Directores(as) de las instituciones que integran la delegación, de común acuerdo, otorgan representación al delegado designado para que, en nombre de la delegación, declare bajo juramento que los seis (6) participantes consignados en la presente ficha pertenecen a las instituciones que representan y gozan de buena salud para participar en la disciplina de FÚTBOL LIBRE VARONES de los '.$this->edition->name.'. Asimismo, el delegado asume la responsabilidad de consolidar, verificar y presentar la información consignada en la ficha, garantizando su veracidad, en coordinación con los directores de las respectivas instituciones.', $text);
+
+        // Una sola firma por copia: la del delegado; la del director(a) ya no va.
+        $this->assertSame(2, substr_count($html, 'class="sign-role"'));
+        $this->assertStringNotContainsString('Mg. Ana Quispe', $html);
+        $this->assertStringNotContainsString('Firma y sello', $html);
+    }
+
+    public function test_participants_count_in_spanish_words(): void
+    {
+        $words = fn (int $n) => app(GeneralRegistrationFormService::class)->countInWords($n);
+
+        $this->assertSame(
+            ['un (1)', 'seis (6)', 'quince (15)', 'veintiún (21)', 'treinta y dos (32)', 'cien (100)', 'ciento veinte (120)'],
+            array_map($words, [1, 6, 15, 21, 32, 100, 120]),
+        );
     }
 
     public function test_only_its_delegation_and_the_organization_print_it(): void
