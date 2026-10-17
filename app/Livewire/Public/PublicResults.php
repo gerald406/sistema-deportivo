@@ -5,38 +5,52 @@ declare(strict_types=1);
 namespace App\Livewire\Public;
 
 use App\Models\GamesEdition;
+use App\Models\GamesEditionGroup;
+use App\Models\SeasonStage;
 use App\Services\PublicResultsService;
 use App\Services\SeasonOverviewService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
- * Pagina publica (sin login, ruta "/"): SOLO la programacion de partidos y
- * los resultados de una olimpiada, de todas sus competencias a la vez,
- * agrupados por dia. Posiciones, goleadores, sanciones y puntaje general
- * no se publican: viven en el panel.
+ * Pagina publica (sin login, ruta "/"): SOLO la programacion de partidos,
+ * los resultados y los podios de una olimpiada. Posiciones, goleadores,
+ * sanciones y puntaje general no se publican: viven en el panel.
+ *
+ * Se recorre por serie: la portada muestra una tarjeta por serie (A, B, C,
+ * D) y una de "Finales y podios"; al abrir una, su programacion, resultados
+ * y podios, paginados. Una olimpiada sin series abre directo ese detalle.
  *
  * Todas las propiedades publicas vienen del navegador (y de la URL): la
- * olimpiada, el deporte y la competencia se resuelven SOLO entre lo
- * visible (PublicResultsService) y un valor ajeno se ignora.
+ * olimpiada, la serie, el deporte y la competencia se resuelven SOLO entre
+ * lo visible (PublicResultsService) y un valor ajeno se ignora.
  */
 #[Layout('layouts.public')]
 class PublicResults extends Component
 {
-    public const VIEWS = ['programacion', 'resultados'];
+    use WithPagination;
 
-    private const PAGE = 40;
+    public const VIEWS = ['programacion', 'resultados', 'podios'];
 
-    /** Tope de filas: limit es publico, sin tope se podria pedir la olimpiada entera en un clic. */
-    private const MAX = 400;
+    public const PAGE_NAME = 'pagina';
 
-    #[Url(as: 'vista')]
-    public string $view = 'programacion';
+    private const MATCHES_PER_PAGE = 20;
+
+    private const PODIUMS_PER_PAGE = 18;
 
     #[Url(as: 'olimpiada')]
     public string $gamesEditionId = '';
+
+    /** Id de la serie, PublicResultsService::FINALS o vacio (portada de tarjetas). */
+    #[Url(as: 'serie')]
+    public string $series = '';
+
+    /** Vacio = la primera pestaña con contenido. */
+    #[Url(as: 'vista')]
+    public string $view = '';
 
     #[Url(as: 'deporte')]
     public string $sportId = '';
@@ -47,43 +61,57 @@ class PublicResults extends Component
     #[Url(as: 'q')]
     public string $search = '';
 
-    public int $limit = self::PAGE;
+    public function openSeries(string $key): void
+    {
+        $this->series = $key;
+        $this->reset('view', 'sportId', 'seasonId', 'search');
+        $this->resetPage(self::PAGE_NAME);
+    }
+
+    public function closeSeries(): void
+    {
+        $this->openSeries('');
+    }
 
     public function setView(string $view): void
     {
-        $this->view = in_array($view, self::VIEWS, true) ? $view : self::VIEWS[0];
-        $this->limit = self::PAGE;
+        $this->view = in_array($view, self::VIEWS, true) ? $view : '';
+        $this->resetPage(self::PAGE_NAME);
     }
 
     public function updatedGamesEditionId(): void
     {
-        $this->reset('sportId', 'seasonId', 'search', 'limit');
+        $this->reset('series', 'view', 'sportId', 'seasonId', 'search');
+        $this->resetPage(self::PAGE_NAME);
     }
 
     /** La competencia elegida puede no ser del nuevo deporte. */
     public function updatedSportId(): void
     {
-        $this->reset('seasonId', 'limit');
+        $this->reset('seasonId');
+        $this->resetPage(self::PAGE_NAME);
     }
 
     public function updatedSeasonId(): void
     {
-        $this->reset('limit');
+        $this->resetPage(self::PAGE_NAME);
     }
 
     public function updatedSearch(): void
     {
-        $this->reset('limit');
+        $this->resetPage(self::PAGE_NAME);
+    }
+
+    public function selectSport(string $sportId): void
+    {
+        $this->sportId = $sportId;
+        $this->updatedSportId();
     }
 
     public function clearFilters(): void
     {
-        $this->reset('sportId', 'seasonId', 'search', 'limit');
-    }
-
-    public function more(): void
-    {
-        $this->limit = min($this->limit + self::PAGE, self::MAX);
+        $this->reset('sportId', 'seasonId', 'search');
+        $this->resetPage(self::PAGE_NAME);
     }
 
     public function render(PublicResultsService $public, SeasonOverviewService $overview)
@@ -91,50 +119,140 @@ class PublicResults extends Component
         $editions = $public->visibleGamesEditions();
         /** @var ?GamesEdition $edition */
         $edition = $editions->firstWhere('id', (int) $this->gamesEditionId) ?? $editions->first();
-        $played = $this->view === 'resultados';
 
-        $seasons = $edition ? $public->seasonsOf($edition->id) : collect();
+        $series = $edition ? $public->seriesOf($edition->id) : collect();
+        $summary = $edition ? $public->seriesSummary($edition->id) : [];
+        $cards = $this->cards($series, $summary);
+        $card = $this->resolveCard($cards, $series->isEmpty());
+
+        $data = [
+            'editions' => $editions,
+            'edition' => $edition,
+            'cards' => $cards,
+            'card' => $card,
+            'hasSeries' => $series->isNotEmpty(),
+        ];
+
+        if (! $edition || ! $card) {
+            return view('livewire.public.public-results', $data)
+                ->title('Programación y resultados — '.($edition?->name ?? config('app.name')));
+        }
+
+        $filter = $card['key'] === PublicResultsService::FINALS ? PublicResultsService::FINALS : (int) $card['key'];
+        $seasons = $public->seasonsIn($edition->id, $filter);
         $sports = $seasons->pluck('sport')->unique('id')->sortBy('name')->values();
         $sport = $sports->firstWhere('id', (int) $this->sportId);
-        $seasonOptions = $sport ? $seasons->where('sport_id', $sport->id)->values() : $seasons;
+        $seasonOptions = $sport ? $seasons->where('sport_id', $sport->id)->values() : collect();
         $season = $seasonOptions->firstWhere('id', (int) $this->seasonId);
 
         $filters = [
+            'series' => $filter,
             'sportId' => $sport?->id,
             'seasonId' => $season?->id,
             'search' => mb_substr(trim($this->search), 0, 60),
         ];
 
-        $total = 0;
-        $days = collect();
-        $limit = max(self::PAGE, min($this->limit, self::MAX));
+        $counts = [
+            'programacion' => $card['pending'],
+            'resultados' => $card['played'],
+            'podios' => $card['podiums'],
+        ];
+        $tabs = array_filter(
+            ['programacion' => 'Programación', 'resultados' => 'Resultados', 'podios' => 'Podios'],
+            fn (string $key) => $key !== 'podios' || $card['podiumStages'] > 0,
+            ARRAY_FILTER_USE_KEY,
+        );
+        $view = $this->resolveView($tabs, $counts);
 
-        if ($edition) {
-            $query = $public->matchesOf($edition->id, $played, $filters);
-            $total = (clone $query)->count();
-            $days = $this->groupByDay(
-                $query->with($overview->matchRowRelations())->limit($limit)->get()
-                    ->map(fn ($match) => $overview->matchRow($match)),
-            );
+        $days = collect();
+        $podiums = collect();
+
+        if ($view === 'podios') {
+            $page = $public->podiumsOf($edition->id, $filters)
+                ->paginate(self::PODIUMS_PER_PAGE, pageName: self::PAGE_NAME);
+            $podiums = $this->groupBySport(collect($page->items()));
+        } else {
+            $page = $public->matchesOf($edition->id, $view === 'resultados', $filters)
+                ->with($overview->matchRowRelations())
+                ->paginate(self::MATCHES_PER_PAGE, pageName: self::PAGE_NAME);
+            $days = $this->groupByDay(collect($page->items())->map(fn ($match) => $overview->matchRow($match)));
         }
 
-        return view('livewire.public.public-results', [
-            'editions' => $editions,
-            'edition' => $edition,
+        $label = ['programacion' => 'Programación', 'resultados' => 'Resultados', 'podios' => 'Podios'][$view];
+
+        return view('livewire.public.public-results', $data + [
             'sports' => $sports,
+            'sport' => $sport,
             'seasonOptions' => $seasonOptions,
-            'played' => $played,
+            'tabs' => $tabs,
+            'counts' => $counts,
+            'activeView' => $view,
+            'page' => $page,
             'days' => $days,
-            'shown' => $days->sum(fn (array $day) => $day['rows']->count()),
-            'total' => $total,
-            'canLoadMore' => $limit < min($total, self::MAX),
-            // Totales de cada pestaña sin filtros: dicen cuanto hay, no cuanto coincide.
-            'counts' => [
-                'programacion' => $edition ? $public->matchesOf($edition->id, false)->count() : 0,
-                'resultados' => $edition ? $public->matchesOf($edition->id, true)->count() : 0,
-            ],
+            'podiums' => $podiums,
             'hasFilters' => $sport !== null || $season !== null || $filters['search'] !== '',
-        ])->title(($played ? 'Resultados' : 'Programación').' — '.($edition?->name ?? config('app.name')));
+        ])->title("{$label} {$card['name']} — {$edition->name}");
+    }
+
+    /**
+     * Una tarjeta por serie y, al final, "Finales y podios". Sin series, una
+     * sola con todo, que se abre directamente.
+     *
+     * @param  Collection<int, GamesEditionGroup>  $series
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function cards(Collection $series, array $summary): Collection
+    {
+        $empty = ['pending' => 0, 'played' => 0, 'today' => 0, 'nextAt' => null, 'podiums' => 0, 'podiumStages' => 0];
+
+        $cards = $series->map(fn (GamesEditionGroup $group) => [
+            'key' => (string) $group->id,
+            'name' => $group->name,
+            'mark' => $this->seriesMark($group->name),
+            'teams' => $group->editionTeams->pluck('team.name')->filter()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values(),
+        ] + ($summary[(string) $group->id] ?? $empty));
+
+        return $cards->push([
+            'key' => PublicResultsService::FINALS,
+            'name' => $series->isEmpty() ? 'Programación y resultados' : 'Finales y podios',
+            'mark' => null,
+            'teams' => collect(),
+        ] + ($summary[PublicResultsService::FINALS] ?? $empty))->values();
+    }
+
+    /** La tarjeta abierta, solo entre las de esta olimpiada; sin series se abre la unica. */
+    private function resolveCard(Collection $cards, bool $withoutSeries): ?array
+    {
+        if ($withoutSeries) {
+            return $cards->first();
+        }
+
+        return $this->series === '' ? null : $cards->firstWhere('key', $this->series);
+    }
+
+    /** La pestaña pedida si existe; si no, la primera que tenga algo. */
+    private function resolveView(array $tabs, array $counts): string
+    {
+        if (isset($tabs[$this->view])) {
+            return $this->view;
+        }
+
+        foreach (array_keys($tabs) as $key) {
+            if ($counts[$key] > 0) {
+                return $key;
+            }
+        }
+
+        return array_key_first($tabs);
+    }
+
+    /** "Serie A" -> "A"; un nombre sin letra final se marca con su inicial. */
+    private function seriesMark(string $name): string
+    {
+        $last = mb_strrchr(' '.trim($name), ' ');
+        $last = trim((string) $last);
+
+        return mb_strlen($last) <= 2 ? mb_strtoupper($last) : mb_strtoupper(mb_substr(trim($name), 0, 1));
     }
 
     /**
@@ -152,6 +270,20 @@ class PublicResults extends Component
                 'date' => $group->first()['scheduledAt']?->copy()->startOfDay(),
                 'rows' => $group,
             ])
+            ->values();
+    }
+
+    /**
+     * Podios de la pagina, cortados por deporte (ya vienen ordenados).
+     *
+     * @param  Collection<int, SeasonStage>  $stages
+     * @return Collection<int, array{sport: string, stages: Collection}>
+     */
+    private function groupBySport(Collection $stages): Collection
+    {
+        return $stages
+            ->groupBy(fn (SeasonStage $stage) => $stage->season->sport->name)
+            ->map(fn (Collection $group, string $sport) => ['sport' => $sport, 'stages' => $group])
             ->values();
     }
 }
