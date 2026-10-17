@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="description" content="Programación de partidos y resultados de {{ config('app.name') }}.">
+    <meta name="description" content="Programación, resultados y podios por serie de {{ config('app.name') }}.">
     <title>{{ $title ?? config('app.name') }}</title>
 
     {{-- Archivo (variable, con eje de ancho): una sola familia. Angosta para
@@ -25,6 +25,9 @@
             --rule: #d5dfe9;     /* lineas entre partidos */
             --muted: #5b7186;    /* datos secundarios */
             --signal: #ff8a2c;   /* hoy y ganador: lo unico en naranja */
+            --gold: #f2c14e;     /* puestos del podio */
+            --silver: #c9d3dc;
+            --bronze: #96562b;
         }
 
         body { font-family: 'Archivo', ui-sans-serif, system-ui, sans-serif; color: var(--ink); background: #fff; }
@@ -34,6 +37,12 @@
 
         /* El titulo de cada dia se queda arriba mientras se recorre su lista. */
         .day { scroll-margin-top: 0.5rem; }
+
+        /* Tarjeta de serie: el borde y la letra responden al puntero, nada mas. */
+        .series-card { transition: border-color .15s ease; }
+        .series-card:hover { border-color: var(--lake); }
+        .series-card .series-mark { transition: filter .15s ease; }
+        .series-card:hover .series-mark { filter: brightness(.88); }
 
         a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
             outline: 3px solid var(--signal);

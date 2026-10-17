@@ -1,18 +1,24 @@
-@use('App\Enums\MatchStatus')
-@use('App\Enums\RoundType')
+@use('App\Services\PublicResultsService')
 
 @php
     $today = now()->startOfDay();
-    $views = ['programacion' => 'Programación', 'resultados' => 'Resultados'];
+    $hrefFor = fn (string $key) => route('home', array_filter([
+        'olimpiada' => $editions->count() > 1 ? $edition?->id : null,
+        'serie' => $key,
+    ]));
 @endphp
 
 <div class="flex flex-1 flex-col">
-    {{-- CABECERA: el nombre de la olimpiada y las dos unicas vistas. --}}
+    {{-- CABECERA: la olimpiada y, dentro de una serie, el salto entre series. --}}
     <header class="bg-[color:var(--lake)] text-white">
-        <div class="mx-auto max-w-5xl px-4 pt-5">
+        <div class="mx-auto max-w-5xl px-4 pt-5 {{ $card && $hasSeries ? '' : 'pb-8 sm:pb-10' }}">
             <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
-                    <h1 class="narrow text-3xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl">
+                    <h1 @class([
+                        'narrow font-extrabold leading-[1.05] tracking-tight',
+                        'text-3xl sm:text-5xl' => ! $card || ! $hasSeries,
+                        'text-2xl sm:text-3xl' => $card && $hasSeries,
+                    ])>
                         {{ $edition?->name ?? config('app.name') }}
                     </h1>
                     @if ($edition?->start_date)
@@ -45,18 +51,25 @@
                 </div>
             @endif
 
-            <nav class="mt-6 flex gap-6 sm:gap-8" aria-label="Vistas">
-                @foreach ($views as $key => $label)
-                    @php $active = ($key === 'resultados') === $played; @endphp
-                    <button type="button" wire:click="setView('{{ $key }}')" wire:key="view-{{ $key }}"
-                            @if ($active) aria-current="page" @endif
-                            class="narrow -mb-px flex items-baseline gap-2 border-b-4 pb-2 text-xl font-bold sm:text-2xl
-                                   {{ $active ? 'border-[color:var(--signal)] text-white' : 'border-transparent text-white/65 hover:text-white' }}">
-                        {{ $label }}
-                        <span class="figures text-sm font-semibold {{ $active ? 'text-white/85' : 'text-white/55' }}">{{ $counts[$key] }}</span>
-                    </button>
-                @endforeach
-            </nav>
+            @if ($card && $hasSeries)
+                <nav class="-mx-4 mt-5 flex items-end gap-5 overflow-x-auto px-4 sm:gap-7" aria-label="Series">
+                    <a href="{{ $hrefFor('') }}" wire:click.prevent="closeSeries"
+                       class="-mb-px flex shrink-0 items-center gap-2 border-b-4 border-transparent pb-2 text-sm font-semibold text-white/75 hover:text-white">
+                        <i class="fa-solid fa-table-cells-large text-xs" aria-hidden="true"></i>
+                        Todas las series
+                    </a>
+                    @foreach ($cards as $option)
+                        @php $active = $option['key'] === $card['key']; @endphp
+                        <a href="{{ $hrefFor($option['key']) }}" wire:key="series-tab-{{ $option['key'] }}"
+                           wire:click.prevent="openSeries('{{ $option['key'] }}')"
+                           @if ($active) aria-current="page" @endif
+                           class="narrow -mb-px shrink-0 border-b-4 pb-2 text-lg font-bold sm:text-xl
+                                  {{ $active ? 'border-[color:var(--signal)] text-white' : 'border-transparent text-white/65 hover:text-white' }}">
+                            {{ $option['mark'] === null ? 'Finales' : $option['name'] }}
+                        </a>
+                    @endforeach
+                </nav>
+            @endif
         </div>
     </header>
 
@@ -66,217 +79,207 @@
                 <p class="narrow text-2xl font-bold">Todavía no hay una olimpiada publicada</p>
                 <p class="mt-2 max-w-prose text-[color:var(--muted)]">La programación aparecerá aquí cuando el organizador active las competencias.</p>
             </div>
-        @else
-            {{-- FILTROS --}}
-            <form wire:submit.prevent class="grid gap-2 py-4 sm:grid-cols-[1fr_1fr_1.3fr]" role="search">
-                <div>
-                    <label for="public-sport" class="sr-only">Deporte</label>
-                    <select id="public-sport" wire:model.live="sportId"
-                            class="w-full rounded-md border-[color:var(--rule)] bg-[color:var(--wash)] py-2 text-sm text-[color:var(--ink)] focus:border-[color:var(--lake)] focus:ring-0">
-                        <option value="">Todos los deportes</option>
-                        @foreach ($sports as $option)
-                            <option value="{{ $option->id }}">{{ $option->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label for="public-season" class="sr-only">Competencia</label>
-                    <select id="public-season" wire:model.live="seasonId"
-                            class="w-full rounded-md border-[color:var(--rule)] bg-[color:var(--wash)] py-2 text-sm text-[color:var(--ink)] focus:border-[color:var(--lake)] focus:ring-0">
-                        <option value="">Todas las competencias</option>
-                        @foreach ($seasonOptions as $option)
-                            <option value="{{ $option->id }}">{{ $option->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="relative">
-                    <label for="public-search" class="sr-only">Buscar delegación</label>
-                    <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[color:var(--muted)]"></i>
-                    <input id="public-search" type="search" wire:model.live.debounce.400ms="search" maxlength="60"
-                           placeholder="Buscar delegación"
-                           class="w-full rounded-md border-[color:var(--rule)] bg-[color:var(--wash)] py-2 pl-9 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:border-[color:var(--lake)] focus:ring-0">
-                </div>
-            </form>
 
-            {{-- SALTO POR DIA: solo cuando hay mas de un dia a la vista. --}}
-            @if ($days->count() > 1)
-                <nav class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-3" aria-label="Ir a un día">
-                    @foreach ($days as $day)
-                        <a href="#dia-{{ $day['key'] }}" wire:key="jump-{{ $day['key'] }}"
-                           class="narrow shrink-0 rounded-md border px-3 py-1 text-sm font-semibold
-                                  {{ $day['date']?->equalTo($today) ? 'border-[color:var(--signal)] text-[color:var(--ink)]' : 'border-[color:var(--rule)] text-[color:var(--muted)] hover:border-[color:var(--lake)] hover:text-[color:var(--lake)]' }}">
-                            @if ($day['date'])
-                                {{ $day['date']->equalTo($today) ? 'Hoy' : $day['date']->locale('es')->isoFormat('ddd D MMM') }}
-                            @else
-                                Sin fecha
-                            @endif
-                        </a>
-                    @endforeach
-                </nav>
-            @endif
-
-            <div wire:loading.class="opacity-50" wire:target="setView, gamesEditionId, sportId, seasonId, search, clearFilters" class="transition-opacity">
-                @forelse ($days as $day)
-                    @php $date = $day['date']; @endphp
-                    <section id="dia-{{ $day['key'] }}" class="day" wire:key="day-{{ $view }}-{{ $day['key'] }}">
-                        <div class="sticky top-0 z-10 -mx-4 flex items-baseline justify-between gap-3 border-y border-[color:var(--rule)] bg-[color:var(--wash)] px-4 py-2">
-                            <h2 class="narrow text-xl font-bold sm:text-2xl">
-                                @if ($date)
-                                    {{ ucfirst($date->locale('es')->isoFormat('dddd D [de] MMMM')) }}
-                                    @if ($date->equalTo($today))
-                                        <span class="ml-2 rounded bg-[color:var(--signal)] px-1.5 py-0.5 align-middle text-xs font-bold text-[color:var(--ink)]">Hoy</span>
-                                    @elseif ($date->equalTo($today->copy()->addDay()))
-                                        <span class="ml-2 align-middle text-sm font-semibold text-[color:var(--muted)]">Mañana</span>
-                                    @elseif ($date->equalTo($today->copy()->subDay()))
-                                        <span class="ml-2 align-middle text-sm font-semibold text-[color:var(--muted)]">Ayer</span>
-                                    @endif
-                                @else
-                                    Fecha por confirmar
-                                @endif
-                            </h2>
-                            <span class="figures shrink-0 text-sm text-[color:var(--muted)]">
-                                {{ $day['rows']->count() }} {{ $day['rows']->count() === 1 ? 'partido' : 'partidos' }}
-                            </span>
-                        </div>
-
-                        <ul>
-                            @foreach ($day['rows'] as $game)
-                                @php
-                                    $decided = $game['status'] !== MatchStatus::Pending;
-                                    $walkover = $game['status'] === MatchStatus::Walkover;
-                                    $venue = $game['venue'];
-                                @endphp
-                                <li wire:key="match-{{ $game['id'] }}"
-                                    class="grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-4 gap-y-2 border-b border-[color:var(--rule)] py-4 md:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,17rem)]">
-
-                                    {{-- Hora --}}
-                                    <div class="narrow figures text-2xl font-bold leading-none sm:text-3xl">
-                                        @if ($game['scheduledAt'])
-                                            {{ $game['scheduledAt']->format('H:i') }}
-                                        @else
-                                            <span class="text-base font-semibold text-[color:var(--muted)]">Hora por confirmar</span>
-                                        @endif
-                                    </div>
-
-                                    {{-- Contendientes y marcador --}}
-                                    <div class="min-w-0">
-                                        @if ($game['isHeadToHead'])
-                                            @foreach (['home', 'away'] as $side)
-                                                @php
-                                                    $won = $decided && $game['winnerSide'] === $side;
-                                                    $lost = $decided && $game['winnerSide'] !== null && ! $won;
-                                                @endphp
-                                                <div class="flex items-baseline justify-between gap-3 {{ $loop->first ? '' : 'mt-1' }}">
-                                                    <span class="truncate text-base sm:text-lg {{ $won ? 'font-bold' : ($lost ? 'text-[color:var(--muted)]' : 'font-medium') }}">
-                                                        {{ $game[$side] }}
-                                                        @if ($walkover && $lost)
-                                                            <span class="ml-1 text-sm font-normal">no se presentó</span>
-                                                        @endif
-                                                    </span>
-                                                    @if ($decided && ! $walkover)
-                                                        <span class="narrow figures flex shrink-0 items-baseline gap-1.5 text-2xl leading-none {{ $won ? 'font-extrabold' : ($lost ? 'font-semibold text-[color:var(--muted)]' : 'font-semibold') }}">
-                                                            {{ $game[$side.'Score'] ?? '–' }}
-                                                            {{-- Marca del ganador: ocupa su ancho en ambas filas para que los marcadores queden alineados. --}}
-                                                            <i class="fa-solid fa-caret-left w-2 text-sm {{ $won ? 'text-[color:var(--signal)]' : 'invisible' }}" aria-hidden="true"></i>
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                            @endforeach
-
-                                            @if ($walkover)
-                                                <p class="mt-1.5 text-sm font-semibold">Ganó por W.O.</p>
-                                            @elseif ($decided && $game['tiebreak'])
-                                                <p class="mt-1.5 text-sm text-[color:var(--muted)]">Se definió por {{ mb_strtolower($game['tiebreak']) }}</p>
-                                            @elseif ($decided && $game['winnerSide'] === null)
-                                                <p class="mt-1.5 text-sm text-[color:var(--muted)]">Empate</p>
-                                            @endif
-                                        @else
-                                            {{-- Prueba individual o posta: no hay local ni visitante. --}}
-                                            <p class="text-base font-bold sm:text-lg">{{ $game['event'] }}</p>
-                                            @if ($decided && $game['podium'])
-                                                <ol class="mt-1 space-y-0.5">
-                                                    @foreach ($game['podium'] as $place)
-                                                        <li class="flex items-baseline justify-between gap-3 text-sm sm:text-base {{ $place['position'] === 1 ? 'font-bold' : '' }}">
-                                                            <span class="truncate"><span class="figures inline-block w-7 text-[color:var(--muted)]">{{ $place['position'] }}.º</span>{{ $place['name'] }}</span>
-                                                            @if ($place['mark'] !== null)
-                                                                <span class="narrow figures shrink-0 text-lg">{{ $place['mark'] }}</span>
-                                                            @endif
-                                                        </li>
-                                                    @endforeach
-                                                </ol>
-                                            @else
-                                                <p class="text-sm text-[color:var(--muted)]">
-                                                    {{ $game['participantsCount'] }} {{ $game['participantsCount'] === 1 ? 'participante' : 'participantes' }}
-                                                </p>
-                                            @endif
-                                        @endif
-                                    </div>
-
-                                    {{-- Competencia, ronda y sede --}}
-                                    <div class="col-start-2 min-w-0 text-sm md:col-start-3 md:border-l md:border-[color:var(--rule)] md:pl-4">
-                                        <p class="font-semibold">{{ $game['season'] }}</p>
-                                        @if ($game['round'] !== RoundType::Regular)
-                                            <p class="text-[color:var(--muted)]">{{ $game['round']->label() }}</p>
-                                        @endif
-                                        <p class="text-[color:var(--muted)]">
-                                            <i class="fa-solid fa-location-dot mr-1 text-xs" aria-hidden="true"></i>
-                                            @if ($venue && $venue->latitude !== null && $venue->longitude !== null)
-                                                <a href="https://www.google.com/maps?q={{ (float) $venue->latitude }},{{ (float) $venue->longitude }}"
-                                                   target="_blank" rel="noopener"
-                                                   class="underline decoration-[color:var(--rule)] underline-offset-2 hover:text-[color:var(--lake)] hover:decoration-[color:var(--lake)]">{{ $venue->name }}</a>
-                                            @else
-                                                {{ $venue?->name ?? 'Sede por confirmar' }}
-                                            @endif
-                                        </p>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </section>
-                @empty
-                    <div class="py-16">
-                        @if ($hasFilters)
-                            <p class="narrow text-2xl font-bold">Ningún partido coincide con tu búsqueda</p>
-                            <p class="mt-2 text-[color:var(--muted)]">Prueba con otro deporte o revisa el nombre de la delegación.</p>
-                            <button type="button" wire:click="clearFilters"
-                                    class="mt-5 rounded-md bg-[color:var(--lake)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--ink)]">
-                                Quitar filtros
-                            </button>
-                        @elseif ($played)
-                            <p class="narrow text-2xl font-bold">Todavía no se ha jugado ningún partido</p>
-                            <p class="mt-2 text-[color:var(--muted)]">Los marcadores aparecen aquí apenas el organizador cierra cada partido.</p>
-                            @if ($counts['programacion'] > 0)
-                                <button type="button" wire:click="setView('programacion')"
-                                        class="mt-5 rounded-md bg-[color:var(--lake)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--ink)]">
-                                    Ver programación
-                                </button>
-                            @endif
-                        @else
-                            <p class="narrow text-2xl font-bold">No quedan partidos por jugar</p>
-                            <p class="mt-2 text-[color:var(--muted)]">
-                                {{ $counts['resultados'] > 0 ? 'Ya se jugó todo lo programado hasta ahora.' : 'El organizador aún no publica la programación.' }}
-                            </p>
-                            @if ($counts['resultados'] > 0)
-                                <button type="button" wire:click="setView('resultados')"
-                                        class="mt-5 rounded-md bg-[color:var(--lake)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--ink)]">
-                                    Ver resultados
-                                </button>
-                            @endif
-                        @endif
-                    </div>
-                @endforelse
+        @elseif (! $card)
+            {{-- PORTADA: una tarjeta por serie y la de finales. --}}
+            <div class="pb-5 pt-8">
+                <h2 class="narrow text-3xl font-extrabold sm:text-4xl">Series</h2>
+                <p class="mt-1 max-w-prose text-[color:var(--muted)]">Elige una serie para ver su programación, sus resultados y sus podios.</p>
             </div>
 
-            @if ($canLoadMore)
-                <div class="pt-6">
-                    <button type="button" wire:click="more" wire:loading.attr="disabled" wire:target="more"
-                            class="rounded-md border border-[color:var(--lake)] px-4 py-2 text-sm font-semibold text-[color:var(--lake)] hover:bg-[color:var(--lake)] hover:text-white disabled:opacity-60">
-                        <span wire:loading.remove wire:target="more">Ver más partidos</span>
-                        <span wire:loading wire:target="more">Cargando</span>
-                    </button>
-                    <span class="figures ml-3 text-sm text-[color:var(--muted)]">{{ $shown }} de {{ $total }}</span>
+            <div class="grid gap-4 md:grid-cols-2" wire:loading.class="opacity-60" wire:target="openSeries, gamesEditionId">
+                @foreach ($cards as $option)
+                    <x-public.series-card :card="$option" :href="$hrefFor($option['key'])"
+                                          :wide="$loop->last && $cards->count() % 2 === 1"
+                                          wire:key="series-card-{{ $option['key'] }}" />
+                @endforeach
+            </div>
+
+        @else
+            {{-- DETALLE DE UNA SERIE --}}
+            @if ($hasSeries)
+                <div class="flex items-center gap-4 pt-7">
+                    <span @class([
+                        'flex h-16 w-16 shrink-0 items-center justify-center rounded-lg text-white',
+                        'bg-[color:var(--lake)]' => $card['mark'] !== null,
+                        'bg-[color:var(--ink)]' => $card['mark'] === null,
+                    ]) aria-hidden="true">
+                        @if ($card['mark'] !== null)
+                            <span class="narrow text-5xl font-extrabold leading-none">{{ $card['mark'] }}</span>
+                        @else
+                            <i class="fa-solid fa-trophy text-2xl text-[color:var(--signal)]"></i>
+                        @endif
+                    </span>
+                    <div class="min-w-0">
+                        <h2 class="narrow text-3xl font-extrabold leading-tight sm:text-4xl">{{ $card['name'] }}</h2>
+                        <p class="text-sm text-[color:var(--muted)]">
+                            @if ($card['teams']->isNotEmpty())
+                                {{ \Illuminate\Support\Arr::join($card['teams']->all(), ', ', ' y ') }}
+                            @else
+                                Fase final de cada deporte, finales de podio y pruebas sin serie
+                            @endif
+                        </p>
+                    </div>
                 </div>
             @endif
+
+            <div id="listado" class="scroll-mt-2 pt-6">
+                {{-- PESTAÑAS --}}
+                <div class="flex w-full rounded-lg border border-[color:var(--rule)] bg-[color:var(--wash)] p-1 sm:inline-flex sm:w-auto" role="tablist" aria-label="Qué ver">
+                    @foreach ($tabs as $key => $label)
+                        @php $active = $key === $activeView; @endphp
+                        <button type="button" role="tab" wire:click="setView('{{ $key }}')" wire:key="view-{{ $key }}"
+                                aria-selected="{{ $active ? 'true' : 'false' }}"
+                                class="narrow flex flex-1 items-baseline justify-center gap-2 rounded-md px-3 py-1.5 text-base font-bold sm:flex-none sm:px-4 sm:text-lg
+                                       {{ $active ? 'bg-white text-[color:var(--ink)] shadow-sm' : 'text-[color:var(--muted)] hover:text-[color:var(--ink)]' }}">
+                            {{ $label }}
+                            <span class="figures text-sm font-semibold {{ $active ? 'text-[color:var(--lake)]' : '' }}">{{ $counts[$key] }}</span>
+                        </button>
+                    @endforeach
+                </div>
+
+                {{-- FILTROS: deporte en fichas; la competencia solo dentro de un deporte. --}}
+                @if ($sports->count() > 1)
+                    <div class="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Deporte">
+                        <button type="button" wire:click="selectSport('')"
+                                @if (! $sport) aria-pressed="true" @else aria-pressed="false" @endif
+                                class="shrink-0 rounded-full border px-3 py-1 text-sm font-semibold
+                                       {{ ! $sport ? 'border-[color:var(--ink)] bg-[color:var(--ink)] text-white' : 'border-[color:var(--rule)] hover:border-[color:var(--lake)] hover:text-[color:var(--lake)]' }}">
+                            Todos los deportes
+                        </button>
+                        @foreach ($sports as $option)
+                            @php $chosen = $sport?->id === $option->id; @endphp
+                            <button type="button" wire:click="selectSport('{{ $option->id }}')" wire:key="sport-{{ $option->id }}"
+                                    aria-pressed="{{ $chosen ? 'true' : 'false' }}"
+                                    class="shrink-0 rounded-full border px-3 py-1 text-sm font-semibold
+                                           {{ $chosen ? 'border-[color:var(--ink)] bg-[color:var(--ink)] text-white' : 'border-[color:var(--rule)] hover:border-[color:var(--lake)] hover:text-[color:var(--lake)]' }}">
+                                {{ $option->name }}
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
+
+                <form wire:submit.prevent role="search"
+                      class="mt-3 grid gap-2 {{ $seasonOptions->count() > 1 ? 'sm:grid-cols-2' : '' }}">
+                    @if ($seasonOptions->count() > 1)
+                        <div>
+                            <label for="public-season" class="sr-only">Competencia</label>
+                            <select id="public-season" wire:model.live="seasonId"
+                                    class="w-full rounded-md border-[color:var(--rule)] bg-[color:var(--wash)] py-2 text-sm text-[color:var(--ink)] focus:border-[color:var(--lake)] focus:ring-0">
+                                <option value="">Todas las competencias de {{ $sport->name }}</option>
+                                @foreach ($seasonOptions as $option)
+                                    <option value="{{ $option->id }}">{{ $option->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
+                    <div class="relative">
+                        <label for="public-search" class="sr-only">Buscar delegación o participante</label>
+                        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[color:var(--muted)]" aria-hidden="true"></i>
+                        <input id="public-search" type="search" wire:model.live.debounce.400ms="search" maxlength="60"
+                               placeholder="Buscar delegación o participante"
+                               class="w-full rounded-md border-[color:var(--rule)] bg-[color:var(--wash)] py-2 pl-9 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:border-[color:var(--lake)] focus:ring-0">
+                    </div>
+                </form>
+            </div>
+
+            <div class="mt-4 transition-opacity" wire:loading.class="opacity-50"
+                 wire:target="setView, openSeries, closeSeries, selectSport, seasonId, search, clearFilters, gotoPage, nextPage, previousPage">
+                @if ($activeView === 'podios')
+                    {{-- PODIOS, por deporte --}}
+                    @forelse ($podiums as $group)
+                        <section class="pt-4" wire:key="podium-sport-{{ $group['sport'] }}">
+                            <h3 class="narrow border-b border-[color:var(--rule)] pb-2 text-xl font-bold sm:text-2xl">{{ $group['sport'] }}</h3>
+                            <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                @foreach ($group['stages'] as $stage)
+                                    <x-public.podium-card :stage="$stage" wire:key="podium-{{ $stage->id }}" />
+                                @endforeach
+                            </div>
+                        </section>
+                    @empty
+                        <div class="py-14">
+                            @if ($hasFilters)
+                                <p class="narrow text-2xl font-bold">Ningún podio coincide con tu búsqueda</p>
+                                <p class="mt-2 text-[color:var(--muted)]">Prueba con otro deporte o revisa el nombre.</p>
+                                <button type="button" wire:click="clearFilters"
+                                        class="mt-5 rounded-md bg-[color:var(--lake)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--ink)]">
+                                    Quitar filtros
+                                </button>
+                            @else
+                                <p class="narrow text-2xl font-bold">Todavía no hay podios</p>
+                                <p class="mt-2 max-w-prose text-[color:var(--muted)]">Aparecen aquí apenas el organizador registra el 1.º, 2.º y 3.º puesto de cada competencia.</p>
+                            @endif
+                        </div>
+                    @endforelse
+
+                    <x-public.pager :paginator="$page" one="podio" many="podios" :page-name="\App\Livewire\Public\PublicResults::PAGE_NAME" />
+                @else
+                    {{-- PARTIDOS, por dia --}}
+                    @forelse ($days as $day)
+                        @php $date = $day['date']; @endphp
+                        <section class="day" wire:key="day-{{ $activeView }}-{{ $day['key'] }}">
+                            <div class="sticky top-0 z-10 -mx-4 flex items-baseline justify-between gap-3 border-y border-[color:var(--rule)] bg-[color:var(--wash)] px-4 py-2">
+                                <h3 class="narrow text-xl font-bold sm:text-2xl">
+                                    @if ($date)
+                                        {{ ucfirst($date->locale('es')->isoFormat('dddd D [de] MMMM')) }}
+                                        @if ($date->equalTo($today))
+                                            <span class="ml-2 rounded bg-[color:var(--signal)] px-1.5 py-0.5 align-middle text-xs font-bold text-[color:var(--ink)]">Hoy</span>
+                                        @elseif ($date->equalTo($today->copy()->addDay()))
+                                            <span class="ml-2 align-middle text-sm font-semibold text-[color:var(--muted)]">Mañana</span>
+                                        @elseif ($date->equalTo($today->copy()->subDay()))
+                                            <span class="ml-2 align-middle text-sm font-semibold text-[color:var(--muted)]">Ayer</span>
+                                        @endif
+                                    @else
+                                        Fecha por confirmar
+                                    @endif
+                                </h3>
+                                <span class="figures shrink-0 text-sm text-[color:var(--muted)]">
+                                    {{ $day['rows']->count() }} {{ $day['rows']->count() === 1 ? 'partido' : 'partidos' }}
+                                </span>
+                            </div>
+
+                            <ul>
+                                @foreach ($day['rows'] as $game)
+                                    <x-public.match-row :game="$game" wire:key="match-{{ $game['id'] }}" />
+                                @endforeach
+                            </ul>
+                        </section>
+                    @empty
+                        <div class="py-14">
+                            @if ($hasFilters)
+                                <p class="narrow text-2xl font-bold">Ningún partido coincide con tu búsqueda</p>
+                                <p class="mt-2 text-[color:var(--muted)]">Prueba con otro deporte o revisa el nombre de la delegación.</p>
+                                <button type="button" wire:click="clearFilters"
+                                        class="mt-5 rounded-md bg-[color:var(--lake)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--ink)]">
+                                    Quitar filtros
+                                </button>
+                            @elseif ($activeView === 'resultados')
+                                <p class="narrow text-2xl font-bold">Todavía no se ha jugado ningún partido</p>
+                                <p class="mt-2 text-[color:var(--muted)]">Los marcadores aparecen aquí apenas el organizador cierra cada partido.</p>
+                                @if ($counts['programacion'] > 0)
+                                    <button type="button" wire:click="setView('programacion')"
+                                            class="mt-5 rounded-md bg-[color:var(--lake)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--ink)]">
+                                        Ver programación
+                                    </button>
+                                @endif
+                            @else
+                                <p class="narrow text-2xl font-bold">No quedan partidos por jugar</p>
+                                <p class="mt-2 text-[color:var(--muted)]">
+                                    {{ $counts['resultados'] > 0 ? 'Ya se jugó todo lo programado hasta ahora.' : 'El organizador aún no publica la programación.' }}
+                                </p>
+                                @if ($counts['resultados'] > 0)
+                                    <button type="button" wire:click="setView('resultados')"
+                                            class="mt-5 rounded-md bg-[color:var(--lake)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--ink)]">
+                                        Ver resultados
+                                    </button>
+                                @endif
+                            @endif
+                        </div>
+                    @endforelse
+
+                    <x-public.pager :paginator="$page" one="partido" many="partidos" :page-name="\App\Livewire\Public\PublicResults::PAGE_NAME" />
+                @endif
+            </div>
         @endif
     </main>
 </div>
