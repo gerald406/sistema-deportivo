@@ -6,8 +6,10 @@ namespace Tests\Feature\Editions;
 
 use App\Enums\GenderScope;
 use App\Livewire\EditionEvents\Index as EditionEventsIndex;
+use App\Models\Category;
 use App\Models\GamesEdition;
 use App\Models\GamesEditionEvent;
+use App\Models\Sport;
 use App\Services\EditionEventService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -155,6 +157,36 @@ class EditionEventTest extends TestCase
         }
 
         $this->assertDatabaseHas('games_edition_events', ['id' => $foreign->id]);
+    }
+
+    public function test_screen_filters_rows_and_their_sum(): void
+    {
+        $organizer = $this->organizer();
+        $edition = GamesEdition::factory()->create(['organizer_id' => $organizer->id]);
+        $futsal = Sport::create(['name' => 'Futsal', 'slug' => 'futsal', 'format_type' => 'head_to_head', 'is_active' => true]);
+        $libre = Category::create(['name' => 'Libre', 'min_age' => 25, 'gender' => 'X', 'is_active' => true]);
+        $row = fn (array $data) => GamesEditionEvent::factory()->create(['games_edition_id' => $edition->id] + $data);
+
+        $row(['label' => 'Futsal Libre', 'sport_id' => $futsal->id, 'category_id' => $libre->id, 'gender_scope' => GenderScope::Male, 'pts_first' => 24]);
+        $row(['label' => 'Futsal Máster', 'sport_id' => $futsal->id, 'gender_scope' => GenderScope::Female, 'pts_first' => 20, 'is_active' => false]);
+        $row(['label' => 'Estudiantina', 'pts_first' => 10]);
+        GamesEditionEvent::factory()->create(['label' => 'Futsal Ajeno', 'sport_id' => $futsal->id]);
+
+        $labels = fn ($component) => $component->viewData('events')->pluck('label')->all();
+        $screen = Livewire::actingAs($organizer)->test(EditionEventsIndex::class)->set('editionId', (string) $edition->id);
+
+        $this->assertSame(['Estudiantina', 'Futsal Libre', 'Futsal Máster'], $labels($screen));
+        $this->assertSame(['Futsal Libre', 'Futsal Máster'], $labels($screen->set('search', 'futsal')));
+        $this->assertSame(['Futsal Libre'], $labels($screen->set('statusFilter', 'active')->assertSee('Suma de las filas activas filtradas')));
+        $this->assertSame([], $labels($screen->set('scopeFilter', 'female')->assertSee('Ninguna fila coincide con los filtros.')));
+
+        $screen->call('clearFilters')->assertSet('statusFilter', 'all');
+        $this->assertSame(['Estudiantina'], $labels($screen->set('sportFilter', 'none')));
+        $this->assertSame(['Futsal Libre'], $labels($screen->set('sportFilter', (string) $futsal->id)->set('categoryFilter', (string) $libre->id)));
+        $this->assertSame(['Futsal Máster'], $labels($screen->set('categoryFilter', 'none')));
+
+        // Un valor manipulado desde el navegador no filtra ni revienta.
+        $this->assertCount(3, $labels($screen->call('clearFilters')->set('scopeFilter', 'x')->set('sportFilter', '1 OR 1=1')));
     }
 
     public function test_points_are_optional(): void

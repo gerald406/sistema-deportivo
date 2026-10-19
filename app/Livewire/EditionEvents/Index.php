@@ -22,13 +22,31 @@ use Livewire\Component;
  * Cuadro de puntaje de la olimpiada elegida. Lo ven el admin y el
  * organizador de la olimpiada; lo edita SOLO el admin (D7). Sin paginacion
  * ni orden por columna a proposito: es un cuadro corto que se lee en el
- * orden de las bases y se suma al pie.
+ * orden de las bases y se suma al pie. Los filtros acotan la tabla, la suma
+ * del pie y la exportacion a Excel.
  */
 #[Layout('layouts.admin')]
 #[Title('Cuadro de puntaje')]
 class Index extends Component
 {
     use ExportsExcel, SelectsEdition;
+
+    /** Valor de los filtros de deporte y nivel para las filas que no tienen uno. */
+    private const NONE = 'none';
+
+    public string $search = '';
+
+    /** '' | id | none */
+    public string $sportFilter = '';
+
+    /** '' | id | none */
+    public string $categoryFilter = '';
+
+    /** '' | GenderScope */
+    public string $scopeFilter = '';
+
+    /** all | active | inactive */
+    public string $statusFilter = 'all';
 
     public bool $showModal = false;
 
@@ -114,9 +132,22 @@ class Index extends Component
         $this->resetForm();
     }
 
+    public function clearFilters(): void
+    {
+        $this->reset('search', 'sportFilter', 'categoryFilter', 'scopeFilter', 'statusFilter');
+    }
+
+    public function hasFilters(): bool
+    {
+        return $this->search !== '' || $this->sportFilter !== '' || $this->categoryFilter !== ''
+            || $this->scopeFilter !== '' || $this->statusFilter !== 'all';
+    }
+
     public function render()
     {
         $edition = $this->edition();
+        // Los filtros solo ofrecen deportes y niveles que usa el cuadro de esta olimpiada.
+        $usedBy = fn (string $column) => GamesEditionEvent::where('games_edition_id', $edition?->id ?? 0)->select($column);
 
         return view('livewire.edition-events.index', [
             'edition' => $edition,
@@ -125,15 +156,34 @@ class Index extends Component
             'sports' => Sport::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => Category::where('is_active', true)->orderBy('min_age')->orderBy('name')->get(['id', 'name']),
             'scopes' => GenderScope::cases(),
+            'filterSports' => Sport::whereIn('id', $usedBy('sport_id'))->orderBy('name')->get(['id', 'name']),
+            'filterCategories' => Category::whereIn('id', $usedBy('category_id'))->orderBy('min_age')->orderBy('name')->get(['id', 'name']),
+            'none' => self::NONE,
         ]);
     }
 
-    /** Filas del cuadro: las comparten render() y la exportacion a Excel. */
+    /**
+     * Filas del cuadro: las comparten render() y la exportacion a Excel. Los
+     * filtros son propiedades publicas (manipulables): solo se aplican si son
+     * un id, "none" o un valor del enum.
+     */
     private function eventsOf(?GamesEdition $edition): Collection
     {
-        return $edition
-            ? $edition->events()->with(['sport:id,name', 'category:id,name'])->get()
-            : collect();
+        if (! $edition) {
+            return collect();
+        }
+
+        return $edition->events()
+            ->when(trim($this->search) !== '', fn ($q) => $q->where('label', 'like', '%'.trim($this->search).'%'))
+            ->when($this->sportFilter === self::NONE, fn ($q) => $q->whereNull('sport_id'))
+            ->when(ctype_digit($this->sportFilter), fn ($q) => $q->where('sport_id', (int) $this->sportFilter))
+            ->when($this->categoryFilter === self::NONE, fn ($q) => $q->whereNull('category_id'))
+            ->when(ctype_digit($this->categoryFilter), fn ($q) => $q->where('category_id', (int) $this->categoryFilter))
+            ->when(GenderScope::tryFrom($this->scopeFilter), fn ($q, GenderScope $s) => $q->where('gender_scope', $s->value))
+            ->when($this->statusFilter === 'active', fn ($q) => $q->where('is_active', true))
+            ->when($this->statusFilter === 'inactive', fn ($q) => $q->where('is_active', false))
+            ->with(['sport:id,name', 'category:id,name'])
+            ->get();
     }
 
     protected function authorizeExport(): void

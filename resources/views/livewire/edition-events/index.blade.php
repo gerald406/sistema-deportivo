@@ -42,6 +42,56 @@
             </p>
         @endif
 
+        {{-- Filtros --}}
+        <div class="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 lg:flex-row lg:items-center">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" wire:model.live.debounce.400ms="search"
+                       placeholder="Buscar por etiqueta..."
+                       class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+
+            <select wire:model.live="sportFilter"
+                    class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Todos los deportes</option>
+                @foreach ($filterSports as $sport)
+                    <option value="{{ $sport->id }}">{{ $sport->name }}</option>
+                @endforeach
+                <option value="{{ $none }}">Sin deporte</option>
+            </select>
+
+            <select wire:model.live="categoryFilter"
+                    class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Todos los niveles</option>
+                @foreach ($filterCategories as $category)
+                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                @endforeach
+                <option value="{{ $none }}">Sin nivel</option>
+            </select>
+
+            <select wire:model.live="scopeFilter"
+                    class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Todos los alcances</option>
+                @foreach ($scopes as $scope)
+                    <option value="{{ $scope->value }}">{{ $scope->label() }}</option>
+                @endforeach
+            </select>
+
+            <select wire:model.live="statusFilter"
+                    class="rounded-lg border-gray-300 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="all">Activas e inactivas</option>
+                <option value="active">Solo activas</option>
+                <option value="inactive">Solo inactivas</option>
+            </select>
+
+            @if ($this->hasFilters())
+                <button type="button" wire:click="clearFilters"
+                        class="inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">
+                    <i class="fa-solid fa-xmark"></i> Limpiar
+                </button>
+            @endif
+        </div>
+
         <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
             <div class="overflow-x-auto">
                 <table class="w-full divide-y divide-gray-200 text-sm">
@@ -107,7 +157,7 @@
                         @empty
                             <tr>
                                 <td colspan="{{ $canEdit ? 12 : 11 }}" class="px-4 py-10 text-center text-gray-400">
-                                    Esta olimpiada aún no tiene cuadro de puntaje.
+                                    {{ $this->hasFilters() ? 'Ninguna fila coincide con los filtros.' : 'Esta olimpiada aún no tiene cuadro de puntaje.' }}
                                 </td>
                             </tr>
                         @endforelse
@@ -116,7 +166,7 @@
                         @php($active = $events->where('is_active', true))
                         <tfoot class="bg-gray-50 text-sm font-semibold text-gray-900">
                             <tr>
-                                <td colspan="5" class="px-4 py-3 text-right">Suma de las filas activas</td>
+                                <td colspan="5" class="px-4 py-3 text-right">{{ $this->hasFilters() ? 'Suma de las filas activas filtradas' : 'Suma de las filas activas' }}</td>
                                 <td class="px-4 py-3 text-right">{{ $active->sum('pts_first') }}</td>
                                 <td class="px-4 py-3 text-right">{{ $active->sum('pts_second') }}</td>
                                 <td class="px-4 py-3 text-right">{{ $active->sum('pts_third') }}</td>
