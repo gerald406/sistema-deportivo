@@ -24,8 +24,8 @@ use Livewire\WithPagination;
 
 /**
  * Competencias de la olimpiada elegida (deporte x nivel x genero). No se
- * crean a mano (D19): salen del cuadro de puntaje, al guardarlo
- * (EditionEventService) o con "Generar competencias". Aqui solo se ajustan
+ * crean a mano (D19): salen del cuadro de puntaje solo al pulsar
+ * "Generar competencias" (D31). Aqui solo se ajustan
  * nombre, fechas, estado, activa y fases de puntaje.
  */
 #[Layout('layouts.admin')]
