@@ -91,7 +91,7 @@ class Index extends Component
 
         $this->showModal = false;
         $this->resetForm();
-        $this->dispatch('toast', type: 'success', message: 'Fila del cuadro guardada correctamente.');
+        $this->dispatch('toast', type: 'success', message: 'Fila del cuadro guardada. Pulsa «Generar competencias» en Competencias para crear las que falten.');
     }
 
     public function delete(int $id, EditionEventService $service): void

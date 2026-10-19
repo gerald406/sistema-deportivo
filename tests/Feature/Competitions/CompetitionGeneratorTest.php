@@ -262,8 +262,8 @@ class CompetitionGeneratorTest extends TestCase
             ->assertOk()->assertSee('Voleibol Libre Damas')->assertSee('Generar competencias');
     }
 
-    /** D19: guardar el cuadro crea las competencias que falten, sin pulsar "Generar". */
-    public function test_saving_a_scoring_row_creates_its_competitions(): void
+    /** D31: guardar el cuadro NO crea competencias; solo el boton "Generar". */
+    public function test_saving_a_scoring_row_does_not_create_competitions(): void
     {
         $sport = Sport::create(['name' => 'Voleibol', 'slug' => 'voleibol', 'format_type' => 'head_to_head', 'is_active' => true]);
         $service = app(EditionEventService::class);
@@ -275,14 +275,18 @@ class CompetitionGeneratorTest extends TestCase
         ];
 
         $row = $service->register($this->edition, $data, $this->admin());
+        $service->update($row, ['pts_first' => 24] + $data, $this->admin());
+        $this->assertSame(0, Season::count());
+
+        // El boton crea las que faltan.
+        Livewire::actingAs($this->edition->organizer)->test(SeasonsIndex::class)
+            ->set('editionId', (string) $this->edition->id)
+            ->call('generate');
         $this->assertSame(['Voleibol Libre Damas', 'Voleibol Libre Varones'], Season::where('games_edition_event_id', $row->id)->orderBy('name')->pluck('name')->all());
 
-        // Editar la fila no duplica; ampliar su alcance si agrega lo que falta.
-        $service->update($row, ['gender_scope' => 'both', 'pts_first' => 24] + $data, $this->admin());
-        $this->assertSame(2, Season::count());
-
+        // Una fila nueva tampoco crea nada hasta volver a pulsar el boton.
         $service->register($this->edition, ['label' => 'Voleibol Libre mixto', 'gender_scope' => 'none', 'sort_order' => 2] + $data, $this->admin());
-        $this->assertSame(3, Season::count());
+        $this->assertSame(2, Season::count());
     }
 
     public function test_competitions_are_not_created_by_hand(): void

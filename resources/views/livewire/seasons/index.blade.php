@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-gray-900">Competencias</h1>
-            <p class="text-sm text-gray-500">Cada competencia es un deporte en un nivel y género de la olimpiada. Se crean solas desde el cuadro de puntaje; aquí solo se ajustan.</p>
+            <p class="text-sm text-gray-500">Cada competencia es un deporte en un nivel y género de la olimpiada. Se crean con el botón «Generar competencias» a partir del cuadro de puntaje; aquí solo se ajustan.</p>
         </div>
 
         @if ($edition)

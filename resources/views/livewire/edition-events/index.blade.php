@@ -28,11 +28,19 @@
             No tienes ninguna olimpiada a tu cargo.
         </div>
     @else
-        @unless ($canEdit)
+        @if ($canEdit)
+            <p class="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-800">
+                <i class="fa-solid fa-circle-info mr-1"></i>
+                Guardar una fila no crea competencias. Después de agregar o cambiar filas, pulsa
+                <strong>Generar competencias</strong> en
+                <a href="{{ route('seasons.index', ['olimpiada' => $edition->id]) }}" wire:navigate class="font-medium underline hover:text-sky-600">Competencias</a>
+                para crear las que falten.
+            </p>
+        @else
             <p class="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 <i class="fa-solid fa-lock mr-1"></i> Solo el administrador modifica este cuadro.
             </p>
-        @endunless
+        @endif
 
         <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
             <div class="overflow-x-auto">

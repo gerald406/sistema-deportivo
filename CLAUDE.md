@@ -106,8 +106,8 @@ Cada punto se revalida **en el Service**, no solo en la Policy ni ocultando boto
 2. **Competencias (`Season`, pantalla /competencias)**: deporte × nivel × género (y prueba en
    atletismo). **Nunca se crean a mano** (D19): salen del cuadro de puntaje
    (`CompetitionGeneratorService::generate()`, idempotente: solo agrega, nunca modifica ni
-   reactiva), que corre solo cada vez que el admin guarda una fila (`EditionEventService`) y
-   también con el botón "Generar competencias". `SeasonService::update()` solo cambia nombre,
+   reactiva), que corre **solo con el botón "Generar competencias"** (D31): guardar una fila
+   del cuadro (`EditionEventService`) ya no crea competencias y /puntajes lo avisa. `SeasonService::update()` solo cambia nombre,
    fechas, estado, activa y fases de puntaje (`SeasonService::EDITABLE`); deporte, prueba,
    nivel, género y fila del cuadro no se editan. Solo quien gestiona la olimpiada
    (`SeasonPolicy`, `SeasonService::ensureCanUseEdition()`). Una competencia que no corresponde
