@@ -25,6 +25,7 @@ use App\Livewire\Public\PublicResults;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Relays\Index as RelaysIndex;
 use App\Livewire\ReopenLogs\Index as ReopenLogsIndex;
+use App\Livewire\Reports\DelegationTracking;
 use App\Livewire\Reports\GeneralScore;
 use App\Livewire\Reports\Index as ReportsIndex;
 use App\Livewire\Reports\ManagerialReport;
@@ -154,6 +155,11 @@ Route::middleware([
     // Puntaje general por delegacion (reports.view; olimpiadas acotadas por rol).
     Route::get('/reportes/puntaje-general', GeneralScore::class)
         ->name('reports.general-score');
+
+    // Seguimiento de delegaciones: personas y disciplinas por delegacion, y su plantel para
+    // cotejar la ficha general (organizador/admin: todas; delegado: la suya). Solo lectura.
+    Route::get('/reportes/delegaciones', DelegationTracking::class)
+        ->name('reports.delegations');
 
     // Padron de Jugadores: filtros acotados por rol (admin/organizador/delegado) y PDF
     // (un equipo: SeasonTeamPolicy::printRoster; todos: SeasonPolicy::printReports).

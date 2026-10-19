@@ -81,6 +81,8 @@ return [
             'icon' => 'fa-solid fa-chart-line',
             'children' => [
                 ['label' => 'Puntaje general', 'route' => 'reports.general-score', 'permission' => 'reports.view'],
+                // Organizador/admin: todas sus delegaciones; delegado: solo la suya (DelegationTrackingService).
+                ['label' => 'Seguimiento de delegaciones', 'route' => 'reports.delegations', 'role' => ['admin', 'organizador', 'delegado']],
                 ['label' => 'Posiciones', 'route' => 'reports.index', 'permission' => 'reports.view'],
                 // PDFs por competencia: admin y organizador (SeasonPolicy::printReports).
                 // Padron: tambien el delegado, solo de su equipo (SeasonTeamPolicy::printRoster).
