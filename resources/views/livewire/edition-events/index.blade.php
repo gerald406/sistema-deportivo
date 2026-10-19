@@ -33,7 +33,7 @@
                 <i class="fa-solid fa-circle-info mr-1"></i>
                 Guardar una fila no crea competencias. Después de agregar o cambiar filas, pulsa
                 <strong>Generar competencias</strong> en
-                <a href="{{ route('seasons.index', ['olimpiada' => $edition->id]) }}" wire:navigate class="font-medium underline hover:text-sky-600">Competencias</a>
+                <a href="{{ route('seasons.index', ['olimpiada' => $edition->id]) }}" wire:navigate class="font-medium underline hover:text-indigo-600">Competencias</a>
                 para crear las que falten.
             </p>
         @else
