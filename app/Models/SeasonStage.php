@@ -23,6 +23,8 @@ class SeasonStage extends Model
         'group_id',
         'qualifiers',
         'has_third_place',
+        'scheduled_at',
+        'venue_id',
     ];
 
     protected function casts(): array
@@ -32,6 +34,7 @@ class SeasonStage extends Model
             'mode' => StageMode::class,
             'qualifiers' => 'integer',
             'has_third_place' => 'boolean',
+            'scheduled_at' => 'datetime',
         ];
     }
 
@@ -44,6 +47,12 @@ class SeasonStage extends Model
     public function group(): BelongsTo
     {
         return $this->belongsTo(GamesEditionGroup::class, 'group_id');
+    }
+
+    /** Sede de una fase de podio directo (las de partidos no la usan). */
+    public function venue(): BelongsTo
+    {
+        return $this->belongsTo(Venue::class);
     }
 
     /** Partidos de la llave de esta fase, por ronda y casillero. */

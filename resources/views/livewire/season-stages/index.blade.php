@@ -133,6 +133,7 @@
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Serie</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Clasif.</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">3.er puesto</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Programación</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Avance</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Podio</th>
                             <th class="px-4 py-3"></th>
@@ -154,6 +155,14 @@
                                 <td class="px-4 py-3 text-gray-600">{{ $row->group?->name ?? '—' }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ $row->qualifiers ?? '—' }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ $row->has_third_place ? 'Sí' : '—' }}</td>
+                                <td class="px-4 py-3 text-xs text-gray-600">
+                                    @if ($row->scheduled_at || $row->venue)
+                                        <span class="block whitespace-nowrap">{{ $row->scheduled_at?->format('d/m/Y H:i') ?? 'Sin fecha' }}</span>
+                                        <span class="block text-gray-400">{{ $row->venue?->name }}</span>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 text-gray-600">{{ $this->progressLabel($row) }}</td>
                                 <td class="px-4 py-3 text-xs text-gray-600">
                                     @forelse ($row->results as $result)
@@ -169,7 +178,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="px-4 py-10 text-center text-gray-400">
+                                <td colspan="10" class="px-4 py-10 text-center text-gray-400">
                                     <p>No hay fases que coincidan con el filtro.</p>
                                     <button type="button" x-on:click="{{ $confirmAll }}"
                                             class="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600">
@@ -224,6 +233,9 @@
                                 @endif
                                 @if ($stage->has_third_place)
                                     <span>Con partido por el tercer puesto</span>
+                                @endif
+                                @if ($stage->scheduled_at || $stage->venue)
+                                    <span><i class="fa-regular fa-calendar"></i> {{ $stage->scheduled_at?->format('d/m/Y H:i') ?? 'Sin fecha' }}{{ $stage->venue ? ' — '.$stage->venue->name : '' }}</span>
                                 @endif
                             </p>
                         </div>
@@ -368,6 +380,26 @@
                         <input type="checkbox" wire:model="form.has_third_place" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                         <span class="text-sm text-gray-700">Partido por el tercer puesto</span>
                     </label>
+                @else
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Fecha y hora <span class="font-normal text-gray-400">(opcional)</span></label>
+                            <input type="datetime-local" wire:model="form.scheduled_at"
+                                   class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            @error('form.scheduled_at') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Sede <span class="font-normal text-gray-400">(opcional)</span></label>
+                            <select wire:model="form.venue_id"
+                                    class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Sin sede</option>
+                                @foreach ($this->venueOptions() as $venue)
+                                    <option value="{{ $venue->id }}">{{ $venue->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('form.venue_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
                 @endif
 
                 <div class="flex justify-end gap-3 pt-2">

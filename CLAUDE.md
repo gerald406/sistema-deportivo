@@ -66,6 +66,9 @@ Cero duplicación por deporte: NO existen `FootballTeam`,
      fases de la olimpiada (paginado, filtros por deporte, nivel, género, modo, serie y avance,
      Excel) y avisa qué competencias activas no tienen fases. El podio de una fase con serie solo admite delegaciones
      de esa serie (`DirectPodiumService`).
+   - Una fase de podio directo lleva fecha y hora y sede opcionales (D32, `StageService`: dentro de
+     las fechas de la olimpiada, sede activa); en una de partidos se guardan vacías. La página
+     pública las muestra en Podios como "Por disputar".
    - `BracketService::generate()` arma la llave con byes para los primeros de la lista y crea
      todos los partidos enlazados (`next_match_id`); `advance()` mueve al ganador (y al perdedor
      al partido por el tercer puesto) desde `ResultService::afterResultChanged()`.

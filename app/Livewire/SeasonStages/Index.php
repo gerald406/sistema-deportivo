@@ -19,6 +19,7 @@ use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use App\Models\Sport;
 use App\Models\Team;
+use App\Models\Venue;
 use App\Services\BracketService;
 use App\Services\DirectPodiumService;
 use App\Services\StageService;
@@ -217,6 +218,14 @@ class Index extends Component
         return StageMode::cases();
     }
 
+    /** Sedes activas, mas la ya guardada aunque se haya desactivado. */
+    public function venueOptions(): Collection
+    {
+        return Venue::where('is_active', true)
+            ->when(($this->form['venue_id'] ?? '') !== '', fn ($q) => $q->orWhere('id', $this->form['venue_id']))
+            ->orderBy('name')->get(['id', 'name']);
+    }
+
     /** Series de la olimpiada de la competencia. */
     public function groupOptions(): Collection
     {
@@ -315,6 +324,8 @@ class Index extends Component
             'group_id' => $stage->group_id ?? '',
             'qualifiers' => $stage->qualifiers ?? '',
             'has_third_place' => $stage->has_third_place,
+            'scheduled_at' => $stage->scheduled_at?->format('Y-m-d\TH:i') ?? '',
+            'venue_id' => $stage->venue_id ?? '',
         ];
         $this->showModal = true;
     }
@@ -530,7 +541,7 @@ class Index extends Component
             ->withCount(['matches', 'matches as pending_matches_count' => $pending, 'results'])
             ->with([
                 'season:id,name,sport_id,category_id,discipline_id,gender', 'season.sport:id,name', 'season.category:id,name',
-                'season.discipline:id,name', 'group:id,name', 'results.team:id,name',
+                'season.discipline:id,name', 'group:id,name', 'venue:id,name', 'results.team:id,name',
                 'results.seasonTeamPlayer.player:id,first_name,last_name',
             ])
             ->when($column === 'season_name',
@@ -550,7 +561,7 @@ class Index extends Component
     {
         return $season
             ? $season->stages()->with([
-                'group:id,name', 'results.team:id,name', 'results.seasonTeamPlayer.player:id,first_name,last_name',
+                'group:id,name', 'venue:id,name', 'results.team:id,name', 'results.seasonTeamPlayer.player:id,first_name,last_name',
                 'matches.participants' => ParticipantLabel::eagerLoad(),
             ])->get()
             : collect();
@@ -583,6 +594,8 @@ class Index extends Component
             'Serie' => fn (SeasonStage $s) => $s->group?->name,
             'Clasifican' => fn (SeasonStage $s) => $s->qualifiers,
             'Tercer puesto' => fn (SeasonStage $s) => (bool) $s->has_third_place,
+            'Fecha y hora' => fn (SeasonStage $s) => $s->scheduled_at?->format('d/m/Y H:i'),
+            'Sede' => fn (SeasonStage $s) => $s->venue?->name,
             'Partidos' => fn (SeasonStage $s) => $s->matches_count ?? $s->matches->count(),
             'Avance' => fn (SeasonStage $s) => $this->progressLabel($s),
             'Podio' => fn (SeasonStage $s) => $s->results->sortBy('place')
@@ -657,6 +670,8 @@ class Index extends Component
             'group_id' => '',
             'qualifiers' => '',
             'has_third_place' => false,
+            'scheduled_at' => '',
+            'venue_id' => '',
         ];
         $this->resetErrorBag();
     }
@@ -671,6 +686,8 @@ class Index extends Component
             'form.group_id' => ['nullable', 'integer'],
             'form.qualifiers' => ['nullable', 'integer', 'between:1,64'],
             'form.has_third_place' => ['boolean'],
+            'form.scheduled_at' => ['nullable', 'date'],
+            'form.venue_id' => ['nullable', 'integer'],
         ];
     }
 
@@ -682,6 +699,8 @@ class Index extends Component
             'form.mode' => 'modo',
             'form.group_id' => 'serie',
             'form.qualifiers' => 'clasificados',
+            'form.scheduled_at' => 'fecha y hora',
+            'form.venue_id' => 'sede',
         ];
     }
 }

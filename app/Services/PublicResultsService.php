@@ -116,13 +116,18 @@ class PublicResultsService
         return $this->stageInSeries(SeasonStage::query(), $filters['series'] ?? null)
             ->where('mode', StageMode::DirectPodium->value)
             ->whereIn('season_id', $this->visibleSeasonIds($gamesEditionId, $filters))
-            ->whereHas('results', fn ($r) => $r->when($term !== '', fn ($q) => $q->where(fn ($w) => $w
-                ->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$term}%"))
-                ->orWhereHas('seasonTeamPlayer.player', fn ($pl) => $pl->where('last_name', 'like', "%{$term}%")->orWhere('first_name', 'like', "%{$term}%")))))
+            ->where(fn ($q) => $q
+                ->whereHas('results', fn ($r) => $r->when($term !== '', fn ($q) => $q->where(fn ($w) => $w
+                    ->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$term}%"))
+                    ->orWhereHas('seasonTeamPlayer.player', fn ($pl) => $pl->where('last_name', 'like', "%{$term}%")->orWhere('first_name', 'like', "%{$term}%")))))
+                // Por disputar pero ya programada (D32): sale con su fecha y sede.
+                ->when($term === '', fn ($q) => $q->orWhere(fn ($w) => $w->doesntHave('results')
+                    ->where(fn ($s) => $s->whereNotNull('scheduled_at')->orWhereNotNull('venue_id')))))
             ->with([
                 'season:id,sport_id,name',
                 'season.sport:id,name',
                 'group:id,name',
+                'venue:id,name',
                 'results' => fn ($r) => $r->where('place', '<=', 3),
                 'results.team:id,name',
                 'results.seasonTeamPlayer.player:id,first_name,last_name',

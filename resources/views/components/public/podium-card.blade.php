@@ -5,6 +5,16 @@
 <article {{ $attributes->class('rounded-lg border border-[color:var(--rule)] bg-white p-4') }}>
     <h4 class="font-bold leading-snug">{{ $stage->season->name }}</h4>
     <p class="text-sm text-[color:var(--muted)]">{{ $stage->name }}</p>
+    @if ($stage->scheduled_at || $stage->venue)
+        <p class="mt-1 text-sm text-[color:var(--muted)]">
+            <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+            {{ $stage->scheduled_at?->format('d/m/Y H:i') ?? 'Sin fecha' }}{{ $stage->venue ? ' · '.$stage->venue->name : '' }}
+        </p>
+    @endif
+
+    @if ($stage->results->isEmpty())
+        <p class="mt-3 text-sm font-medium">Por disputar</p>
+    @endif
 
     <ol class="mt-3 space-y-2">
         @foreach ($stage->results as $result)

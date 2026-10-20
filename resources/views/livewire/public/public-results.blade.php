@@ -207,7 +207,7 @@
                                 </button>
                             @else
                                 <p class="narrow text-2xl font-bold">Todavía no hay podios</p>
-                                <p class="mt-2 max-w-prose text-[color:var(--muted)]">Aparecen aquí apenas el organizador registra el 1.º, 2.º y 3.º puesto de cada competencia.</p>
+                                <p class="mt-2 max-w-prose text-[color:var(--muted)]">Aparecen aquí apenas el organizador programa una prueba o registra su 1.º, 2.º y 3.º puesto.</p>
                             @endif
                         </div>
                     @endforelse

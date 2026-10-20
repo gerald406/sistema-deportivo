@@ -13,7 +13,9 @@ use App\Models\Season;
 use App\Models\SeasonStage;
 use App\Models\Sport;
 use App\Models\User;
+use App\Models\Venue;
 use App\Support\SeasonAccess;
+use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
@@ -41,7 +43,7 @@ class StageService
     }
 
     /**
-     * @param array{name: string, sort_order?: int|string|null, mode: string, group_id?: int|string|null, qualifiers?: int|string|null, has_third_place?: bool} $data
+     * @param array{name: string, sort_order?: int|string|null, mode: string, group_id?: int|string|null, qualifiers?: int|string|null, has_third_place?: bool, scheduled_at?: string|null, venue_id?: int|string|null} $data
      */
     public function register(Season $season, array $data, User $actor): SeasonStage
     {
@@ -54,7 +56,7 @@ class StageService
     }
 
     /**
-     * @param array{name: string, sort_order?: int|string|null, mode: string, group_id?: int|string|null, qualifiers?: int|string|null, has_third_place?: bool} $data
+     * @param array{name: string, sort_order?: int|string|null, mode: string, group_id?: int|string|null, qualifiers?: int|string|null, has_third_place?: bool, scheduled_at?: string|null, venue_id?: int|string|null} $data
      */
     public function update(SeasonStage $stage, array $data, User $actor): SeasonStage
     {
@@ -279,6 +281,27 @@ class StageService
             $errors['form.qualifiers'] = 'Los clasificados deben ser al menos 1.';
         }
 
+        // Fecha, hora y sede solo en una fase de podio directo (D32): en una de
+        // partidos se programa cada partido en /partidos.
+        $podium = $mode === StageMode::DirectPodium;
+        $scheduledAt = $podium && ($data['scheduled_at'] ?? '') !== '' ? Carbon::parse($data['scheduled_at']) : null;
+        $venueId = $podium ? $this->intOrNull($data['venue_id'] ?? null) : null;
+
+        // Una sede desactivada despues de guardarla se conserva; no se elige de nuevo.
+        if ($venueId !== null && $venueId !== $current?->venue_id
+            && ! Venue::whereKey($venueId)->where('is_active', true)->exists()) {
+            $errors['form.venue_id'] = 'La sede no existe o está inactiva.';
+        }
+
+        // Se consulta aparte: la competencia puede venir con la olimpiada cargada sin sus fechas.
+        $edition = $scheduledAt ? $season->gamesEdition()->first(['id', 'start_date', 'end_date']) : null;
+        $day = $scheduledAt?->copy()->startOfDay();
+        if ($day && $edition?->start_date && $edition->end_date
+            && ($day->lt($edition->start_date) || $day->gt($edition->end_date))) {
+            $errors['form.scheduled_at'] = 'La fecha está fuera de las fechas de la olimpiada ('
+                .$edition->start_date->format('d/m/Y').' al '.$edition->end_date->format('d/m/Y').').';
+        }
+
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
@@ -291,6 +314,8 @@ class StageService
             'qualifiers' => $qualifiers,
             // El tercer puesto solo tiene sentido en una fase de partidos.
             'has_third_place' => $mode === StageMode::Matches && (bool) ($data['has_third_place'] ?? false),
+            'scheduled_at' => $scheduledAt,
+            'venue_id' => $venueId,
         ];
     }
 

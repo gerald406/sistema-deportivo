@@ -94,6 +94,7 @@ la siguiente con una prueba omitida ni marcada como pendiente.
 | M19 | D20 | `2026_10_25_090200_add_resolution_to_players_table` | `resolution_path`, `resolution_uploaded_at`, `resolution_uploaded_by` |
 | M20 | D21 | `2026_10_25_090300_add_director_name_to_teams_table` | `teams.director_name` |
 | M21 | D22 | `2026_10_25_090400_add_registration_deadline_to_games_editions_table` | `games_editions.registration_deadline` |
+| M22 | D32 | `2026_10_25_090500_add_schedule_to_season_stages_table` | `season_stages.scheduled_at`, `season_stages.venue_id` |
 
 Después de cada migración nueva: `php artisan migrate` en la base de trabajo.
 
@@ -110,7 +111,7 @@ Después de cada migración nueva: `php artisan migrate` en la base de trabajo.
 | `season_team` (−) | − `delegate_id` | — |
 | `games_edition_events` | `games_edition_id` CASCADE; `sort_order` int; `label` string(150); `sport_id` nulo RESTRICT; `category_id` nulo RESTRICT; `gender_scope` enum def. `none`; `separate_podiums` bool def. true; `per_discipline` bool def. false; `pts_first`, `pts_second`, `pts_third` int nulos; `min_players`, `max_players` int nulos; `rules_blocking` bool def. false; `is_active` bool def. true | (`games_edition_id`, `label`) |
 | `players` (+) | `gender` enum `M`,`F` nulo; `staff_type` enum nulo; `employment_type` enum nulo; `documents_verified_at` timestamp nulo; `resolution_path` string nulo, `resolution_uploaded_at` timestamp nulo, `resolution_uploaded_by` nulo → `users` RESTRICT (M19, D20) | — |
-| `season_stages` | `season_id` CASCADE; `name` string(80); `sort_order` int; `mode` enum; `group_id` nulo → `games_edition_groups` SET NULL; `qualifiers` int nulo; `has_third_place` bool def. false | (`season_id`, `name`) |
+| `season_stages` | `season_id` CASCADE; `name` string(80); `sort_order` int; `mode` enum; `group_id` nulo → `games_edition_groups` SET NULL; `qualifiers` int nulo; `has_third_place` bool def. false; `scheduled_at` datetime nulo y `venue_id` nulo → `venues` SET NULL, solo en podio directo (M22, D32) | (`season_id`, `name`) |
 | `matches` (+) | `season_stage_id` nulo → `season_stages` RESTRICT; `bracket_round` int nulo; `bracket_slot` int nulo; `next_match_id` nulo → `matches` SET NULL; `next_match_side` enum `home`,`away` nulo; `loser_next_match_id` nulo → `matches` SET NULL; `tiebreak_type` enum nulo; `round_type` + `third_place` | — |
 | `event_participants` (+) | `tiebreak_score` int nulo | — |
 | `season_stage_results` | `season_stage_id` CASCADE; `place` tinyint (1–3); `team_id` RESTRICT; `season_team_player_id` nulo RESTRICT; `recorded_by` → `users` RESTRICT | (`season_stage_id`, `place`, `team_id`) |
