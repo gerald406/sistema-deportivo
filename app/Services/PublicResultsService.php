@@ -17,8 +17,10 @@ use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Zona publica (sin login): que olimpiadas/competencias se muestran.
@@ -121,8 +123,7 @@ class PublicResultsService
                     ->whereHas('team', fn ($t) => $t->where('name', 'like', "%{$term}%"))
                     ->orWhereHas('seasonTeamPlayer.player', fn ($pl) => $pl->where('last_name', 'like', "%{$term}%")->orWhere('first_name', 'like', "%{$term}%")))))
                 // Por disputar pero ya programada (D32): sale con su fecha y sede.
-                ->when($term === '', fn ($q) => $q->orWhere(fn ($w) => $w->doesntHave('results')
-                    ->where(fn ($s) => $s->whereNotNull('scheduled_at')->orWhereNotNull('venue_id')))))
+                ->when($term === '', fn ($q) => $q->orWhere(fn ($w) => $this->pendingScheduled($w))))
             ->with([
                 'season:id,sport_id,name',
                 'season.sport:id,name',
@@ -137,6 +138,45 @@ class PublicResultsService
             ->orderBy(Season::query()->select('name')->whereColumn('seasons.id', 'season_stages.season_id'))
             ->orderBy('sort_order')
             ->orderBy('id');
+    }
+
+    /**
+     * Programacion completa (D32): los partidos por jugar de matchesOf() y
+     * las fases de podio directo programadas y aun sin podio, en un solo
+     * orden por fecha para paginarlas juntas. Cada fila trae kind ('match'
+     * o 'stage'), id y scheduled_at. Con busqueda solo quedan partidos: la
+     * busqueda mira delegaciones y una prueba sin podio aun no tiene.
+     *
+     * @param  array{series?: int|string|null, sportId?: ?int, seasonId?: ?int, search?: string}  $filters
+     */
+    public function scheduleOf(int $gamesEditionId, array $filters = []): QueryBuilder
+    {
+        $matches = $this->matchesOf($gamesEditionId, false, $filters)->reorder()->toBase()
+            ->selectRaw("'match' AS kind, matches.id, matches.scheduled_at");
+
+        $stages = $this->scheduledPodiumsOf($gamesEditionId, $filters)
+            ->when(trim($filters['search'] ?? '') !== '', fn ($q) => $q->whereRaw('1 = 0'))
+            ->toBase()
+            ->selectRaw("'stage' AS kind, season_stages.id, season_stages.scheduled_at");
+
+        return DB::query()->fromSub($matches->unionAll($stages), 'schedule')
+            ->orderByRaw('scheduled_at IS NULL')
+            ->orderBy('scheduled_at')
+            ->orderBy('kind')
+            ->orderBy('id');
+    }
+
+    /**
+     * Fases de podio directo por disputar y ya programadas (D32).
+     *
+     * @param  array{series?: int|string|null, sportId?: ?int, seasonId?: ?int}  $filters
+     * @return Builder<SeasonStage>
+     */
+    public function scheduledPodiumsOf(int $gamesEditionId, array $filters = []): Builder
+    {
+        return $this->pendingScheduled($this->stageInSeries(SeasonStage::query(), $filters['series'] ?? null)
+            ->where('mode', StageMode::DirectPodium->value)
+            ->whereIn('season_id', $this->visibleSeasonIds($gamesEditionId, $filters)));
     }
 
     /** Series de la olimpiada con sus delegaciones inscritas. */
@@ -204,6 +244,28 @@ class PublicResultsService
             $summary[$key] = ['podiums' => (int) $row->decided, 'podiumStages' => (int) $row->stages] + ($summary[$key] ?? $empty);
         }
 
+        // Las pruebas de podio programadas cuentan como "por jugar" (D32).
+        $scheduled = $this->scheduledPodiumsOf($gamesEditionId)
+            ->selectRaw('group_id, COUNT(*) AS pending')
+            ->selectRaw('SUM(scheduled_at >= ? AND scheduled_at < ?) AS today',
+                [$today->toDateTimeString(), $today->copy()->addDay()->toDateTimeString()])
+            ->selectRaw('MIN(CASE WHEN scheduled_at >= ? THEN scheduled_at END) AS next_at', [$today->toDateTimeString()])
+            ->groupBy('group_id')
+            ->toBase()
+            ->get();
+
+        foreach ($scheduled as $row) {
+            $key = $this->seriesKey($row->group_id);
+            $card = $summary[$key] ?? $empty;
+            $next = $row->next_at ? Carbon::parse($row->next_at) : null;
+
+            $summary[$key] = [
+                'pending' => $card['pending'] + (int) $row->pending,
+                'today' => $card['today'] + (int) $row->today,
+                'nextAt' => $card['nextAt'] && (! $next || $card['nextAt']->lte($next)) ? $card['nextAt'] : $next,
+            ] + $card;
+        }
+
         return $summary;
     }
 
@@ -261,6 +323,13 @@ class PublicResultsService
             $series === self::FINALS => $query->whereNull('group_id'),
             default => $query->where('group_id', (int) $series),
         };
+    }
+
+    /** Sin podio registrado y con fecha o sede: una prueba ya programada. */
+    private function pendingScheduled(Builder $query): Builder
+    {
+        return $query->doesntHave('results')
+            ->where(fn ($s) => $s->whereNotNull('scheduled_at')->orWhereNotNull('venue_id'));
     }
 
     private function seriesKey(mixed $groupId): string

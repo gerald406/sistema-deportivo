@@ -10,9 +10,12 @@ use App\Livewire\SeasonStages\Index as SeasonStagesIndex;
 use App\Models\GamesEdition;
 use App\Models\Season;
 use App\Models\SeasonStage;
+use App\Models\SeasonStageResult;
 use App\Models\Sport;
+use App\Models\Team;
 use App\Models\User;
 use App\Models\Venue;
+use App\Services\PublicResultsService;
 use App\Services\StageService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -143,5 +146,27 @@ class StageScheduleTest extends TestCase
             ->assertSee('Estadio de Yunguyo')
             ->assertSee('Por disputar')
             ->assertDontSee('Sin programar');
+    }
+
+    public function test_public_schedule_lists_scheduled_podium_stage_until_its_podium_is_recorded(): void
+    {
+        $this->season->update(['status' => 'active', 'is_active' => true]);
+        $stage = app(StageService::class)->register($this->season, $this->data(), $this->organizer);
+
+        $summary = app(PublicResultsService::class)->seriesSummary($this->season->games_edition_id)[PublicResultsService::FINALS];
+        $this->assertSame(1, $summary['pending']);
+        $this->assertSame('2026-10-29 08:30', $summary['nextAt']->format('Y-m-d H:i'));
+
+        $component = Livewire::test(PublicResults::class)->call('setView', 'programacion');
+        $rows = $component->viewData('days')->flatMap(fn (array $day) => $day['rows']);
+        $this->assertSame(['stage-'.$stage->id], $rows->pluck('id')->all());
+        $component->assertSee('08:30')->assertSee('Estadio de Yunguyo')->assertSee('1 prueba');
+
+        $team = Team::factory()->create();
+        SeasonStageResult::create(['season_stage_id' => $stage->id, 'place' => 1, 'team_id' => $team->id, 'recorded_by' => $this->organizer->id]);
+
+        $rows = Livewire::test(PublicResults::class)->call('setView', 'programacion')
+            ->viewData('days')->flatMap(fn (array $day) => $day['rows']);
+        $this->assertSame([], $rows->pluck('id')->all());
     }
 }

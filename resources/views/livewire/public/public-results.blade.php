@@ -233,8 +233,15 @@
                                         Fecha por confirmar
                                     @endif
                                 </h3>
+                                @php
+                                    $games = $day['rows']->where('kind', 'match')->count();
+                                    $events = $day['rows']->count() - $games;
+                                @endphp
                                 <span class="figures shrink-0 text-sm text-[color:var(--muted)]">
-                                    {{ $day['rows']->count() }} {{ $day['rows']->count() === 1 ? 'partido' : 'partidos' }}
+                                    {{ collect([
+                                        $games ? $games.' '.($games === 1 ? 'partido' : 'partidos') : null,
+                                        $events ? $events.' '.($events === 1 ? 'prueba' : 'pruebas') : null,
+                                    ])->filter()->join(' · ') }}
                                 </span>
                             </div>
 
@@ -263,7 +270,7 @@
                                     </button>
                                 @endif
                             @else
-                                <p class="narrow text-2xl font-bold">No quedan partidos por jugar</p>
+                                <p class="narrow text-2xl font-bold">No queda nada por jugar</p>
                                 <p class="mt-2 text-[color:var(--muted)]">
                                     {{ $counts['resultados'] > 0 ? 'Ya se jugó todo lo programado hasta ahora.' : 'El organizador aún no publica la programación.' }}
                                 </p>

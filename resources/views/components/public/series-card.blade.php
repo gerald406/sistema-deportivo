@@ -48,7 +48,7 @@
             </span>
             @if ($card['today'] > 0)
                 <span class="figures shrink-0 rounded bg-[color:var(--signal)] px-2 py-0.5 text-xs font-bold text-[color:var(--ink)]">
-                    Hoy, {{ $card['today'] }} {{ $card['today'] === 1 ? 'partido' : 'partidos' }}
+                    Hoy: {{ $card['today'] }}
                 </span>
             @endif
         </span>
@@ -79,12 +79,12 @@
         <span class="flex items-center justify-between gap-3 text-sm">
             <span class="min-w-0 truncate">
                 @if ($nextLabel)
-                    <span class="text-[color:var(--muted)]">Próximo partido:</span>
+                    <span class="text-[color:var(--muted)]">Próximo:</span>
                     <span class="font-semibold">{{ $nextLabel }}</span>
                 @elseif ($card['pending'] > 0)
                     <span class="text-[color:var(--muted)]">Horarios por confirmar</span>
                 @else
-                    <span class="text-[color:var(--muted)]">Sin partidos por jugar</span>
+                    <span class="text-[color:var(--muted)]">Nada por jugar</span>
                 @endif
             </span>
             <span class="shrink-0 font-semibold text-[color:var(--lake)] group-hover:underline">Ver serie</span>

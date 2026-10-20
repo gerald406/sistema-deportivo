@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Enums\MatchModality;
 use App\Enums\MatchStatus;
+use App\Enums\RoundType;
 use App\Enums\SportFormatType;
 use App\Models\EventParticipant;
 use App\Models\EventType;
@@ -13,6 +14,7 @@ use App\Models\GameMatch;
 use App\Models\Matchday;
 use App\Models\MatchEvent;
 use App\Models\Season;
+use App\Models\SeasonStage;
 use App\Models\SeasonTeamPlayer;
 use App\Models\Suspension;
 use App\Support\ParticipantLabel;
@@ -196,6 +198,8 @@ class SeasonOverviewService
 
         return [
             'id' => $match->id,
+            'kind' => 'match',
+            'stage' => null,
             'isHeadToHead' => $isHeadToHead && $match->participants->count() === 2,
             'home' => $home ? ParticipantLabel::for($home) : '—',
             'away' => $away ? ParticipantLabel::for($away) : '—',
@@ -227,6 +231,39 @@ class SeasonOverviewService
             'status' => $match->status,
             'venue' => $match->venue,
             'scheduledAt' => $match->scheduled_at,
+        ];
+    }
+
+    /**
+     * Una fase de podio directo por disputar, con la forma de matchRow()
+     * para listarla en la programacion junto a los partidos (D32). Requiere
+     * cargadas season.sport, season.discipline y venue.
+     *
+     * @return array<string, mixed>
+     */
+    public function stageRow(SeasonStage $stage): array
+    {
+        return [
+            'id' => 'stage-'.$stage->id,
+            'kind' => 'stage',
+            'stage' => $stage->name,
+            'isHeadToHead' => false,
+            'home' => '—',
+            'away' => '—',
+            'homeScore' => null,
+            'awayScore' => null,
+            'event' => $stage->season->discipline?->name ?? $stage->season->sport->name,
+            'participantsCount' => 0,
+            'winner' => null,
+            'winnerSide' => null,
+            'tiebreak' => null,
+            'podium' => [],
+            'season' => $stage->season->name,
+            'sport' => $stage->season->sport->name,
+            'round' => RoundType::Regular,
+            'status' => MatchStatus::Pending,
+            'venue' => $stage->venue,
+            'scheduledAt' => $stage->scheduled_at,
         ];
     }
 

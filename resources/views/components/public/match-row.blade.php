@@ -1,5 +1,5 @@
 {{-- Un partido o prueba de la pagina publica: hora, contendientes con marcador y,
-     a la derecha, competencia, ronda y sede. $game sale de SeasonOverviewService::matchRow(). --}}
+     a la derecha, competencia, ronda y sede. $game sale de SeasonOverviewService::matchRow() o stageRow(). --}}
 @props(['game'])
 
 @php
@@ -65,6 +65,9 @@
                         </li>
                     @endforeach
                 </ol>
+            @elseif ($game['kind'] === 'stage')
+                {{-- Prueba de podio directo programada (D32): el podio sale en la pestaña Podios. --}}
+                <p class="text-sm text-[color:var(--muted)]">Por disputar · {{ $game['stage'] }}</p>
             @else
                 <p class="text-sm text-[color:var(--muted)]">
                     {{ $game['participantsCount'] }} {{ $game['participantsCount'] === 1 ? 'participante' : 'participantes' }}

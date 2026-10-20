@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Public;
 
+use App\Models\GameMatch;
 use App\Models\GamesEdition;
 use App\Models\GamesEditionGroup;
 use App\Models\SeasonStage;
@@ -171,6 +172,18 @@ class PublicResults extends Component
             $page = $public->podiumsOf($edition->id, $filters)
                 ->paginate(self::PODIUMS_PER_PAGE, pageName: self::PAGE_NAME);
             $podiums = $this->groupBySport(collect($page->items()));
+        } elseif ($view === 'programacion') {
+            // Partidos y pruebas de podio programadas, paginados juntos (D32).
+            $page = $public->scheduleOf($edition->id, $filters)
+                ->paginate(self::MATCHES_PER_PAGE, pageName: self::PAGE_NAME);
+            $items = collect($page->items());
+            $matches = GameMatch::with($overview->matchRowRelations())
+                ->whereKey($items->where('kind', 'match')->pluck('id'))->get()->keyBy('id');
+            $stages = SeasonStage::with(['season.sport', 'season.discipline', 'venue'])
+                ->whereKey($items->where('kind', 'stage')->pluck('id'))->get()->keyBy('id');
+            $days = $this->groupByDay($items->map(fn (object $item) => $item->kind === 'match'
+                ? $overview->matchRow($matches[$item->id])
+                : $overview->stageRow($stages[$item->id])));
         } else {
             $page = $public->matchesOf($edition->id, $view === 'resultados', $filters)
                 ->with($overview->matchRowRelations())
