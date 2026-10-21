@@ -82,15 +82,6 @@
         @if ($game['round'] !== \App\Enums\RoundType::Regular)
             <p class="text-[color:var(--muted)]">{{ $game['round']->label() }}</p>
         @endif
-        <p class="text-[color:var(--muted)]">
-            <i class="fa-solid fa-location-dot mr-1 text-xs" aria-hidden="true"></i>
-            @if ($venue && $venue->latitude !== null && $venue->longitude !== null)
-                <a href="https://www.google.com/maps?q={{ (float) $venue->latitude }},{{ (float) $venue->longitude }}"
-                   target="_blank" rel="noopener"
-                   class="underline decoration-[color:var(--rule)] underline-offset-2 hover:text-[color:var(--lake)] hover:decoration-[color:var(--lake)]">{{ $venue->name }}</a>
-            @else
-                {{ $venue?->name ?? 'Sede por confirmar' }}
-            @endif
-        </p>
+        <x-public.venue :venue="$venue" />
     </div>
 </li>

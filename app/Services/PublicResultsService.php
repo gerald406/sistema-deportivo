@@ -128,7 +128,7 @@ class PublicResultsService
                 'season:id,sport_id,name',
                 'season.sport:id,name',
                 'group:id,name',
-                'venue:id,name',
+                'venue:id,name,address,latitude,longitude',
                 'results' => fn ($r) => $r->where('place', '<=', 3),
                 'results.team:id,name',
                 'results.seasonTeamPlayer.player:id,first_name,last_name',

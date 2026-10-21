@@ -8,8 +8,11 @@
     @if ($stage->scheduled_at || $stage->venue)
         <p class="mt-1 text-sm text-[color:var(--muted)]">
             <i class="fa-regular fa-calendar" aria-hidden="true"></i>
-            {{ $stage->scheduled_at?->format('d/m/Y H:i') ?? 'Sin fecha' }}{{ $stage->venue ? ' · '.$stage->venue->name : '' }}
+            {{ $stage->scheduled_at?->format('d/m/Y H:i') ?? 'Sin fecha' }}
         </p>
+        @if ($stage->venue)
+            <x-public.venue :venue="$stage->venue" class="mt-1 text-sm" />
+        @endif
     @endif
 
     @if ($stage->results->isEmpty())
