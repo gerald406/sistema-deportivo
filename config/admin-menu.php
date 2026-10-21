@@ -51,9 +51,9 @@ return [
                 ['label' => 'Participantes', 'route' => 'players.index', 'permission' => 'players.manage'],
                 // D22: el delegado inscribe su delegacion en las disciplinas y desde ahi arma cada plantel.
                 ['label' => 'Inscripción por disciplina', 'route' => 'enrollment.index', 'role' => ['admin', 'organizador', 'delegado']],
-                // Sin permission: los 3 roles ven inscripciones (SeasonTeamPolicy::viewAny).
-                ['label' => 'Inscripciones', 'route' => 'season-teams.index'],
                 ['label' => 'Planteles', 'route' => 'rosters.index'],
+                // Sin permission: los 3 roles ven inscripciones (SeasonTeamPolicy::viewAny).
+                ['label' => 'Verificar Inscripciones', 'route' => 'season-teams.index'],
                 // Los 3 roles: cada uno solo ve las fichas que puede imprimir (printCard).
                 ['label' => 'Fichas de inscripción', 'route' => 'registrations.index', 'role' => ['admin', 'organizador', 'delegado']],
             ],
