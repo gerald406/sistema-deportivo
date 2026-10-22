@@ -85,7 +85,14 @@ class RosterReportService
     {
         // Igual que la referencia: un padron completo con logos puede ser pesado.
         ini_set('memory_limit', '512M');
-        ini_set('max_execution_time', '120');
+
+        // El limite de tiempo solo se sube, nunca se baja: en consola vale 0
+        // (sin limite) y fijarlo en 120 s lo dejaba asi para todo el proceso
+        // (en Windows cuenta tiempo real y cortaba la suite de pruebas).
+        $limit = (int) ini_get('max_execution_time');
+        if ($limit !== 0 && $limit < 120) {
+            set_time_limit(120);
+        }
 
         return Pdf::loadView('reports.pdf.player-roster', $this->collect($seasonId, $seasonTeamId, $categoryId))
             ->setPaper('A4', 'portrait');
