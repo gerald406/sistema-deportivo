@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Enums\Gender;
 use App\Enums\SeasonTeamPlayerStatus;
+use App\Models\GamesEdition;
 use App\Models\Player;
 use App\Models\Season;
 use App\Models\SeasonTeamPlayer;
@@ -72,7 +73,13 @@ class RosterRuleService
     /** Anio contra el que se mide la edad: el de la olimpiada. */
     public function referenceYear(Season $season): int
     {
-        return (int) ($season->gamesEdition?->start_date?->year ?? now()->year);
+        return $this->editionYear($season->gamesEdition);
+    }
+
+    /** Mismo anio, cuando se parte de la olimpiada y no de una competencia. */
+    public function editionYear(?GamesEdition $edition): int
+    {
+        return (int) ($edition?->start_date?->year ?? now()->year);
     }
 
     /** Cuantos participantes habilitados faltan para el minimo de la fila (0 = cumple o no hay minimo). */
