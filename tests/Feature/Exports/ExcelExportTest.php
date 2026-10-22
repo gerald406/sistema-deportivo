@@ -19,6 +19,8 @@ use App\Livewire\Periods\Index as PeriodsIndex;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Relays\Index as RelaysIndex;
 use App\Livewire\ReopenLogs\Index as ReopenLogsIndex;
+use App\Livewire\Reports\DelegationRoster;
+use App\Livewire\Reports\DisciplineRoster;
 use App\Livewire\Reports\GeneralScore;
 use App\Livewire\Reports\Index as ReportsIndex;
 use App\Livewire\Results\Index as ResultsIndex;
@@ -154,6 +156,8 @@ class ExcelExportTest extends TestCase
             SuspensionsIndex::class => [],
             ReopenLogsIndex::class => [],
             GeneralScore::class => [],
+            DelegationRoster::class => [],
+            DisciplineRoster::class => [],
         ];
 
         foreach ($screens as $screen => $params) {

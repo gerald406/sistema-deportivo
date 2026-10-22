@@ -84,6 +84,9 @@ return [
                 // Organizador/admin: todas sus delegaciones; delegado: solo la suya (DelegationTrackingService).
                 ['label' => 'Seguimiento de delegaciones', 'route' => 'reports.delegations', 'role' => ['admin', 'organizador', 'delegado']],
                 ['label' => 'Posiciones', 'route' => 'reports.index', 'permission' => 'reports.view'],
+                // Padrones en pantalla con la resolucion (PDF): admin y organizador (ParticipantRosterService).
+                ['label' => 'Padrón por delegación', 'route' => 'reports.delegation-roster', 'role' => ['admin', 'organizador']],
+                ['label' => 'Padrón por disciplina', 'route' => 'reports.discipline-roster', 'role' => ['admin', 'organizador']],
                 // PDFs por competencia: admin y organizador (SeasonPolicy::printReports).
                 // Padron: tambien el delegado, solo de su equipo (SeasonTeamPolicy::printRoster).
                 ['label' => 'Padrón de participantes', 'route' => 'reports.roster', 'role' => ['admin', 'organizador', 'delegado']],

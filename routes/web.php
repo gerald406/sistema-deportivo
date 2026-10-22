@@ -25,7 +25,9 @@ use App\Livewire\Public\PublicResults;
 use App\Livewire\Players\Index as PlayersIndex;
 use App\Livewire\Relays\Index as RelaysIndex;
 use App\Livewire\ReopenLogs\Index as ReopenLogsIndex;
+use App\Livewire\Reports\DelegationRoster;
 use App\Livewire\Reports\DelegationTracking;
+use App\Livewire\Reports\DisciplineRoster;
 use App\Livewire\Reports\GeneralScore;
 use App\Livewire\Reports\Index as ReportsIndex;
 use App\Livewire\Reports\ManagerialReport;
@@ -160,6 +162,13 @@ Route::middleware([
     // cotejar la ficha general (organizador/admin: todas; delegado: la suya). Solo lectura.
     Route::get('/reportes/delegaciones', DelegationTracking::class)
         ->name('reports.delegations');
+
+    // Padron por delegacion y por disciplina, con la resolucion (PDF) en un modal.
+    // Solo admin y organizador (ParticipantRosterService revalida que gestione la olimpiada).
+    Route::get('/reportes/padron-delegaciones', DelegationRoster::class)
+        ->name('reports.delegation-roster');
+    Route::get('/reportes/padron-disciplinas', DisciplineRoster::class)
+        ->name('reports.discipline-roster');
 
     // Padron de Jugadores: filtros acotados por rol (admin/organizador/delegado) y PDF
     // (un equipo: SeasonTeamPolicy::printRoster; todos: SeasonPolicy::printReports).
