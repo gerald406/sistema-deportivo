@@ -1,5 +1,6 @@
-{{-- Tarjeta de una serie en la portada publica. La letra grande es la serie;
-     "Finales y podios" (sin letra) lleva el trofeo. Toda la tarjeta es el enlace. --}}
+{{-- Tarjeta de una serie en la pestaña Series. La letra grande es la serie;
+     "Finales y podios" (sin letra) lleva el trofeo. Toda la tarjeta es el
+     enlace: abre Programacion filtrada por esa serie. --}}
 @props(['card', 'href', 'wide' => false])
 
 @php
@@ -87,7 +88,7 @@
                     <span class="text-[color:var(--muted)]">Nada por jugar</span>
                 @endif
             </span>
-            <span class="shrink-0 font-semibold text-[color:var(--lake)] group-hover:underline">Ver serie</span>
+            <span class="shrink-0 font-semibold text-[color:var(--lake)] group-hover:underline">Ver programación</span>
         </span>
     </span>
 </a>

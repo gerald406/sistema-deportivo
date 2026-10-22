@@ -56,7 +56,8 @@
 
     @livewireStyles
 </head>
-<body class="flex min-h-screen flex-col antialiased">
+{{-- bottomNav: la pagina trae la barra de pestañas fija abajo en movil; se deja su alto libre. --}}
+<body class="flex min-h-screen flex-col antialiased {{ ($bottomNav ?? false) ? 'pb-16 sm:pb-0' : '' }}">
     {{ $slot }}
 
     <footer class="mt-auto border-t border-[color:var(--rule)] px-4 py-6 text-sm text-[color:var(--muted)]">
