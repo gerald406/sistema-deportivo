@@ -142,7 +142,7 @@ class StageScheduleTest extends TestCase
         SeasonStage::factory()->create(['season_id' => $this->season->id, 'name' => 'Sin programar', 'mode' => StageMode::DirectPodium]);
 
         Livewire::test(PublicResults::class)->call('setView', 'podios')
-            ->assertSee('29/10/2026 08:30')
+            ->assertSee('Jueves 29 de octubre, 08:30')
             ->assertSee('Estadio de Yunguyo')
             ->assertSee('Por disputar')
             ->assertDontSee('Sin programar');

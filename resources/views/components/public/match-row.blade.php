@@ -1,14 +1,19 @@
 {{-- Un partido o prueba de la pagina publica: hora, contendientes con marcador y,
-     a la derecha, competencia, ronda y sede. $game sale de SeasonOverviewService::matchRow() o stageRow(). --}}
-@props(['game'])
+     a la derecha, serie, competencia, ronda y sede. $game sale de
+     SeasonOverviewService::matchRow() o stageRow(); $series es ['mark', 'name']
+     de su serie (mark null = Finales) o null si la olimpiada no tiene series.
+     Si juega "Mi delegacion" (mine, del x-data de la pagina) la fila se resalta. --}}
+@props(['game', 'series' => null])
 
 @php
     $decided = $game['status'] !== \App\Enums\MatchStatus::Pending;
     $walkover = $game['status'] === \App\Enums\MatchStatus::Walkover;
     $venue = $game['venue'];
+    $mineCheck = 'mine && '.\Illuminate\Support\Js::from($game['teamIds'] ?? []).'.includes(mine)';
 @endphp
 
-<li {{ $attributes->class('grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-4 gap-y-2 border-b border-[color:var(--rule)] py-4 md:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,17rem)]') }}>
+<li x-bind:class="{{ $mineCheck }} ? 'bg-[color:var(--wash)]' : ''"
+    {{ $attributes->class('-mx-4 grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-4 gap-y-2 border-b border-[color:var(--rule)] px-4 py-4 md:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,17rem)] lg:mx-0 lg:px-3') }}>
 
     {{-- Hora --}}
     <div class="narrow figures text-2xl font-bold leading-none sm:text-3xl">
@@ -78,7 +83,23 @@
 
     {{-- Competencia, ronda y sede --}}
     <div class="col-start-2 min-w-0 text-sm md:col-start-3 md:border-l md:border-[color:var(--rule)] md:pl-4">
-        <p class="font-semibold">{{ $game['season'] }}</p>
+        <p x-show="{{ $mineCheck }}" x-cloak class="mb-1 text-xs font-bold text-[color:var(--lake)]">
+            <i class="fa-solid fa-star text-[color:var(--signal)]" aria-hidden="true"></i> Tu delegación
+        </p>
+        <p class="font-semibold">
+            @if ($series)
+                <span title="{{ $series['mark'] === null ? 'Finales' : $series['name'] }}"
+                      class="mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded px-1 align-[1px] text-xs font-extrabold text-white
+                             {{ $series['mark'] === null ? 'bg-[color:var(--ink)]' : 'bg-[color:var(--lake)]' }}">
+                    @if ($series['mark'] === null)
+                        <i class="fa-solid fa-trophy text-[0.65rem] text-[color:var(--gold)]" aria-hidden="true"></i><span class="sr-only">Finales</span>
+                    @else
+                        <span class="sr-only">Serie </span>{{ $series['mark'] }}
+                    @endif
+                </span>
+            @endif
+            {{ $game['season'] }}
+        </p>
         @if ($game['round'] !== \App\Enums\RoundType::Regular)
             <p class="text-[color:var(--muted)]">{{ $game['round']->label() }}</p>
         @endif
