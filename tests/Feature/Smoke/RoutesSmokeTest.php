@@ -100,6 +100,7 @@ class RoutesSmokeTest extends TestCase
     {
         $data = $this->buildCompetition();
         $admin = $this->admin();
+        $timeLimit = ini_get('max_execution_time');
 
         $urls = [
             'padrón' => route('reports.roster.pdf', ['season_id' => $data->season->id]),
@@ -116,6 +117,9 @@ class RoutesSmokeTest extends TestCase
             $this->assertSame(200, $response->getStatusCode(), "El PDF «{$label}» devolvió {$response->getStatusCode()}.");
             $this->assertStringContainsString('pdf', (string) $response->headers->get('content-type'));
         }
+
+        // Generar un PDF no baja el limite de tiempo del proceso (en consola: sin limite).
+        $this->assertSame($timeLimit, ini_get('max_execution_time'));
     }
 
     public function test_public_pages_load(): void
