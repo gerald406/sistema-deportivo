@@ -369,6 +369,102 @@ class PublicPageTest extends TestCase
         $this->assertSame([$podiumFinal->id], $component->viewData('podiums')->flatMap(fn (array $g) => $g['stages']->pluck('id'))->all());
     }
 
+    public function test_search_suggests_delegations_competitions_and_participants(): void
+    {
+        $c = $this->buildCompetition();
+        $c->homeTeam->update(['name' => 'Colegio Juliaca']);
+        $c->season->update(['name' => 'Copa Juliaca Libre']);
+        $c->homeEntry->player->update(['last_name' => 'Julián', 'first_name' => 'Rosa']);
+        // El otro lado, con nombres fijos: Faker puede inventar "Julian" o "Julianburgh".
+        $c->awayTeam->update(['name' => 'Colegio Rival']);
+        $c->awayEntry->player->update(['last_name' => 'Pérez', 'first_name' => 'Ana']);
+
+        // Lo de una competencia en borrador no se sugiere.
+        $draft = Season::factory()->create(['games_edition_id' => $c->edition->id, 'sport_id' => $c->season->sport_id, 'status' => 'draft', 'name' => 'Juliaca Borrador']);
+        $hiddenTeam = Team::factory()->create(['name' => 'Juliaca Oculta']);
+        $this->rosterEntry(SeasonTeam::create(['season_id' => $draft->id, 'team_id' => $hiddenTeam->id, 'is_active' => true]), 5, ['last_name' => 'Juliano']);
+
+        $component = Livewire::test(PublicResults::class)->set('query', 'juli');
+        $suggestions = $component->viewData('suggestions');
+
+        $this->assertSame(['Colegio Juliaca'], $suggestions['teams']->pluck('name')->all());
+        $this->assertSame([$c->season->id], $suggestions['seasons']->pluck('id')->all());
+        $this->assertSame([$c->homeEntry->id], $suggestions['players']->pluck('id')->all());
+        $this->assertSame(['programacion' => 1, 'resultados' => 0, 'podios' => 0], $suggestions['counts']);
+        $component->assertSee('Colegio Juliaca')->assertDontSee('Juliaca Oculta');
+
+        // Una letra no sugiere; lo ya aplicado tampoco.
+        $this->assertNull($component->set('query', 'j')->viewData('suggestions'));
+        $component->set('query', 'Colegio')->call('applySearch', 'resultados')
+            ->assertSet('search', 'Colegio')->assertSet('view', 'resultados');
+        $this->assertNull($component->viewData('suggestions'));
+    }
+
+    public function test_picking_a_suggestion_applies_its_filter_and_foreign_ids_are_ignored(): void
+    {
+        $c = $this->buildCompetition();
+        $libre = Category::create(['name' => 'Libre', 'min_age' => 25, 'gender' => 'X', 'is_active' => true]);
+        $c->season->update(['category_id' => $libre->id, 'gender' => 'F']);
+        $foreign = $this->buildCompetition();
+        $foreign->edition->update(['start_date' => '2020-01-01']); // otra olimpiada, mas antigua
+
+        $component = Livewire::test(PublicResults::class)->set('gamesEditionId', (string) $c->edition->id);
+
+        $component->call('pickTeam', $foreign->homeTeam->id)->assertSet('teamId', '');
+        $component->call('pickSeason', $foreign->season->id)->assertSet('sportId', '');
+        $component->call('pickPlayer', $foreign->homeEntry->id)->assertSet('search', '');
+
+        $component->call('pickTeam', $c->awayTeam->id)->assertSet('teamId', (string) $c->awayTeam->id);
+
+        $component->call('pickSeason', $c->season->id)
+            ->assertSet('sportId', (string) $c->season->sport_id)
+            ->assertSet('categoryId', (string) $libre->id)
+            ->assertSet('gender', 'F');
+
+        $component->call('pickPlayer', $c->homeEntry->id)
+            ->assertSet('teamId', (string) $c->homeTeam->id)
+            ->assertSet('search', '');
+        $this->assertSame([$c->match->id], $this->shownIds($component));
+
+        // Quitar la ficha de la busqueda vacia tambien el buscador.
+        $component->set('query', 'algo')->call('applySearch')->set('search', '')->assertSet('query', '');
+    }
+
+    public function test_rows_carry_their_delegations_and_series(): void
+    {
+        $c = $this->buildCompetition();
+        $s = $this->withSeries($c);
+        $c->match->update(['season_stage_id' => $s->stageA->id]);
+        $loose = $this->extraMatch($c, 'Colegio Suelto', 'Colegio Otro');
+
+        $component = Livewire::test(PublicResults::class);
+        $rows = $component->viewData('days')->flatMap(fn (array $day) => $day['rows'])->keyBy('id');
+
+        $this->assertEqualsCanonicalizing([$c->homeTeam->id, $c->awayTeam->id], $rows[$c->match->id]['teamIds']);
+        $this->assertSame($s->a->id, $rows[$c->match->id]['seriesId']);
+        $this->assertNull($rows[$loose->id]['seriesId']);
+
+        $badges = $component->viewData('seriesBadges');
+        $this->assertSame('A', $badges[(string) $s->a->id]['mark']);
+        $this->assertNull($badges[PublicResultsService::FINALS]['mark']);
+        $component->assertSeeHtml('<span class="sr-only">Serie </span>A');
+    }
+
+    public function test_podium_progress_counts_what_is_shown_regardless_of_state(): void
+    {
+        $c = $this->buildCompetition();
+        $decided = SeasonStage::create(['season_id' => $c->season->id, 'name' => 'Final A', 'mode' => 'direct_podium']);
+        SeasonStageResult::create(['season_stage_id' => $decided->id, 'place' => 1, 'team_id' => $c->homeTeam->id, 'recorded_by' => $c->organizer->id]);
+        SeasonStage::create(['season_id' => $c->season->id, 'name' => 'Final B', 'mode' => 'direct_podium', 'scheduled_at' => '2026-10-29 08:00:00']);
+
+        $component = Livewire::test(PublicResults::class)->call('setView', 'podios');
+        $this->assertSame(['label' => 'Toda la olimpiada', 'total' => 2, 'decided' => 1], $component->viewData('progress'));
+        $component->assertSee('Definido')->assertSee('Programado');
+
+        $component->set('state', PublicResultsService::DECIDED);
+        $this->assertSame(['label' => 'Toda la olimpiada', 'total' => 2, 'decided' => 1], $component->viewData('progress'));
+    }
+
     public function test_matches_are_paginated_instead_of_endless(): void
     {
         $c = $this->buildCompetition();

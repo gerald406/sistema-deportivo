@@ -1,4 +1,5 @@
-{{-- Paginador de la pagina publica: "21–40 de 87" y paginas numeradas.
+{{-- Paginador de la pagina publica: "21–40 de 87" y paginas numeradas (en
+     movil, "Anterior", "Página 2 de 5" y "Siguiente", mas faciles de tocar).
      Al cambiar de pagina se vuelve al inicio del listado (#listado). --}}
 @props(['paginator', 'one', 'many', 'pageName' => 'page'])
 
@@ -20,22 +21,24 @@
         </p>
 
         @if ($paginator->hasPages())
-            <div class="flex flex-wrap items-center gap-1">
+            <div class="flex w-full items-center justify-between gap-1 sm:w-auto sm:flex-wrap sm:justify-start">
                 <button type="button" wire:click="previousPage('{{ $pageName }}')" x-on:click="{{ $toTop }}"
                         @disabled($paginator->onFirstPage())
                         class="{{ $button }} border border-[color:var(--rule)] hover:border-[color:var(--lake)] hover:text-[color:var(--lake)] disabled:pointer-events-none disabled:opacity-40">
                     <i class="fa-solid fa-chevron-left text-xs" aria-hidden="true"></i>
-                    <span class="sr-only sm:not-sr-only sm:ml-2">Anterior</span>
+                    <span class="ml-2">Anterior</span>
                 </button>
+
+                <span class="figures text-sm font-semibold sm:hidden">Página {{ $current }} de {{ $last }}</span>
 
                 @foreach ($pages as $p)
                     @if (! $loop->first && $p - $pages[$loop->index - 1] > 1)
-                        <span class="px-1 text-[color:var(--muted)]" aria-hidden="true">…</span>
+                        <span class="hidden px-1 text-[color:var(--muted)] sm:inline" aria-hidden="true">…</span>
                     @endif
                     <button type="button" wire:click="gotoPage({{ $p }}, '{{ $pageName }}')" x-on:click="{{ $toTop }}"
                             wire:key="page-{{ $p }}"
                             @if ($p === $current) aria-current="page" @endif
-                            class="{{ $button }} {{ $p === $current ? 'bg-[color:var(--ink)] text-white' : 'hover:bg-[color:var(--wash)]' }}">
+                            class="{{ $button }} hidden sm:inline-flex {{ $p === $current ? 'bg-[color:var(--ink)] text-white' : 'hover:bg-[color:var(--wash)]' }}">
                         {{ $p }}
                     </button>
                 @endforeach
@@ -43,7 +46,7 @@
                 <button type="button" wire:click="nextPage('{{ $pageName }}')" x-on:click="{{ $toTop }}"
                         @disabled(! $paginator->hasMorePages())
                         class="{{ $button }} border border-[color:var(--rule)] hover:border-[color:var(--lake)] hover:text-[color:var(--lake)] disabled:pointer-events-none disabled:opacity-40">
-                    <span class="sr-only sm:not-sr-only sm:mr-2">Siguiente</span>
+                    <span class="mr-2">Siguiente</span>
                     <i class="fa-solid fa-chevron-right text-xs" aria-hidden="true"></i>
                 </button>
             </div>

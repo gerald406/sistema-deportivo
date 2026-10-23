@@ -159,8 +159,9 @@ class PublicResultsService
                 default => $q->where($decided)->orWhere($pending),
             })
             ->with([
-                'season:id,sport_id,name',
+                'season:id,sport_id,discipline_id,category_id,gender,name',
                 'season.sport:id,name',
+                'season.category:id,name',
                 'group:id,name',
                 'venue:id,name,address,latitude,longitude',
                 'results' => fn ($r) => $r->where('place', '<=', 3),
@@ -277,6 +278,55 @@ class PublicResultsService
             ->get()
             ->mapWithKeys(fn (object $row) => [(int) $row->sport_id => ['total' => (int) $row->total, 'decided' => (int) $row->decided]])
             ->all();
+    }
+
+    /**
+     * Sugerencias del buscador para $term: delegaciones de la olimpiada,
+     * competencias publicas y participantes de sus planteles. Del
+     * participante solo salen nombre y delegacion.
+     *
+     * @return array{teams: Collection, seasons: Collection, players: Collection}
+     */
+    public function suggestionsFor(int $gamesEditionId, string $term, int $limit = 5): array
+    {
+        $like = '%'.trim($term).'%';
+
+        return [
+            'teams' => Team::query()
+                ->whereHas('editionTeams', fn ($q) => $q->where('games_edition_id', $gamesEditionId))
+                ->where('name', 'like', $like)
+                ->orderBy('name')
+                ->limit($limit)
+                ->get(['id', 'name']),
+            'seasons' => $this->visibleSeasons()
+                ->with('sport:id,name')
+                ->where('games_edition_id', $gamesEditionId)
+                ->where('seasons.name', 'like', $like)
+                ->orderBy('seasons.name')
+                ->limit($limit)
+                ->get(['id', 'sport_id', 'name']),
+            'players' => $this->rosterEntries($gamesEditionId)
+                ->whereHas('player', fn ($q) => $q->where(fn ($w) => $w->where('last_name', 'like', $like)->orWhere('first_name', 'like', $like)))
+                ->limit(50)
+                ->get()
+                // Una fila por persona y delegacion aunque juegue varias disciplinas.
+                ->unique(fn (SeasonTeamPlayer $entry) => $entry->player_id.'-'.$entry->seasonTeam->team_id)
+                ->sortBy(fn (SeasonTeamPlayer $entry) => $entry->player->last_name.' '.$entry->player->first_name)
+                ->take($limit)
+                ->values(),
+        ];
+    }
+
+    /** Un participante solo si esta en el plantel de una competencia publica de la olimpiada (el id viene del navegador). */
+    public function findRosterEntry(int $gamesEditionId, int $seasonTeamPlayerId): ?SeasonTeamPlayer
+    {
+        return $this->rosterEntries($gamesEditionId)->find($seasonTeamPlayerId);
+    }
+
+    /** Una competencia solo si es publica y de la olimpiada (el id viene del navegador). */
+    public function findSeasonIn(int $gamesEditionId, int $seasonId): ?Season
+    {
+        return $this->visibleSeasons()->where('games_edition_id', $gamesEditionId)->find($seasonId);
     }
 
     /** Delegaciones inscritas en la olimpiada (cualquier estado): el filtro "Delegación". */
@@ -413,6 +463,14 @@ class PublicResultsService
             ->when($filters['categoryId'] ?? null, fn ($q, int $id) => $q->where('category_id', $id))
             ->when($filters['gender'] ?? null, fn ($q, string $gender) => $q->where('seasons.gender', $gender))
             ->select('seasons.id');
+    }
+
+    /** Planteles de las competencias publicas de la olimpiada, con lo que el buscador muestra. */
+    private function rosterEntries(int $gamesEditionId): Builder
+    {
+        return SeasonTeamPlayer::query()
+            ->whereHas('seasonTeam', fn ($q) => $q->whereIn('season_id', $this->visibleSeasonIds($gamesEditionId)))
+            ->with(['player:id,first_name,last_name', 'seasonTeam:id,team_id', 'seasonTeam.team:id,name']);
     }
 
     /** Un dia (Y-m-d) o NO_DATE; cualquier otro valor no filtra. */

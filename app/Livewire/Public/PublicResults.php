@@ -88,8 +88,17 @@ class PublicResults extends Component
     #[Url(as: 'estado')]
     public string $state = '';
 
+    /** Texto buscado y aplicado a la lista. */
     #[Url(as: 'q')]
     public string $search = '';
+
+    /** Lo que se esta escribiendo en el buscador: alimenta las sugerencias hasta que se aplica. */
+    public string $query = '';
+
+    public function mount(): void
+    {
+        $this->query = $this->search;
+    }
 
     public function setView(string $view): void
     {
@@ -112,7 +121,12 @@ class PublicResults extends Component
         }
 
         if ($property === 'gamesEditionId') {
-            $this->reset(['view', ...self::FILTERS]);
+            $this->reset(['view', 'query', ...self::FILTERS]);
+        }
+
+        // Quitar la ficha de la busqueda tambien vacia el buscador.
+        if ($property === 'search') {
+            $this->query = $this->search;
         }
 
         if (in_array($property, ['gamesEditionId', ...self::FILTERS], true)) {
@@ -122,15 +136,72 @@ class PublicResults extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(self::FILTERS);
+        $this->reset(['query', ...self::FILTERS]);
         $this->resetPage(self::PAGE_NAME);
+    }
+
+    /** Enter o "Buscar en...": el texto escrito filtra la lista (y, si se pide, cambia de pestaña). */
+    public function applySearch(string $view = ''): void
+    {
+        $this->search = mb_substr(trim($this->query), 0, 60);
+        $this->query = $this->search;
+
+        if ($view !== '') {
+            $this->view = in_array($view, self::VIEWS, true) ? $view : '';
+        }
+
+        $this->resetPage(self::PAGE_NAME);
+    }
+
+    /** Sugerencia de delegacion: filtra por ella. Una ajena a la olimpiada se ignora. */
+    public function pickTeam(int $id, PublicResultsService $public): void
+    {
+        $edition = $this->currentEdition($public);
+
+        if ($edition && $public->teamsOf($edition->id)->contains('id', $id)) {
+            $this->teamId = (string) $id;
+            $this->query = $this->search;
+            $this->resetPage(self::PAGE_NAME);
+        }
+    }
+
+    /** Sugerencia de competencia: sus fichas de deporte, prueba, nivel y genero (sin serie, para no ocultarla). */
+    public function pickSeason(int $id, PublicResultsService $public): void
+    {
+        $edition = $this->currentEdition($public);
+        $season = $edition ? $public->findSeasonIn($edition->id, $id) : null;
+
+        if ($season) {
+            $this->series = '';
+            $this->sportId = (string) $season->sport_id;
+            $this->disciplineId = (string) ($season->discipline_id ?? '');
+            $this->categoryId = (string) ($season->category_id ?? '');
+            $this->gender = $season->gender?->value ?? '';
+            $this->query = $this->search;
+            $this->resetPage(self::PAGE_NAME);
+        }
+    }
+
+    /**
+     * Sugerencia de participante: su delegacion. No se busca su apellido: en
+     * los deportes de equipo el participante del partido es la delegacion.
+     */
+    public function pickPlayer(int $id, PublicResultsService $public): void
+    {
+        $edition = $this->currentEdition($public);
+        $entry = $edition ? $public->findRosterEntry($edition->id, $id) : null;
+
+        if ($entry) {
+            $this->teamId = (string) $entry->seasonTeam->team_id;
+            $this->query = $this->search;
+            $this->resetPage(self::PAGE_NAME);
+        }
     }
 
     public function render(PublicResultsService $public, SeasonOverviewService $overview)
     {
         $editions = $public->visibleGamesEditions();
-        /** @var ?GamesEdition $edition */
-        $edition = $editions->firstWhere('id', (int) $this->gamesEditionId) ?? $editions->first();
+        $edition = $this->currentEdition($public, $editions);
 
         if (! $edition) {
             return view('livewire.public.public-results', ['editions' => $editions, 'edition' => null])
@@ -172,6 +243,16 @@ class PublicResults extends Component
             'search' => mb_substr(trim($this->search), 0, 60),
         ];
 
+        // Sugerencias mientras se escribe algo distinto de lo ya aplicado.
+        $term = mb_substr(trim($this->query), 0, 60);
+        $suggestions = mb_strlen($term) >= 2 && $term !== $filters['search']
+            ? $public->suggestionsFor($edition->id, $term) + ['term' => $term, 'counts' => [
+                'programacion' => $public->scheduleOf($edition->id, ['search' => $term] + $filters)->reorder()->count(),
+                'resultados' => $public->matchesOf($edition->id, true, ['search' => $term] + $filters)->reorder()->count(),
+                'podios' => $public->podiumsOf($edition->id, ['search' => $term] + $filters)->reorder()->count(),
+            ]]
+            : null;
+
         $tabs = ['programacion' => 'Programación', 'resultados' => 'Resultados', 'podios' => 'Podios']
             + ($series->isNotEmpty() ? ['series' => 'Series'] : []);
         $counts = [
@@ -187,8 +268,23 @@ class PublicResults extends Component
         $page = null;
         $date = null;
         $state = null;
+        $progress = null;
+        // Los conteos de las fichas de deporte no dependen del estado del podio.
+        $sportCounts = $view === 'series' ? [] : $public->countsBySport($edition->id, $view, $filters);
 
         if ($view === 'podios') {
+            // Avance de lo que se esta viendo, sin importar el filtro de estado.
+            $progress = [
+                'label' => match (true) {
+                    $discipline !== null => "{$sport->name} · {$discipline->name}",
+                    $sport !== null => $sport->name,
+                    $card !== null => $card['name'],
+                    default => 'Toda la olimpiada',
+                },
+                'total' => $public->podiumsOf($edition->id, $filters)->reorder()->count(),
+                'decided' => $public->podiumsOf($edition->id, ['state' => PublicResultsService::DECIDED] + $filters)->reorder()->count(),
+            ];
+
             $state = in_array($this->state, [PublicResultsService::DECIDED, PublicResultsService::PENDING], true) ? $this->state : null;
             $filters['state'] = $state;
             $page = $public->podiumsOf($edition->id, $filters)
@@ -234,7 +330,7 @@ class PublicResults extends Component
             'activeView' => $view,
             'sports' => $sports,
             'sport' => $sport,
-            'sportCounts' => $view === 'series' ? [] : $public->countsBySport($edition->id, $view, $filters),
+            'sportCounts' => $sportCounts,
             'disciplines' => $disciplines,
             'discipline' => $discipline,
             'categories' => $categories,
@@ -251,6 +347,10 @@ class PublicResults extends Component
             'podiums' => $podiums,
             'activeFilters' => $active,
             'hasFilters' => $active !== [],
+            'suggestions' => $suggestions,
+            'progress' => $progress,
+            // Letra (o Finales) de cada serie para las filas; sin series, ninguna.
+            'seriesBadges' => $series->isEmpty() ? [] : $cards->mapWithKeys(fn (array $c) => [$c['key'] => ['mark' => $c['mark'], 'name' => $c['name']]])->all(),
         ])->layoutData(['bottomNav' => true])
             ->title("{$tabs[$view]} — {$edition->name}");
     }
@@ -362,13 +462,21 @@ class PublicResults extends Component
      * Podios de la pagina, cortados por deporte (ya vienen ordenados).
      *
      * @param  Collection<int, SeasonStage>  $stages
-     * @return Collection<int, array{sport: string, stages: Collection}>
+     * @return Collection<int, array{sportId: int, sport: string, stages: Collection}>
      */
     private function groupBySport(Collection $stages): Collection
     {
         return $stages
-            ->groupBy(fn (SeasonStage $stage) => $stage->season->sport->name)
-            ->map(fn (Collection $group, string $sport) => ['sport' => $sport, 'stages' => $group])
+            ->groupBy(fn (SeasonStage $stage) => $stage->season->sport_id)
+            ->map(fn (Collection $group, int $sportId) => ['sportId' => $sportId, 'sport' => $group->first()->season->sport->name, 'stages' => $group])
             ->values();
+    }
+
+    /** La olimpiada que se esta viendo: la elegida si es visible, si no la mas reciente. */
+    private function currentEdition(PublicResultsService $public, ?Collection $editions = null): ?GamesEdition
+    {
+        $editions ??= $public->visibleGamesEditions();
+
+        return $editions->firstWhere('id', (int) $this->gamesEditionId) ?? $editions->first();
     }
 }

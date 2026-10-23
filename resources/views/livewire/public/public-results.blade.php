@@ -10,7 +10,24 @@
     $panelFilters = $edition ? collect($activeFilters)->whereNotIn('property', ['date', 'search'])->count() : 0;
 @endphp
 
-<div class="flex flex-1 flex-col" x-data="{ filters: false, searching: @js(($search ?? '') !== '') }"
+{{-- Estado del navegador: hoja de filtros, buscador en movil y "Mi delegacion"
+     (se recuerda por olimpiada en localStorage; sin almacenamiento, no se recuerda). --}}
+<div class="flex flex-1 flex-col"
+     x-data="{
+        filters: false,
+        searching: @js(($search ?? '') !== ''),
+        mine: null,
+        names: @js($edition ? $teams->pluck('name', 'id') : []),
+        key: @js('mi-delegacion-'.($edition?->id ?? 0)),
+        init() {
+            try { this.mine = Number(localStorage.getItem(this.key)) || null } catch (e) {}
+            if (this.mine && ! this.names[this.mine]) this.mine = null
+        },
+        setMine(id) {
+            this.mine = this.mine === id ? null : id
+            try { this.mine ? localStorage.setItem(this.key, this.mine) : localStorage.removeItem(this.key) } catch (e) {}
+        },
+     }"
      x-on:keydown.escape.window="filters = false">
 
     {{-- CABECERA: la olimpiada, el buscador y las pestañas (desde sm). --}}
@@ -35,14 +52,8 @@
 
                 <div class="flex shrink-0 items-center gap-2">
                     @if ($edition)
-                        <form wire:submit.prevent role="search" class="relative hidden w-72 sm:block lg:w-96">
-                            <label for="public-search" class="sr-only">Buscar delegación o participante</label>
-                            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[color:var(--muted)]" aria-hidden="true"></i>
-                            <input id="public-search" type="search" wire:model.live.debounce.400ms="search" maxlength="60"
-                                   placeholder="Buscar delegación o participante"
-                                   class="h-11 w-full rounded-lg border-0 bg-white pl-9 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:ring-0">
-                        </form>
-                        <button type="button" x-on:click="searching = ! searching; $nextTick(() => searching && $refs.mobileSearch.focus())"
+                        <x-public.search input-id="public-search" :suggestions="$suggestions" class="hidden w-72 sm:block lg:w-96" />
+                        <button type="button" x-on:click="searching = ! searching; $nextTick(() => searching && document.getElementById('public-search-mobile')?.focus())"
                                 aria-label="Buscar" :aria-expanded="searching"
                                 class="flex h-11 w-11 items-center justify-center rounded-lg border border-white/40 hover:bg-white hover:text-[color:var(--lake)] sm:hidden">
                             <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
@@ -56,12 +67,9 @@
             </div>
 
             @if ($edition)
-                <form wire:submit.prevent role="search" x-show="searching" x-cloak class="mt-3 sm:hidden">
-                    <label for="public-search-mobile" class="sr-only">Buscar delegación o participante</label>
-                    <input id="public-search-mobile" x-ref="mobileSearch" type="search" wire:model.live.debounce.400ms="search" maxlength="60"
-                           placeholder="Buscar delegación o participante"
-                           class="h-11 w-full rounded-lg border-0 bg-white text-base text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:ring-0">
-                </form>
+                <div x-show="searching" x-cloak class="mt-3 sm:hidden">
+                    <x-public.search input-id="public-search-mobile" :suggestions="$suggestions" panel-class="inset-x-0" />
+                </div>
             @endif
 
             @if ($editions->count() > 1)
@@ -197,23 +205,49 @@
 
                         @if ($teams->isNotEmpty())
                             {{-- Delegacion: lista con buscador propio (en el navegador), no un select. --}}
+                            {{-- "Mi delegacion" (estrella) solo se recuerda en este navegador y la resalta en las listas. --}}
                             <div role="group" aria-label="Delegación" x-data="{ q: '' }">
                                 <p class="mb-2 text-xs font-bold uppercase tracking-wider text-[color:var(--muted)]">Delegación</p>
+                                <div x-show="mine" x-cloak class="mb-3 flex items-center gap-2 rounded-lg bg-[color:var(--wash)] px-3 py-2 text-sm">
+                                    <i class="fa-solid fa-star text-[color:var(--signal)]" aria-hidden="true"></i>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-xs text-[color:var(--muted)]">Mi delegación</span>
+                                        <span class="block truncate font-bold" x-text="names[mine]"></span>
+                                    </span>
+                                    @if (! $team)
+                                        <button type="button" x-on:click="$wire.set('teamId', String(mine))"
+                                                class="h-9 shrink-0 rounded-full border border-[color:var(--lake)] px-3 text-xs font-bold text-[color:var(--lake)] hover:bg-white">
+                                            Ver solo la mía
+                                        </button>
+                                    @endif
+                                </div>
                                 @if ($team)
-                                    <x-public.chip :active="true" wire:click="$set('teamId', '')" aria-label="Quitar delegación {{ $team->name }}">
-                                        {{ $team->name }} <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
-                                    </x-public.chip>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <x-public.chip :active="true" wire:click="$set('teamId', '')" aria-label="Quitar delegación {{ $team->name }}">
+                                            {{ $team->name }} <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
+                                        </x-public.chip>
+                                        <button type="button" x-on:click="setMine({{ $team->id }})" :aria-pressed="mine === {{ $team->id }}"
+                                                class="inline-flex h-10 items-center gap-1.5 rounded-full border border-[color:var(--rule)] px-3 text-xs font-bold text-[color:var(--lake)] hover:border-[color:var(--lake)] lg:h-9">
+                                            <i class="fa-star" :class="mine === {{ $team->id }} ? 'fa-solid text-[color:var(--signal)]' : 'fa-regular'" aria-hidden="true"></i>
+                                            <span x-text="mine === {{ $team->id }} ? 'Es mi delegación' : 'Es la mía'">Es la mía</span>
+                                        </button>
+                                    </div>
                                 @else
                                     <label for="team-filter" class="sr-only">Buscar delegación</label>
                                     <input id="team-filter" type="search" x-model="q" placeholder="Buscar delegación"
                                            class="h-10 w-full rounded-lg border-[color:var(--rule)] bg-[color:var(--wash)] text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:border-[color:var(--lake)] focus:ring-0">
                                     <ul class="mt-2 max-h-56 overflow-y-auto rounded-lg border border-[color:var(--rule)]">
                                         @foreach ($teams as $option)
-                                            <li wire:key="team-{{ $option->id }}"
-                                                x-show="@js(\Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii($option->name))).includes(q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''))">
+                                            <li wire:key="team-{{ $option->id }}" class="flex items-center"
+                                                x-show="@js(\Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii($option->name))).includes(q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))">
                                                 <button type="button" wire:click="$set('teamId', '{{ $option->id }}')"
-                                                        class="flex min-h-10 w-full items-center px-3 py-2 text-left text-sm hover:bg-[color:var(--wash)] hover:text-[color:var(--lake)]">
+                                                        class="flex min-h-10 min-w-0 flex-1 items-center px-3 py-2 text-left text-sm hover:bg-[color:var(--wash)] hover:text-[color:var(--lake)]">
                                                     {{ $option->name }}
+                                                </button>
+                                                <button type="button" x-on:click="setMine({{ $option->id }})" :aria-pressed="mine === {{ $option->id }}"
+                                                        aria-label="Marcar {{ $option->name }} como mi delegación"
+                                                        class="flex h-10 w-10 shrink-0 items-center justify-center text-[color:var(--muted)] hover:text-[color:var(--signal)]">
+                                                    <i class="fa-star" :class="mine === {{ $option->id }} ? 'fa-solid text-[color:var(--signal)]' : 'fa-regular'" aria-hidden="true"></i>
                                                 </button>
                                             </li>
                                         @endforeach
@@ -261,13 +295,21 @@
 
                     <div class="mt-4 transition-opacity" wire:loading.class="opacity-50">
                         @if ($activeView === 'podios')
-                            {{-- PODIOS, por deporte --}}
+                            {{-- PODIOS, por deporte, con el avance de lo que se ve --}}
+                            <x-public.podium-progress :label="$progress['label']" :decided="$progress['decided']" :total="$progress['total']" class="mb-2" />
+
                             @forelse ($podiums as $group)
-                                <section class="pt-4" wire:key="podium-sport-{{ $group['sport'] }}">
-                                    <h3 class="narrow border-b border-[color:var(--rule)] pb-2 text-xl font-bold sm:text-2xl">{{ $group['sport'] }}</h3>
+                                @php $sportCount = $discipline === null ? ($sportCounts[$group['sportId']] ?? null) : null; @endphp
+                                <section class="pt-4" wire:key="podium-sport-{{ $group['sportId'] }}">
+                                    <div class="flex items-baseline justify-between gap-3 border-b border-[color:var(--rule)] pb-2">
+                                        <h3 class="narrow text-xl font-bold sm:text-2xl">{{ $group['sport'] }}</h3>
+                                        @if ($sportCount)
+                                            <span class="figures shrink-0 text-sm text-[color:var(--muted)]">{{ $sportCount['decided'] }} de {{ $sportCount['total'] }} definidos</span>
+                                        @endif
+                                    </div>
                                     <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                         @foreach ($group['stages'] as $stage)
-                                            <x-public.podium-card :stage="$stage" wire:key="podium-{{ $stage->id }}" />
+                                            <x-public.podium-card :stage="$stage" :compact="$discipline !== null" wire:key="podium-{{ $stage->id }}" />
                                         @endforeach
                                     </div>
                                 </section>
@@ -322,7 +364,8 @@
 
                                     <ul>
                                         @foreach ($day['rows'] as $game)
-                                            <x-public.match-row :game="$game" wire:key="match-{{ $game['id'] }}" />
+                                            <x-public.match-row :game="$game" wire:key="match-{{ $game['id'] }}"
+                                                                :series="$seriesBadges[$game['seriesId'] === null ? PublicResultsService::FINALS : (string) $game['seriesId']] ?? null" />
                                         @endforeach
                                     </ul>
                                 </section>

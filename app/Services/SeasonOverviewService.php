@@ -15,6 +15,7 @@ use App\Models\Matchday;
 use App\Models\MatchEvent;
 use App\Models\Season;
 use App\Models\SeasonStage;
+use App\Models\SeasonTeam;
 use App\Models\SeasonTeamPlayer;
 use App\Models\Suspension;
 use App\Support\ParticipantLabel;
@@ -180,7 +181,7 @@ class SeasonOverviewService
     /** Relaciones que matchRow() lee: se cargan con ->with() para no consultar por fila. */
     public function matchRowRelations(): array
     {
-        return ['season.sport', 'discipline', 'venue', 'participants' => ParticipantLabel::eagerLoad()];
+        return ['season.sport', 'discipline', 'venue', 'stage:id,group_id', 'participants' => ParticipantLabel::eagerLoad()];
     }
 
     /**
@@ -231,6 +232,15 @@ class SeasonOverviewService
             'status' => $match->status,
             'venue' => $match->venue,
             'scheduledAt' => $match->scheduled_at,
+            // Delegaciones que juegan (la pagina publica resalta "Mi delegacion") y serie de su fase.
+            'teamIds' => $match->participants
+                ->map(fn (EventParticipant $p) => match (true) {
+                    $p->participant instanceof SeasonTeam => $p->participant->team_id,
+                    $p->participant instanceof SeasonTeamPlayer => $p->participant->seasonTeam?->team_id,
+                    default => null,
+                })
+                ->filter()->unique()->values()->all(),
+            'seriesId' => $match->stage?->group_id,
         ];
     }
 
@@ -264,6 +274,8 @@ class SeasonOverviewService
             'status' => MatchStatus::Pending,
             'venue' => $stage->venue,
             'scheduledAt' => $stage->scheduled_at,
+            'teamIds' => [],
+            'seriesId' => $stage->group_id,
         ];
     }
 
